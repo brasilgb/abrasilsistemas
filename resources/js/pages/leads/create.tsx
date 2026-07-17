@@ -13,10 +13,11 @@ import { create, index } from '@/routes/leads';
 import LeadForm from '@/pages/leads/form';
 
 type Props = {
+    products: Record<string, string>;
     statuses: Record<string, string>;
 };
 
-export default function CreateLead({ statuses }: Props) {
+export default function CreateLead({ products, statuses }: Props) {
     return (
         <>
             <Head title="Novo lead" />
@@ -44,6 +45,7 @@ export default function CreateLead({ statuses }: Props) {
                             {({ processing, errors }) => (
                                 <>
                                     <LeadForm
+                                        products={products}
                                         statuses={statuses}
                                         processing={processing}
                                         errors={errors}

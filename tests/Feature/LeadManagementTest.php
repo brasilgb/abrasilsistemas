@@ -28,6 +28,7 @@ test('authenticated users can create leads', function () {
 
     $response = $this->actingAs($user)->post(route('leads.store'), [
         'company_name' => 'Pet Shop Modelo',
+        'product' => 'vetorpet',
         'contact_name' => 'Maria',
         'industry' => 'Pet shop',
         'city' => 'Canoas',
@@ -43,6 +44,7 @@ test('authenticated users can create leads', function () {
 
     expect($lead)->not->toBeNull();
     expect($lead->user_id)->toBe($user->id);
+    expect($lead->product)->toBe('vetorpet');
     expect($lead->state)->toBe('RS');
 });
 
@@ -51,10 +53,10 @@ test('authenticated users can import leads from csv with optional fields', funct
         'email_verified_at' => now(),
     ]);
     $csv = implode("\n", [
-        'company_name,phone,website,industry,city',
-        'Pet Shop Scraper,51999999999,https://pet.example,Pet shop,Canoas',
-        ',51988888888,https://semnome.example,Assistencia,Porto Alegre',
-        'Assistencia Modelo,5133333333,https://assistencia.example,Assistencia tecnica,Novo Hamburgo',
+        'company_name,product,phone,website,industry,city',
+        'Pet Shop Scraper,vetorpet,51999999999,https://pet.example,Pet shop,Canoas',
+        ',vetoros,51988888888,https://semnome.example,Assistencia,Porto Alegre',
+        'Assistencia Modelo,vetoros,5133333333,https://assistencia.example,Assistencia tecnica,Novo Hamburgo',
     ]);
 
     $response = $this->actingAs($user)->post(route('leads.import'), [
@@ -72,6 +74,7 @@ test('authenticated users can import leads from csv with optional fields', funct
     expect($lead->whatsapp)->toBeNull();
     expect($lead->phone)->toBe('51999999999');
     expect($lead->website)->toBe('https://pet.example');
+    expect($lead->product)->toBe('vetorpet');
     expect($lead->industry)->toBe('Pet shop');
     expect($lead->city)->toBe('Canoas');
     expect($lead->status)->toBe('new');
@@ -90,6 +93,7 @@ test('authenticated users can update leads', function () {
 
     $response = $this->actingAs($user)->put(route('leads.update', $lead), [
         'company_name' => 'Empresa Editada',
+        'product' => 'vetoros',
         'contact_name' => 'Joao',
         'industry' => 'Assistencia tecnica',
         'city' => 'Porto Alegre',

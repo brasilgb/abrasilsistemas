@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'user_id',
+    'product',
     'company_name',
     'contact_name',
     'industry',
@@ -37,6 +38,11 @@ class Lead extends Model
         'meeting' => 'Reunião',
         'converted' => 'Convertido',
         'lost' => 'Perdido',
+    ];
+
+    public const PRODUCTS = [
+        'vetoros' => 'VetorOS',
+        'vetorpet' => 'VetorPet',
     ];
 
     protected function casts(): array

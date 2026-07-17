@@ -21,6 +21,7 @@ import LeadForm, { type Lead } from '@/pages/leads/form';
 type Props = {
     activityTypes: Record<string, string>;
     lead: Lead;
+    products: Record<string, string>;
     statuses: Record<string, string>;
 };
 
@@ -50,7 +51,12 @@ function formatDate(value: string | null) {
     }).format(new Date(value));
 }
 
-export default function EditLead({ activityTypes, lead, statuses }: Props) {
+export default function EditLead({
+    activityTypes,
+    lead,
+    products,
+    statuses,
+}: Props) {
     return (
         <>
             <Head title={`Editar ${lead.company_name}`} />
@@ -82,6 +88,7 @@ export default function EditLead({ activityTypes, lead, statuses }: Props) {
                                     <>
                                         <LeadForm
                                             lead={lead}
+                                            products={products}
                                             statuses={statuses}
                                             processing={processing}
                                             errors={errors}

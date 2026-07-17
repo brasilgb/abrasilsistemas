@@ -18,7 +18,7 @@ class LeadController extends Controller
 {
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'status', 'city', 'state', 'industry', 'follow_up']);
+        $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up']);
 
         $leads = Lead::query()
             ->with('user:id,name')
@@ -31,6 +31,7 @@ class LeadController extends Controller
                         ->orWhere('whatsapp', 'like', "%{$search}%");
                 });
             })
+            ->when($filters['product'] ?? null, fn ($query, string $product) => $query->where('product', $product))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['city'] ?? null, fn ($query, string $city) => $query->where('city', 'like', "%{$city}%"))
             ->when($filters['state'] ?? null, fn ($query, string $state) => $query->where('state', strtoupper($state)))
@@ -49,6 +50,7 @@ class LeadController extends Controller
             'filters' => $filters,
             'leads' => $leads,
             'metrics' => $this->metrics(),
+            'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
         ]);
     }
@@ -85,6 +87,7 @@ class LeadController extends Controller
     public function create(): Response
     {
         return Inertia::render('leads/create', [
+            'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
         ]);
     }
@@ -180,6 +183,7 @@ class LeadController extends Controller
                 'activities' => fn ($query) => $query->with('user:id,name')->latest(),
                 'user:id,name',
             ]),
+            'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
         ]);
     }
@@ -236,6 +240,7 @@ class LeadController extends Controller
     private function leadDataFromCsvRow(array $headers, array $row): array
     {
         $data = [
+            'product' => 'vetoros',
             'source' => 'CSV',
             'status' => 'new',
         ];
@@ -270,6 +275,10 @@ class LeadController extends Controller
             $data['status'] = $this->normalizeStatus($data['status']);
         }
 
+        if (isset($data['product'])) {
+            $data['product'] = $this->normalizeProduct($data['product']);
+        }
+
         return array_map(fn (string $value) => Str::limit($value, 5000, ''), $data);
     }
 
@@ -277,6 +286,7 @@ class LeadController extends Controller
     {
         $fields = [
             'company_name',
+            'product',
             'contact_name',
             'industry',
             'city',
@@ -315,6 +325,24 @@ class LeadController extends Controller
         ][$normalized] ?? 'new';
     }
 
+    private function normalizeProduct(string $product): string
+    {
+        $normalized = $this->normalizeHeader($product);
+
+        return [
+            'vetoros' => 'vetoros',
+            'vetor_os' => 'vetoros',
+            'os' => 'vetoros',
+            'assistencia' => 'vetoros',
+            'assistencia_tecnica' => 'vetoros',
+            'vetorpet' => 'vetorpet',
+            'vetor_pet' => 'vetorpet',
+            'pet' => 'vetorpet',
+            'petshop' => 'vetorpet',
+            'pet_shop' => 'vetorpet',
+        ][$normalized] ?? 'vetoros';
+    }
+
     /**
      * @return array<string, list<mixed>>
      */
@@ -322,6 +350,7 @@ class LeadController extends Controller
     {
         return [
             'company_name' => ['required', 'string', 'max:255'],
+            'product' => ['required', 'string', Rule::in(array_keys(Lead::PRODUCTS))],
             'contact_name' => ['nullable', 'string', 'max:255'],
             'industry' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],

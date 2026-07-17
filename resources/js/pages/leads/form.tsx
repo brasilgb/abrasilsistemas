@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 export type Lead = {
     id: number;
+    product: string;
     company_name: string;
     contact_name: string | null;
     industry: string | null;
@@ -46,6 +47,7 @@ export type LeadActivity = {
 };
 
 type Props = {
+    products: Record<string, string>;
     statuses: Record<string, string>;
     lead?: Lead;
     processing: boolean;
@@ -53,6 +55,7 @@ type Props = {
 };
 
 export default function LeadForm({
+    products,
     statuses,
     lead,
     processing,
@@ -72,6 +75,23 @@ export default function LeadForm({
                         placeholder="Nome da empresa"
                     />
                     <InputError message={errors.company_name} />
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="product">Produto</Label>
+                    <select
+                        id="product"
+                        name="product"
+                        defaultValue={lead?.product ?? 'vetoros'}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        {Object.entries(products).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+                    <InputError message={errors.product} />
                 </div>
 
                 <div className="grid gap-2">
