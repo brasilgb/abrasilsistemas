@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Leads\LeadImportRequest;
 use App\Http\Requests\Leads\LeadRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -49,6 +53,9 @@ class LeadController extends Controller
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function metrics(): array
     {
         $total = Lead::query()->count();
@@ -98,6 +105,73 @@ class LeadController extends Controller
         return to_route('leads.index');
     }
 
+    public function import(LeadImportRequest $request): RedirectResponse
+    {
+        $file = $request->file('csv');
+        $handle = fopen($file->getRealPath(), 'r');
+
+        if ($handle === false) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Nao foi possivel ler o CSV.']);
+
+            return back();
+        }
+
+        $firstLine = fgets($handle);
+
+        if ($firstLine === false) {
+            fclose($handle);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'O CSV esta vazio.']);
+
+            return back();
+        }
+
+        $delimiter = $this->detectCsvDelimiter($firstLine);
+        $headers = $this->normalizeHeaders(str_getcsv($firstLine, $delimiter));
+        $created = 0;
+        $skipped = 0;
+
+        while (($row = fgetcsv($handle, null, $delimiter)) !== false) {
+            if ($this->isEmptyCsvRow($row)) {
+                continue;
+            }
+
+            $data = $this->leadDataFromCsvRow($headers, $row);
+
+            if (($data['company_name'] ?? null) === null) {
+                $skipped++;
+
+                continue;
+            }
+
+            $validator = Validator::make($data, $this->importRules());
+
+            if ($validator->fails()) {
+                $skipped++;
+
+                continue;
+            }
+
+            Lead::query()->create([
+                ...$validator->validated(),
+                'user_id' => $request->user()->id,
+            ]);
+
+            $created++;
+        }
+
+        fclose($handle);
+
+        $message = "{$created} lead(s) importado(s).";
+
+        if ($skipped > 0) {
+            $message .= " {$skipped} linha(s) ignorada(s).";
+        }
+
+        Inertia::flash('toast', ['type' => $created > 0 ? 'success' : 'error', 'message' => $message]);
+
+        return to_route('leads.index');
+    }
+
     public function edit(Lead $lead): Response
     {
         return Inertia::render('leads/edit', [
@@ -125,5 +199,150 @@ class LeadController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Lead atualizado.']);
 
         return to_route('leads.index');
+    }
+
+    private function detectCsvDelimiter(string $line): string
+    {
+        return collect([',', ';', "\t"])
+            ->sortByDesc(fn (string $delimiter) => count(str_getcsv($line, $delimiter)))
+            ->first();
+    }
+
+    /**
+     * @param  list<string|null>  $headers
+     * @return list<string>
+     */
+    private function normalizeHeaders(array $headers): array
+    {
+        return array_map(fn (?string $header) => $this->normalizeHeader((string) $header), $headers);
+    }
+
+    private function normalizeHeader(string $header): string
+    {
+        return Str::of($header)
+            ->replace("\u{FEFF}", '')
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->toString();
+    }
+
+    /**
+     * @param  list<string>  $headers
+     * @param  list<string|null>  $row
+     * @return array<string, string>
+     */
+    private function leadDataFromCsvRow(array $headers, array $row): array
+    {
+        $data = [
+            'source' => 'CSV',
+            'status' => 'new',
+        ];
+
+        foreach ($headers as $index => $header) {
+            $field = $this->leadFieldFromHeader($header);
+
+            if ($field === null) {
+                continue;
+            }
+
+            $value = trim((string) ($row[$index] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            if ($field === 'notes' && isset($data['notes'])) {
+                $data['notes'] .= PHP_EOL.$value;
+
+                continue;
+            }
+
+            $data[$field] = $value;
+        }
+
+        if (isset($data['state'])) {
+            $data['state'] = strtoupper($data['state']);
+        }
+
+        if (isset($data['status'])) {
+            $data['status'] = $this->normalizeStatus($data['status']);
+        }
+
+        return array_map(fn (string $value) => Str::limit($value, 5000, ''), $data);
+    }
+
+    private function leadFieldFromHeader(string $header): ?string
+    {
+        $fields = [
+            'company_name',
+            'contact_name',
+            'industry',
+            'city',
+            'state',
+            'phone',
+            'whatsapp',
+            'email',
+            'website',
+            'instagram',
+            'source',
+            'status',
+            'next_follow_up_at',
+            'notes',
+        ];
+
+        return in_array($header, $fields, true) ? $header : null;
+    }
+
+    private function normalizeStatus(string $status): string
+    {
+        $normalized = $this->normalizeHeader($status);
+
+        return [
+            'novo' => 'new',
+            'new' => 'new',
+            'contatado' => 'contacted',
+            'contacted' => 'contacted',
+            'interessado' => 'interested',
+            'interested' => 'interested',
+            'reuniao' => 'meeting',
+            'meeting' => 'meeting',
+            'convertido' => 'converted',
+            'converted' => 'converted',
+            'perdido' => 'lost',
+            'lost' => 'lost',
+        ][$normalized] ?? 'new';
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function importRules(): array
+    {
+        return [
+            'company_name' => ['required', 'string', 'max:255'],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'industry' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'size:2'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'whatsapp' => ['nullable', 'string', 'max:40'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'website' => ['nullable', 'string', 'max:255'],
+            'instagram' => ['nullable', 'string', 'max:255'],
+            'source' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'string', Rule::in(array_keys(Lead::STATUSES))],
+            'next_follow_up_at' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    /**
+     * @param  list<string|null>  $row
+     */
+    private function isEmptyCsvRow(array $row): bool
+    {
+        return collect($row)->every(fn ($value) => trim((string) $value) === '');
     }
 }

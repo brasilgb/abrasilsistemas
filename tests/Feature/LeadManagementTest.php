@@ -3,6 +3,7 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 
 test('authenticated users can view leads', function () {
     $user = User::factory()->create([
@@ -43,6 +44,38 @@ test('authenticated users can create leads', function () {
     expect($lead)->not->toBeNull();
     expect($lead->user_id)->toBe($user->id);
     expect($lead->state)->toBe('RS');
+});
+
+test('authenticated users can import leads from csv with optional fields', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $csv = implode("\n", [
+        'company_name,phone,website,industry,city',
+        'Pet Shop Scraper,51999999999,https://pet.example,Pet shop,Canoas',
+        ',51988888888,https://semnome.example,Assistencia,Porto Alegre',
+        'Assistencia Modelo,5133333333,https://assistencia.example,Assistencia tecnica,Novo Hamburgo',
+    ]);
+
+    $response = $this->actingAs($user)->post(route('leads.import'), [
+        'csv' => UploadedFile::fake()->createWithContent('leads.csv', $csv),
+    ]);
+
+    $response->assertRedirect(route('leads.index', absolute: false));
+
+    expect(Lead::query()->where('company_name', 'Pet Shop Scraper')->exists())->toBeTrue();
+    expect(Lead::query()->where('company_name', 'Assistencia Modelo')->exists())->toBeTrue();
+    expect(Lead::query()->where('website', 'https://semnome.example')->exists())->toBeFalse();
+
+    $lead = Lead::query()->where('company_name', 'Pet Shop Scraper')->first();
+
+    expect($lead->whatsapp)->toBeNull();
+    expect($lead->phone)->toBe('51999999999');
+    expect($lead->website)->toBe('https://pet.example');
+    expect($lead->industry)->toBe('Pet shop');
+    expect($lead->city)->toBe('Canoas');
+    expect($lead->status)->toBe('new');
+    expect($lead->source)->toBe('CSV');
 });
 
 test('authenticated users can update leads', function () {

@@ -2,12 +2,14 @@ import { Form, Head, Link } from '@inertiajs/react';
 import {
     BarChart3,
     CalendarClock,
+    FileUp,
     MessageCircle,
     Pencil,
     Plus,
     Search,
 } from 'lucide-react';
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -96,12 +98,14 @@ export default function LeadsIndex({
                         description="Organize leads, contatos e follow-ups comerciais."
                     />
 
-                    <Button asChild>
-                        <Link href={create()}>
-                            <Plus className="size-4" />
-                            Novo lead
-                        </Link>
-                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button asChild>
+                            <Link href={create()}>
+                                <Plus className="size-4" />
+                                Novo lead
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-4">
@@ -172,6 +176,53 @@ export default function LeadsIndex({
                         </Card>
                     </Link>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileUp className="size-5 text-muted-foreground" />
+                            Importar leads por CSV
+                        </CardTitle>
+                        <CardDescription>
+                            Campo obrigatorio: company_name. Campos aceitos:
+                            company_name, contact_name, industry, city, state,
+                            phone, whatsapp, email, website, instagram, source,
+                            status, next_follow_up_at e notes.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Form
+                            action="/leads/import"
+                            method="post"
+                            className="grid gap-4 md:grid-cols-[1fr_auto]"
+                        >
+                            {({ errors, processing }) => (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="csv">Arquivo CSV</Label>
+                                        <Input
+                                            id="csv"
+                                            type="file"
+                                            name="csv"
+                                            accept=".csv,text/csv,text/plain"
+                                        />
+                                        <InputError message={errors.csv} />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <Button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="w-full md:w-auto"
+                                        >
+                                            <FileUp className="size-4" />
+                                            Importar leads
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </Form>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>

@@ -9,6 +9,7 @@ Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::post('leads/import', [LeadController::class, 'import'])->name('leads.import');
     Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update']);
     Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
     Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
