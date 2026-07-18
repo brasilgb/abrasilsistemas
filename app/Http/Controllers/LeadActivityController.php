@@ -11,8 +11,12 @@ class LeadActivityController extends Controller
 {
     public function store(LeadActivityRequest $request, Lead $lead): RedirectResponse
     {
+        $data = $request->validated();
+        $activityData = $data;
+        unset($activityData['lost_reason']);
+
         $activity = $lead->activities()->create([
-            ...$request->validated(),
+            ...$activityData,
             'user_id' => $request->user()->id,
         ]);
 
@@ -20,6 +24,7 @@ class LeadActivityController extends Controller
 
         if ($activity->status !== null) {
             $leadUpdates['status'] = $activity->status;
+            $leadUpdates['lost_reason'] = $activity->status === 'lost' ? ($data['lost_reason'] ?? $lead->lost_reason) : null;
         }
 
         if ($activity->contacted_at !== null) {

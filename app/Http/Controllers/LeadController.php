@@ -18,10 +18,11 @@ class LeadController extends Controller
 {
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up']);
+        $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up', 'owner']);
 
-        $leads = Lead::query()
+        $baseQuery = Lead::query()
             ->with('user:id,name')
+            ->when(($filters['owner'] ?? null) === 'mine', fn ($query) => $query->where('user_id', $request->user()->id))
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query
@@ -41,15 +42,24 @@ class LeadController extends Controller
                     ->when($followUp === 'overdue', fn ($query) => $query->whereDate('next_follow_up_at', '<', today()))
                     ->when($followUp === 'today', fn ($query) => $query->whereDate('next_follow_up_at', today()))
                     ->when($followUp === 'upcoming', fn ($query) => $query->whereDate('next_follow_up_at', '>', today()));
-            })
+            });
+
+        $leads = (clone $baseQuery)
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('leads/index', [
             'filters' => $filters,
+            'kanbanLeads' => (clone $baseQuery)
+                ->latest()
+                ->limit(200)
+                ->get()
+                ->sortByDesc('lead_score')
+                ->values(),
             'leads' => $leads,
             'metrics' => $this->metrics(),
+            'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
         ]);
@@ -66,12 +76,18 @@ class LeadController extends Controller
         $overdue = Lead::query()->whereDate('next_follow_up_at', '<', today())->count();
         $today = Lead::query()->whereDate('next_follow_up_at', today())->count();
         $upcoming = Lead::query()->whereDate('next_follow_up_at', '>', today())->count();
+        $highPriority = Lead::query()
+            ->whereNotIn('status', ['converted', 'lost'])
+            ->get()
+            ->where('priority', 'high')
+            ->count();
 
         return [
             'total' => $total,
             'open' => $open,
             'converted' => $converted,
             'conversion_rate' => $total > 0 ? round(($converted / $total) * 100, 1) : 0,
+            'high_priority' => $highPriority,
             'follow_ups' => [
                 'overdue' => $overdue,
                 'today' => $today,
@@ -87,6 +103,7 @@ class LeadController extends Controller
     public function create(): Response
     {
         return Inertia::render('leads/create', [
+            'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
         ]);
@@ -94,8 +111,11 @@ class LeadController extends Controller
 
     public function store(LeadRequest $request): RedirectResponse
     {
+        $data = $request->validated();
+        $data['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? null) : null;
+
         $lead = Lead::query()->create([
-            ...$request->validated(),
+            ...$data,
             'user_id' => $request->user()->id,
         ]);
 
@@ -183,6 +203,7 @@ class LeadController extends Controller
                 'activities' => fn ($query) => $query->with('user:id,name')->latest(),
                 'user:id,name',
             ]),
+            'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
         ]);
@@ -191,8 +212,10 @@ class LeadController extends Controller
     public function update(LeadRequest $request, Lead $lead): RedirectResponse
     {
         $previousStatus = $lead->status;
+        $data = $request->validated();
+        $data['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? null) : null;
 
-        $lead->fill($request->validated());
+        $lead->fill($data);
 
         if ($previousStatus === 'new' && $lead->status !== 'new' && $lead->last_contacted_at === null) {
             $lead->last_contacted_at = now();
@@ -203,6 +226,41 @@ class LeadController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Lead atualizado.']);
 
         return to_route('leads.index');
+    }
+
+    public function status(Request $request, Lead $lead): RedirectResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', 'string', Rule::in(array_keys(Lead::STATUSES))],
+            'lost_reason' => ['nullable', 'required_if:status,lost', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
+        ]);
+
+        $previousStatus = $lead->status;
+        $lead->status = $data['status'];
+        $lead->lost_reason = $lead->status === 'lost' ? ($data['lost_reason'] ?? $lead->lost_reason) : null;
+
+        if ($previousStatus === 'new' && $lead->status !== 'new' && $lead->last_contacted_at === null) {
+            $lead->last_contacted_at = now();
+        }
+
+        $lead->save();
+
+        $lead->activities()->create([
+            'user_id' => $request->user()->id,
+            'type' => 'note',
+            'status' => $lead->status,
+            'contacted_at' => now(),
+            'description' => sprintf(
+                'Status alterado de %s para %s pelo Kanban%s.',
+                Lead::STATUSES[$previousStatus] ?? $previousStatus,
+                Lead::STATUSES[$lead->status] ?? $lead->status,
+                $lead->lost_reason ? ' (motivo: '.(Lead::LOST_REASONS[$lead->lost_reason] ?? $lead->lost_reason).')' : ''
+            ),
+        ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Status atualizado.']);
+
+        return back();
     }
 
     private function detectCsvDelimiter(string $line): string
@@ -275,6 +333,10 @@ class LeadController extends Controller
             $data['status'] = $this->normalizeStatus($data['status']);
         }
 
+        if (isset($data['lost_reason'])) {
+            $data['lost_reason'] = $this->normalizeLostReason($data['lost_reason']);
+        }
+
         if (isset($data['product'])) {
             $data['product'] = $this->normalizeProduct($data['product']);
         }
@@ -298,6 +360,7 @@ class LeadController extends Controller
             'instagram',
             'source',
             'status',
+            'lost_reason',
             'next_follow_up_at',
             'notes',
         ];
@@ -343,6 +406,27 @@ class LeadController extends Controller
         ][$normalized] ?? 'vetoros';
     }
 
+    private function normalizeLostReason(string $reason): string
+    {
+        $normalized = $this->normalizeHeader($reason);
+
+        return [
+            'preco' => 'price',
+            'price' => 'price',
+            'sem_interesse' => 'no_interest',
+            'no_interest' => 'no_interest',
+            'concorrente' => 'competitor',
+            'competitor' => 'competitor',
+            'fechou_com_concorrente' => 'competitor',
+            'sem_resposta' => 'no_response',
+            'no_response' => 'no_response',
+            'fora_do_perfil' => 'bad_fit',
+            'bad_fit' => 'bad_fit',
+            'outro' => 'other',
+            'other' => 'other',
+        ][$normalized] ?? 'other';
+    }
+
     /**
      * @return array<string, list<mixed>>
      */
@@ -362,6 +446,7 @@ class LeadController extends Controller
             'instagram' => ['nullable', 'string', 'max:255'],
             'source' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', Rule::in(array_keys(Lead::STATUSES))],
+            'lost_reason' => ['nullable', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
             'next_follow_up_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ];

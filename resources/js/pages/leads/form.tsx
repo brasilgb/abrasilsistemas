@@ -19,6 +19,9 @@ export type Lead = {
     instagram: string | null;
     source: string | null;
     status: string;
+    lost_reason: string | null;
+    lead_score: number;
+    priority: 'high' | 'medium' | 'low';
     next_follow_up_at: string | null;
     last_contacted_at: string | null;
     notes: string | null;
@@ -48,6 +51,7 @@ export type LeadActivity = {
 
 type Props = {
     products: Record<string, string>;
+    lostReasons: Record<string, string>;
     statuses: Record<string, string>;
     lead?: Lead;
     processing: boolean;
@@ -56,6 +60,7 @@ type Props = {
 
 export default function LeadForm({
     products,
+    lostReasons,
     statuses,
     lead,
     processing,
@@ -222,6 +227,26 @@ export default function LeadForm({
                         ))}
                     </select>
                     <InputError message={errors.status} />
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="lost_reason">Motivo de perda</Label>
+                    <select
+                        id="lost_reason"
+                        name="lost_reason"
+                        defaultValue={lead?.lost_reason ?? ''}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        <option value="">
+                            Selecione se o lead foi perdido
+                        </option>
+                        {Object.entries(lostReasons).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+                    <InputError message={errors.lost_reason} />
                 </div>
 
                 <div className="grid gap-2">

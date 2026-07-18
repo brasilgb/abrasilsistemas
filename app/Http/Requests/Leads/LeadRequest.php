@@ -38,6 +38,7 @@ class LeadRequest extends FormRequest
             'instagram' => ['nullable', 'string', 'max:255'],
             'source' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', Rule::in(array_keys(Lead::STATUSES))],
+            'lost_reason' => ['nullable', 'required_if:status,lost', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
             'next_follow_up_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ];

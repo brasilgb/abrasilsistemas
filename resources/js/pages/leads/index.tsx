@@ -1,14 +1,15 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import {
     BarChart3,
     CalendarClock,
+    Columns3,
     FileUp,
     MessageCircle,
     Pencil,
     Plus,
     Search,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type DragEvent, useEffect, useMemo, useState } from 'react';
 import AppPagination, {
     PaginationSummary,
     type PaginationData,
@@ -47,13 +48,17 @@ type Props = {
         state?: string;
         industry?: string;
         follow_up?: string;
+        owner?: string;
     };
+    kanbanLeads: Lead[];
     leads: Paginated<Lead>;
+    lostReasons: Record<string, string>;
     metrics: {
         total: number;
         open: number;
         converted: number;
         conversion_rate: number;
+        high_priority: number;
         follow_ups: {
             overdue: number;
             today: number;
@@ -109,17 +114,285 @@ function statusClass(status: string) {
     );
 }
 
+const priorityLabels = {
+    high: 'Alta',
+    medium: 'Média',
+    low: 'Baixa',
+};
+
+function priorityClass(priority: string) {
+    return (
+        {
+            high: 'border-red-200 bg-red-50 text-red-700',
+            medium: 'border-amber-200 bg-amber-50 text-amber-700',
+            low: 'border-slate-200 bg-slate-50 text-slate-700',
+        }[priority] ?? 'border-muted bg-muted/40 text-muted-foreground'
+    );
+}
+
+function LeadActions({
+    lead,
+    products,
+    whatsappMessages,
+}: {
+    lead: Lead;
+    products: Record<string, string>;
+    whatsappMessages: Record<string, string>;
+}) {
+    const leadProduct = lead.product === 'vetorpet' ? 'vetorpet' : 'vetoros';
+    const whatsapp = whatsappUrl(lead.whatsapp, whatsappMessages[leadProduct]);
+
+    return (
+        <div className="flex justify-end gap-1">
+            {whatsapp && (
+                <Button
+                    asChild
+                    variant="outline"
+                    size="icon"
+                    title={`Conversar sobre ${products[lead.product] ?? lead.product}`}
+                >
+                    <a href={whatsapp} target="_blank" rel="noreferrer">
+                        <MessageCircle className="size-4 text-emerald-600" />
+                    </a>
+                </Button>
+            )}
+            <Button asChild variant="outline" size="icon" title="Editar lead">
+                <Link href={edit({ lead: lead.id })}>
+                    <Pencil className="size-4" />
+                </Link>
+            </Button>
+        </div>
+    );
+}
+
+function LeadKanbanCard({
+    lead,
+    lostReasons,
+    products,
+    statuses,
+    whatsappMessages,
+    onDragStart,
+}: {
+    lead: Lead;
+    lostReasons: Record<string, string>;
+    products: Record<string, string>;
+    statuses: Record<string, string>;
+    whatsappMessages: Record<string, string>;
+    onDragStart: (event: DragEvent<HTMLElement>, lead: Lead) => void;
+}) {
+    return (
+        <article
+            draggable
+            onDragStart={(event) => onDragStart(event, lead)}
+            className="cursor-grab rounded-md border bg-background p-3 shadow-sm transition hover:border-primary/40 active:cursor-grabbing"
+        >
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold">
+                        {lead.company_name}
+                    </h3>
+                    <p className="truncate text-xs text-muted-foreground">
+                        {lead.contact_name ||
+                            lead.whatsapp ||
+                            lead.phone ||
+                            '-'}
+                    </p>
+                </div>
+                <Badge variant="secondary">
+                    {products[lead.product] ?? lead.product}
+                </Badge>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+                <Badge
+                    variant="outline"
+                    className={priorityClass(lead.priority)}
+                >
+                    Prioridade {priorityLabels[lead.priority] ?? lead.priority}
+                </Badge>
+                <span className="text-xs font-medium text-muted-foreground">
+                    {lead.lead_score}/100
+                </span>
+            </div>
+            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                <p className="truncate">
+                    {[lead.city, lead.state].filter(Boolean).join(' / ') || '-'}
+                </p>
+                <p className="inline-flex items-center gap-1">
+                    <CalendarClock className="size-3.5" />
+                    {formatDate(lead.next_follow_up_at)}
+                </p>
+                {lead.notes && (
+                    <p className="line-clamp-2" title={lead.notes}>
+                        {lead.notes}
+                    </p>
+                )}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+                <Badge variant="outline" className={statusClass(lead.status)}>
+                    {statuses[lead.status] ?? lead.status}
+                </Badge>
+                <LeadActions
+                    lead={lead}
+                    products={products}
+                    whatsappMessages={whatsappMessages}
+                />
+            </div>
+            <details className="mt-3 rounded-md border bg-muted/30 p-2">
+                <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                    Atividade rápida
+                </summary>
+                <Form
+                    action={`/leads/${lead.id}/activities`}
+                    method="post"
+                    className="mt-2 grid gap-2"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <select
+                                name="type"
+                                defaultValue="whatsapp"
+                                className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                            >
+                                <option value="whatsapp">WhatsApp</option>
+                                <option value="call">Ligação</option>
+                                <option value="email">E-mail</option>
+                                <option value="meeting">Reunião</option>
+                                <option value="note">Nota</option>
+                            </select>
+                            <select
+                                name="status"
+                                defaultValue=""
+                                className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                            >
+                                <option value="">Manter status</option>
+                                {Object.entries(statuses).map(
+                                    ([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                            <select
+                                name="lost_reason"
+                                defaultValue={lead.lost_reason ?? ''}
+                                className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                            >
+                                <option value="">Motivo de perda</option>
+                                {Object.entries(lostReasons).map(
+                                    ([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                            <Input
+                                name="next_follow_up_at"
+                                type="date"
+                                className="h-8 text-xs"
+                            />
+                            <textarea
+                                name="description"
+                                placeholder="Resumo do contato"
+                                className="min-h-16 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                            />
+                            {(errors.description || errors.lost_reason) && (
+                                <p className="text-xs text-destructive">
+                                    {errors.description || errors.lost_reason}
+                                </p>
+                            )}
+                            <Button
+                                size="sm"
+                                type="submit"
+                                disabled={processing}
+                            >
+                                Salvar atividade
+                            </Button>
+                        </>
+                    )}
+                </Form>
+            </details>
+        </article>
+    );
+}
+
 export default function LeadsIndex({
     filters,
+    kanbanLeads,
     leads,
+    lostReasons,
     metrics,
     products,
     statuses,
 }: Props) {
-    const [activeTab, setActiveTab] = useState<'leads' | 'metrics'>('leads');
+    const [activeTab, setActiveTab] = useState<'leads' | 'kanban' | 'metrics'>(
+        'leads',
+    );
+    const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
     const [whatsappMessages, setWhatsappMessages] = useState(
         whatsappMessageTemplates,
     );
+
+    const leadsByStatus = useMemo(() => {
+        return Object.keys(statuses).reduce<Record<string, Lead[]>>(
+            (groups, status) => {
+                groups[status] = kanbanLeads.filter(
+                    (lead) => lead.status === status,
+                );
+
+                return groups;
+            },
+            {},
+        );
+    }, [kanbanLeads, statuses]);
+
+    const handleDragStart = (event: DragEvent<HTMLElement>, lead: Lead) => {
+        setDraggedLeadId(lead.id);
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(lead.id));
+    };
+
+    const updateLeadStatus = (targetStatus: string) => {
+        if (!draggedLeadId) {
+            return;
+        }
+
+        const draggedLead = kanbanLeads.find(
+            (lead) => lead.id === draggedLeadId,
+        );
+        setDraggedLeadId(null);
+
+        if (!draggedLead || draggedLead.status === targetStatus) {
+            return;
+        }
+
+        const lostReason =
+            targetStatus === 'lost'
+                ? window.prompt(
+                      `Motivo da perda:\n${Object.entries(lostReasons)
+                          .map(([value, label]) => `${value} - ${label}`)
+                          .join('\n')}`,
+                      draggedLead.lost_reason ?? 'no_response',
+                  )
+                : null;
+
+        if (targetStatus === 'lost' && !lostReason) {
+            return;
+        }
+
+        router.patch(
+            `/leads/${draggedLead.id}/status`,
+            {
+                status: targetStatus,
+                lost_reason: targetStatus === 'lost' ? lostReason : null,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
 
     useEffect(() => {
         const refreshMessages = () =>
@@ -142,7 +415,7 @@ export default function LeadsIndex({
                         description="Organize leads, contatos e follow-ups comerciais."
                     />
 
-                    <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-2">
+                    <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-3">
                         <button
                             type="button"
                             onClick={() => setActiveTab('leads')}
@@ -155,6 +428,19 @@ export default function LeadsIndex({
                         >
                             <Plus className="size-4" />
                             Leads
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('kanban')}
+                            className={cn(
+                                'inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors',
+                                activeTab === 'kanban'
+                                    ? 'bg-background text-foreground shadow-xs'
+                                    : 'text-muted-foreground hover:text-foreground',
+                            )}
+                        >
+                            <Columns3 className="size-4" />
+                            Kanban
                         </button>
                         <button
                             type="button"
@@ -171,6 +457,200 @@ export default function LeadsIndex({
                         </button>
                     </div>
                 </div>
+
+                {activeTab === 'kanban' && (
+                    <div className="space-y-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <Form
+                                {...index.form()}
+                                className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-6xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.85fr_0.75fr_auto]"
+                            >
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor="kanban-search"
+                                        className="text-xs"
+                                    >
+                                        Busca
+                                    </Label>
+                                    <Input
+                                        id="kanban-search"
+                                        name="search"
+                                        defaultValue={filters.search ?? ''}
+                                        placeholder="Empresa, contato, e-mail..."
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor="kanban-product"
+                                        className="text-xs"
+                                    >
+                                        Produto
+                                    </Label>
+                                    <select
+                                        id="kanban-product"
+                                        name="product"
+                                        defaultValue={filters.product ?? ''}
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    >
+                                        <option value="">Todos</option>
+                                        {Object.entries(products).map(
+                                            ([value, label]) => (
+                                                <option
+                                                    key={value}
+                                                    value={value}
+                                                >
+                                                    {label}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor="kanban-industry"
+                                        className="text-xs"
+                                    >
+                                        Ramo
+                                    </Label>
+                                    <Input
+                                        id="kanban-industry"
+                                        name="industry"
+                                        defaultValue={filters.industry ?? ''}
+                                        placeholder="Pet shop..."
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor="kanban-state"
+                                        className="text-xs"
+                                    >
+                                        UF
+                                    </Label>
+                                    <Input
+                                        id="kanban-state"
+                                        name="state"
+                                        maxLength={2}
+                                        defaultValue={filters.state ?? ''}
+                                        placeholder="RS"
+                                        className="uppercase"
+                                    />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor="kanban-follow-up"
+                                        className="text-xs"
+                                    >
+                                        Follow-up
+                                    </Label>
+                                    <select
+                                        id="kanban-follow-up"
+                                        name="follow_up"
+                                        defaultValue={filters.follow_up ?? ''}
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="overdue">
+                                            Atrasados
+                                        </option>
+                                        <option value="today">Hoje</option>
+                                        <option value="upcoming">
+                                            Próximos
+                                        </option>
+                                    </select>
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor="kanban-owner"
+                                        className="text-xs"
+                                    >
+                                        Responsável
+                                    </Label>
+                                    <select
+                                        id="kanban-owner"
+                                        name="owner"
+                                        defaultValue={filters.owner ?? ''}
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="mine">Meus leads</option>
+                                    </select>
+                                </div>
+                                <div className="flex items-end">
+                                    <Button
+                                        className="w-full"
+                                        variant="outline"
+                                    >
+                                        <Search className="size-4" />
+                                        Filtrar
+                                    </Button>
+                                </div>
+                            </Form>
+
+                            <Button asChild>
+                                <Link href={create()}>
+                                    <Plus className="size-4" />
+                                    Novo lead
+                                </Link>
+                            </Button>
+                        </div>
+
+                        <div className="grid gap-3 overflow-x-auto pb-2 xl:grid-cols-6">
+                            {Object.entries(statuses).map(([status, label]) => {
+                                const columnLeads = leadsByStatus[status] ?? [];
+
+                                return (
+                                    <section
+                                        key={status}
+                                        onDragOver={(event) => {
+                                            event.preventDefault();
+                                            event.dataTransfer.dropEffect =
+                                                'move';
+                                        }}
+                                        onDrop={() => updateLeadStatus(status)}
+                                        className="flex min-h-96 min-w-64 flex-col rounded-lg border bg-muted/30"
+                                    >
+                                        <header className="flex items-center justify-between border-b p-3">
+                                            <Badge
+                                                variant="outline"
+                                                className={statusClass(status)}
+                                            >
+                                                {label}
+                                            </Badge>
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                                {columnLeads.length}
+                                            </span>
+                                        </header>
+                                        <div className="flex flex-1 flex-col gap-2 p-2">
+                                            {columnLeads.length ? (
+                                                columnLeads.map((lead) => (
+                                                    <LeadKanbanCard
+                                                        key={lead.id}
+                                                        lead={lead}
+                                                        lostReasons={
+                                                            lostReasons
+                                                        }
+                                                        products={products}
+                                                        statuses={statuses}
+                                                        whatsappMessages={
+                                                            whatsappMessages
+                                                        }
+                                                        onDragStart={
+                                                            handleDragStart
+                                                        }
+                                                    />
+                                                ))
+                                            ) : (
+                                                <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
+                                                    Arraste leads para cá
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {activeTab === 'metrics' && (
                     <div className="space-y-6">
@@ -209,6 +689,16 @@ export default function LeadsIndex({
                                     <CardTitle className="flex items-center gap-2 text-3xl">
                                         <BarChart3 className="size-6 text-muted-foreground" />
                                         {metrics.conversion_rate}%
+                                    </CardTitle>
+                                </CardHeader>
+                            </Card>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardDescription>
+                                        Prioridade alta
+                                    </CardDescription>
+                                    <CardTitle className="text-3xl">
+                                        {metrics.high_priority}
                                     </CardTitle>
                                 </CardHeader>
                             </Card>
@@ -270,7 +760,7 @@ export default function LeadsIndex({
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <Form
                                 {...index.form()}
-                                className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-6xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.8fr_0.85fr_auto]"
+                                className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-7xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.8fr_0.85fr_0.75fr_auto]"
                             >
                                 <div className="grid gap-1">
                                     <Label htmlFor="search" className="text-xs">
@@ -382,6 +872,20 @@ export default function LeadsIndex({
                                         </option>
                                     </select>
                                 </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="owner" className="text-xs">
+                                        Responsável
+                                    </Label>
+                                    <select
+                                        id="owner"
+                                        name="owner"
+                                        defaultValue={filters.owner ?? ''}
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="mine">Meus leads</option>
+                                    </select>
+                                </div>
                                 <div className="flex items-end">
                                     <Button
                                         className="w-full"
@@ -457,6 +961,9 @@ export default function LeadsIndex({
                                                 Status
                                             </th>
                                             <th className="px-3 py-2">
+                                                Prioridade
+                                            </th>
+                                            <th className="px-3 py-2">
                                                 Follow-up
                                             </th>
                                             <th className="px-3 py-2 text-right">
@@ -468,7 +975,7 @@ export default function LeadsIndex({
                                         {leads.data.length === 0 ? (
                                             <tr>
                                                 <td
-                                                    colSpan={8}
+                                                    colSpan={9}
                                                     className="h-24 px-3 text-center text-sm text-muted-foreground"
                                                 >
                                                     Nenhum lead encontrado.
@@ -563,6 +1070,24 @@ export default function LeadsIndex({
                                                                     lead.status
                                                                 ] ??
                                                                     lead.status}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={priorityClass(
+                                                                    lead.priority,
+                                                                )}
+                                                            >
+                                                                {priorityLabels[
+                                                                    lead
+                                                                        .priority
+                                                                ] ??
+                                                                    lead.priority}{' '}
+                                                                ·{' '}
+                                                                {
+                                                                    lead.lead_score
+                                                                }
                                                             </Badge>
                                                         </td>
                                                         <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">

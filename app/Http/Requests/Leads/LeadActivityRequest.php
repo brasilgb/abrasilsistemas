@@ -19,6 +19,7 @@ class LeadActivityRequest extends FormRequest
         return [
             'type' => ['required', 'string', Rule::in(array_keys(LeadActivity::TYPES))],
             'status' => ['nullable', 'string', Rule::in(array_keys(Lead::STATUSES))],
+            'lost_reason' => ['nullable', 'required_if:status,lost', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
             'contacted_at' => ['nullable', 'date'],
             'next_follow_up_at' => ['nullable', 'date'],
             'description' => ['required', 'string'],

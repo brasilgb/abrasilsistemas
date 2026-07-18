@@ -112,6 +112,56 @@ test('authenticated users can update leads', function () {
     expect($lead->last_contacted_at)->not->toBeNull();
 });
 
+test('authenticated users can update lead status from kanban', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $lead = Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Lead Kanban',
+        'status' => 'new',
+    ]);
+
+    $response = $this->actingAs($user)->patch(route('leads.status', $lead), [
+        'status' => 'meeting',
+    ]);
+
+    $response->assertRedirect();
+
+    $lead->refresh();
+
+    expect($lead->status)->toBe('meeting');
+    expect($lead->last_contacted_at)->not->toBeNull();
+    expect(LeadActivity::query()->where('lead_id', $lead->id)->where('description', 'like', '%Kanban%')->exists())->toBeTrue();
+});
+
+test('kanban requires and stores lost reason when lead is lost', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $lead = Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Lead Perdido',
+        'status' => 'meeting',
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('leads.status', $lead), ['status' => 'lost'])
+        ->assertSessionHasErrors('lost_reason');
+
+    $this->actingAs($user)
+        ->patch(route('leads.status', $lead), [
+            'status' => 'lost',
+            'lost_reason' => 'competitor',
+        ])
+        ->assertRedirect();
+
+    $lead->refresh();
+
+    expect($lead->status)->toBe('lost');
+    expect($lead->lost_reason)->toBe('competitor');
+});
+
 test('authenticated users can filter leads', function () {
     $user = User::factory()->create([
         'email_verified_at' => now(),
@@ -161,6 +211,48 @@ test('authenticated users can filter leads by follow up', function () {
     $response->assertOk();
 });
 
+test('authenticated users can filter only their leads', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $otherUser = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+
+    Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Meu Lead',
+        'status' => 'new',
+    ]);
+
+    Lead::query()->create([
+        'user_id' => $otherUser->id,
+        'company_name' => 'Lead de Outro',
+        'status' => 'new',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('leads.index', [
+        'owner' => 'mine',
+    ]));
+
+    $response->assertOk();
+});
+
+test('lead priority score is calculated from commercial signals', function () {
+    $lead = Lead::query()->make([
+        'company_name' => 'Lead Prioritario',
+        'status' => 'meeting',
+        'whatsapp' => '51999999999',
+        'email' => 'lead@example.com',
+        'contact_name' => 'Maria',
+        'next_follow_up_at' => now()->subDay()->toDateString(),
+        'notes' => 'Cliente pediu proposta.',
+    ]);
+
+    expect($lead->lead_score)->toBeGreaterThanOrEqual(70);
+    expect($lead->priority)->toBe('high');
+});
+
 test('authenticated users can register lead activities', function () {
     $user = User::factory()->create([
         'email_verified_at' => now(),
@@ -189,4 +281,29 @@ test('authenticated users can register lead activities', function () {
     expect($lead->status)->toBe('interested');
     expect($lead->last_contacted_at)->not->toBeNull();
     expect($lead->next_follow_up_at->toDateString())->toBe($followUpAt);
+});
+
+test('quick activity can mark lead as lost with reason', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $lead = Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Lead Atividade Perdida',
+        'status' => 'interested',
+    ]);
+
+    $response = $this->actingAs($user)->post(route('leads.activities.store', $lead), [
+        'type' => 'call',
+        'status' => 'lost',
+        'lost_reason' => 'price',
+        'description' => 'Cliente informou que ficou acima do orçamento.',
+    ]);
+
+    $response->assertRedirect();
+
+    $lead->refresh();
+
+    expect($lead->status)->toBe('lost');
+    expect($lead->lost_reason)->toBe('price');
 });
