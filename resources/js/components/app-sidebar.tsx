@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Settings, Target, Users } from 'lucide-react';
+import { BookOpen, LayoutGrid, Settings, Target, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -33,6 +33,11 @@ const mainNavItems: NavItem[] = [
         title: 'Usuários',
         href: usersIndex(),
         icon: Users,
+    },
+    {
+        title: 'Minha biblioteca',
+        href: '/minha-biblioteca',
+        icon: BookOpen,
     },
     {
         title: 'Configurações',

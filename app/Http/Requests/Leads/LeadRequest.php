@@ -10,11 +10,12 @@ class LeadRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        if ($this->filled('state')) {
-            $this->merge([
-                'state' => strtoupper((string) $this->input('state')),
-            ]);
-        }
+        $this->merge([
+            'email' => $this->filled('email') ? strtolower(trim((string) $this->input('email'))) : null,
+            'phone' => $this->filled('phone') ? (preg_replace('/\D+/', '', (string) $this->input('phone')) ?? '') : null,
+            'state' => $this->filled('state') ? strtoupper(trim((string) $this->input('state'))) : null,
+            'whatsapp' => $this->filled('whatsapp') ? (preg_replace('/\D+/', '', (string) $this->input('whatsapp')) ?? '') : null,
+        ]);
     }
 
     public function authorize(): bool
@@ -22,6 +23,7 @@ class LeadRequest extends FormRequest
         return true;
     }
 
+    /** @return array<string, list<mixed>> */
     public function rules(): array
     {
         return [

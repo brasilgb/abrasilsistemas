@@ -4,6 +4,7 @@ use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Inertia\Testing\AssertableInertia as Assert;
 
 test('authenticated users can view leads', function () {
     $user = User::factory()->create([
@@ -306,4 +307,124 @@ test('quick activity can mark lead as lost with reason', function () {
 
     expect($lead->status)->toBe('lost');
     expect($lead->lost_reason)->toBe('price');
+});
+
+test('duplicate leads are rejected by email whatsapp or company location', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Empresa Original',
+        'product' => 'vetoros',
+        'email' => 'contato@empresa.test',
+        'whatsapp' => '51999999999',
+        'city' => 'Canoas',
+        'state' => 'RS',
+        'status' => 'new',
+    ]);
+
+    $baseData = [
+        'product' => 'vetoros',
+        'status' => 'new',
+    ];
+
+    $this->actingAs($user)->post(route('leads.store'), [
+        ...$baseData,
+        'company_name' => 'Outra Empresa',
+        'email' => 'CONTATO@EMPRESA.TEST',
+    ])->assertSessionHasErrors('company_name');
+
+    $this->actingAs($user)->post(route('leads.store'), [
+        ...$baseData,
+        'company_name' => 'Outra Empresa',
+        'whatsapp' => '(51) 99999-9999',
+    ])->assertSessionHasErrors('company_name');
+
+    $this->actingAs($user)->post(route('leads.store'), [
+        ...$baseData,
+        'company_name' => 'empresa original',
+        'city' => 'canoas',
+        'state' => 'rs',
+    ])->assertSessionHasErrors('company_name');
+
+    expect(Lead::query()->count())->toBe(1);
+});
+
+test('csv import skips duplicate leads', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Lead Existente',
+        'product' => 'vetoros',
+        'email' => 'existente@example.test',
+        'status' => 'new',
+    ]);
+
+    $csv = implode("\n", [
+        'company_name,product,email',
+        'Lead Duplicado,vetoros,EXISTENTE@example.test',
+        'Lead Novo,vetorpet,novo@example.test',
+    ]);
+
+    $this->actingAs($user)->post(route('leads.import'), [
+        'csv' => UploadedFile::fake()->createWithContent('leads.csv', $csv),
+    ])->assertRedirect(route('leads.index', absolute: false));
+
+    expect(Lead::query()->count())->toBe(2);
+    expect(Lead::query()->where('company_name', 'Lead Novo')->exists())->toBeTrue();
+    expect(Lead::query()->where('company_name', 'Lead Duplicado')->exists())->toBeFalse();
+});
+
+test('task queues include open leads and exclude closed leads', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    foreach ([
+        ['company_name' => 'Atrasado aberto', 'status' => 'contacted', 'next_follow_up_at' => now()->subDay()],
+        ['company_name' => 'Para hoje', 'status' => 'interested', 'next_follow_up_at' => today()],
+        ['company_name' => 'Sem tarefa', 'status' => 'new', 'next_follow_up_at' => null],
+        ['company_name' => 'Convertido atrasado', 'status' => 'converted', 'next_follow_up_at' => now()->subDay()],
+    ] as $data) {
+        Lead::query()->create([...$data, 'user_id' => $user->id, 'product' => 'vetoros']);
+    }
+
+    $this->actingAs($user)->get(route('leads.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('taskLeads.overdue', 1)
+            ->has('taskLeads.today', 1)
+            ->has('taskLeads.without_follow_up', 1)
+            ->where('taskTotals.overdue', 1)
+            ->where('taskTotals.today', 1)
+            ->where('taskTotals.without_follow_up', 1)
+            ->where('metrics.follow_ups.overdue', 1)
+            ->where('metrics.follow_ups.today', 1)
+            ->where('metrics.follow_ups.without_follow_up', 1));
+});
+
+test('commercial filters apply to metrics tasks and kanban totals', function () {
+    $user = User::factory()->create(['email_verified_at' => now()]);
+
+    Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Pet Shop Filtrado',
+        'product' => 'vetorpet',
+        'status' => 'new',
+    ]);
+
+    Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Assistência Fora do Filtro',
+        'product' => 'vetoros',
+        'status' => 'new',
+    ]);
+
+    $this->actingAs($user)->get(route('leads.index', [
+        'product' => 'vetorpet',
+        'search' => 'Filtrado',
+    ]))->assertInertia(fn (Assert $page) => $page
+        ->where('metrics.total', 1)
+        ->where('kanbanTotal', 1)
+        ->has('kanbanLeads', 1)
+        ->has('taskLeads.without_follow_up', 1)
+        ->where('taskLeads.without_follow_up.0.company_name', 'Pet Shop Filtrado'));
 });

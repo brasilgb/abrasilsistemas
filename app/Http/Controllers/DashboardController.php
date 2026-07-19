@@ -15,8 +15,8 @@ class DashboardController extends Controller
         $converted = Lead::query()->where('status', 'converted')->count();
         $lost = Lead::query()->where('status', 'lost')->count();
         $open = Lead::query()->whereNotIn('status', ['converted', 'lost'])->count();
-        $overdue = Lead::query()->whereDate('next_follow_up_at', '<', today())->count();
-        $today = Lead::query()->whereDate('next_follow_up_at', today())->count();
+        $overdue = Lead::query()->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', '<', today())->count();
+        $today = Lead::query()->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', today())->count();
         $highPriority = Lead::query()
             ->whereNotIn('status', ['converted', 'lost'])
             ->get()

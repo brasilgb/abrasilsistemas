@@ -6,11 +6,13 @@ use App\Http\Requests\Leads\LeadImportRequest;
 use App\Http\Requests\Leads\LeadRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,13 +38,17 @@ class LeadController extends Controller
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['city'] ?? null, fn ($query, string $city) => $query->where('city', 'like', "%{$city}%"))
             ->when($filters['state'] ?? null, fn ($query, string $state) => $query->where('state', strtoupper($state)))
-            ->when($filters['industry'] ?? null, fn ($query, string $industry) => $query->where('industry', 'like', "%{$industry}%"))
-            ->when($filters['follow_up'] ?? null, function ($query, string $followUp) {
-                $query
-                    ->when($followUp === 'overdue', fn ($query) => $query->whereDate('next_follow_up_at', '<', today()))
-                    ->when($followUp === 'today', fn ($query) => $query->whereDate('next_follow_up_at', today()))
-                    ->when($followUp === 'upcoming', fn ($query) => $query->whereDate('next_follow_up_at', '>', today()));
-            });
+            ->when($filters['industry'] ?? null, fn ($query, string $industry) => $query->where('industry', 'like', "%{$industry}%"));
+
+        $taskQuery = (clone $baseQuery)->whereNotIn('status', ['converted', 'lost']);
+
+        $baseQuery->when($filters['follow_up'] ?? null, function ($query, string $followUp) {
+            $query
+                ->when($followUp === 'overdue', fn ($query) => $query->whereDate('next_follow_up_at', '<', today()))
+                ->when($followUp === 'today', fn ($query) => $query->whereDate('next_follow_up_at', today()))
+                ->when($followUp === 'upcoming', fn ($query) => $query->whereDate('next_follow_up_at', '>', today()))
+                ->when($followUp === 'none', fn ($query) => $query->whereNull('next_follow_up_at'));
+        });
 
         $leads = (clone $baseQuery)
             ->latest()
@@ -51,14 +57,25 @@ class LeadController extends Controller
 
         return Inertia::render('leads/index', [
             'filters' => $filters,
+            'kanbanTotal' => (clone $baseQuery)->count(),
             'kanbanLeads' => (clone $baseQuery)
                 ->latest()
-                ->limit(200)
+                ->limit(500)
                 ->get()
                 ->sortByDesc('lead_score')
                 ->values(),
             'leads' => $leads,
-            'metrics' => $this->metrics(),
+            'metrics' => $this->metrics(clone $baseQuery),
+            'taskLeads' => [
+                'overdue' => (clone $taskQuery)->whereDate('next_follow_up_at', '<', today())->orderBy('next_follow_up_at')->limit(50)->get(),
+                'today' => (clone $taskQuery)->whereDate('next_follow_up_at', today())->orderBy('next_follow_up_at')->limit(50)->get(),
+                'without_follow_up' => (clone $taskQuery)->whereNull('next_follow_up_at')->latest()->limit(50)->get(),
+            ],
+            'taskTotals' => [
+                'overdue' => (clone $taskQuery)->whereDate('next_follow_up_at', '<', today())->count(),
+                'today' => (clone $taskQuery)->whereDate('next_follow_up_at', today())->count(),
+                'without_follow_up' => (clone $taskQuery)->whereNull('next_follow_up_at')->count(),
+            ],
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
@@ -66,17 +83,19 @@ class LeadController extends Controller
     }
 
     /**
+     * @param  Builder<Lead>  $query
      * @return array<string, mixed>
      */
-    private function metrics(): array
+    private function metrics(Builder $query): array
     {
-        $total = Lead::query()->count();
-        $converted = Lead::query()->where('status', 'converted')->count();
-        $open = Lead::query()->whereNotIn('status', ['converted', 'lost'])->count();
-        $overdue = Lead::query()->whereDate('next_follow_up_at', '<', today())->count();
-        $today = Lead::query()->whereDate('next_follow_up_at', today())->count();
-        $upcoming = Lead::query()->whereDate('next_follow_up_at', '>', today())->count();
-        $highPriority = Lead::query()
+        $total = (clone $query)->count();
+        $converted = (clone $query)->where('status', 'converted')->count();
+        $open = (clone $query)->whereNotIn('status', ['converted', 'lost'])->count();
+        $overdue = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', '<', today())->count();
+        $today = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', today())->count();
+        $upcoming = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', '>', today())->count();
+        $withoutFollowUp = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereNull('next_follow_up_at')->count();
+        $highPriority = (clone $query)
             ->whereNotIn('status', ['converted', 'lost'])
             ->get()
             ->where('priority', 'high')
@@ -92,8 +111,9 @@ class LeadController extends Controller
                 'overdue' => $overdue,
                 'today' => $today,
                 'upcoming' => $upcoming,
+                'without_follow_up' => $withoutFollowUp,
             ],
-            'by_status' => Lead::query()
+            'by_status' => (clone $query)
                 ->selectRaw('status, count(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status'),
@@ -113,6 +133,7 @@ class LeadController extends Controller
     {
         $data = $request->validated();
         $data['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? null) : null;
+        $this->ensureLeadIsUnique($data);
 
         $lead = Lead::query()->create([
             ...$data,
@@ -174,6 +195,12 @@ class LeadController extends Controller
                 continue;
             }
 
+            if ($this->duplicateLeadExists($validator->validated())) {
+                $skipped++;
+
+                continue;
+            }
+
             Lead::query()->create([
                 ...$validator->validated(),
                 'user_id' => $request->user()->id,
@@ -214,6 +241,7 @@ class LeadController extends Controller
         $previousStatus = $lead->status;
         $data = $request->validated();
         $data['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? null) : null;
+        $this->ensureLeadIsUnique($data, $lead);
 
         $lead->fill($data);
 
@@ -327,6 +355,14 @@ class LeadController extends Controller
 
         if (isset($data['state'])) {
             $data['state'] = strtoupper($data['state']);
+        }
+
+        if (isset($data['email'])) {
+            $data['email'] = strtolower($data['email']);
+        }
+
+        if (isset($data['whatsapp'])) {
+            $data['whatsapp'] = preg_replace('/\D+/', '', $data['whatsapp']) ?? '';
         }
 
         if (isset($data['status'])) {
@@ -446,7 +482,7 @@ class LeadController extends Controller
             'instagram' => ['nullable', 'string', 'max:255'],
             'source' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', Rule::in(array_keys(Lead::STATUSES))],
-            'lost_reason' => ['nullable', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
+            'lost_reason' => ['nullable', 'required_if:status,lost', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
             'next_follow_up_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
         ];
@@ -458,5 +494,57 @@ class LeadController extends Controller
     private function isEmptyCsvRow(array $row): bool
     {
         return collect($row)->every(fn ($value) => trim((string) $value) === '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function ensureLeadIsUnique(array $data, ?Lead $except = null): void
+    {
+        if (! $this->duplicateLeadExists($data, $except)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'company_name' => 'Já existe um lead com o mesmo e-mail, WhatsApp ou empresa e localização.',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function duplicateLeadExists(array $data, ?Lead $except = null): bool
+    {
+        $email = isset($data['email']) ? strtolower(trim((string) $data['email'])) : null;
+        $whatsapp = isset($data['whatsapp']) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
+        $company = trim((string) ($data['company_name'] ?? ''));
+        $city = trim((string) ($data['city'] ?? ''));
+        $state = strtoupper(trim((string) ($data['state'] ?? '')));
+        $hasCompanyLocation = $company !== '' && $city !== '' && $state !== '';
+
+        if (! $email && ! $whatsapp && ! $hasCompanyLocation) {
+            return false;
+        }
+
+        return Lead::query()
+            ->when($except, fn ($query) => $query->whereKeyNot($except->getKey()))
+            ->where(function ($query) use ($email, $whatsapp, $company, $city, $state, $hasCompanyLocation) {
+                if ($email) {
+                    $query->orWhereRaw('LOWER(email) = ?', [$email]);
+                }
+
+                if ($whatsapp) {
+                    $query->orWhere('whatsapp', $whatsapp);
+                }
+
+                if ($hasCompanyLocation) {
+                    $query->orWhere(function ($query) use ($company, $city, $state) {
+                        $query->whereRaw('LOWER(company_name) = ?', [strtolower($company)])
+                            ->whereRaw('LOWER(city) = ?', [strtolower($city)])
+                            ->where('state', $state);
+                    });
+                }
+            })
+            ->exists();
     }
 }

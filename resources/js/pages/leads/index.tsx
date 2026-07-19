@@ -4,6 +4,7 @@ import {
     CalendarClock,
     Columns3,
     FileUp,
+    ListTodo,
     MessageCircle,
     Pencil,
     Plus,
@@ -25,6 +26,14 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -51,6 +60,17 @@ type Props = {
         owner?: string;
     };
     kanbanLeads: Lead[];
+    kanbanTotal: number;
+    taskLeads: {
+        overdue: Lead[];
+        today: Lead[];
+        without_follow_up: Lead[];
+    };
+    taskTotals: {
+        overdue: number;
+        today: number;
+        without_follow_up: number;
+    };
     leads: Paginated<Lead>;
     lostReasons: Record<string, string>;
     metrics: {
@@ -63,6 +83,7 @@ type Props = {
             overdue: number;
             today: number;
             upcoming: number;
+            without_follow_up: number;
         };
         by_status: Record<string, number>;
     };
@@ -80,6 +101,75 @@ function formatDate(value: string | null) {
         month: '2-digit',
         year: 'numeric',
     }).format(new Date(value));
+}
+
+function TaskColumn({
+    title,
+    description,
+    leads,
+    total,
+    products,
+    whatsappMessages,
+}: {
+    title: string;
+    description: string;
+    leads: Lead[];
+    total: number;
+    products: Record<string, string>;
+    whatsappMessages: Record<string, string>;
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center justify-between text-base">
+                    {title}
+                    <Badge variant="secondary">{total}</Badge>
+                </CardTitle>
+                <CardDescription>{description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {leads.length ? (
+                    leads.map((lead) => (
+                        <div
+                            key={lead.id}
+                            className="flex items-center justify-between gap-3 rounded-md border p-3"
+                        >
+                            <div className="min-w-0">
+                                <Link
+                                    href={edit({ lead: lead.id })}
+                                    className="block truncate text-sm font-medium hover:underline"
+                                >
+                                    {lead.company_name}
+                                </Link>
+                                <p className="truncate text-xs text-muted-foreground">
+                                    {lead.contact_name || lead.whatsapp || '-'} ·{' '}
+                                    {formatDate(lead.next_follow_up_at)}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                    Responsável: {lead.user?.name ?? 'Não definido'}
+                                </p>
+                            </div>
+                            <LeadActions
+                                lead={lead}
+                                products={products}
+                                whatsappMessages={whatsappMessages}
+                            />
+                        </div>
+                    ))
+                ) : (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                        Nenhum lead nesta fila.
+                    </p>
+                )}
+                {total > leads.length && (
+                    <p className="text-xs text-amber-700">
+                        Exibindo 50 de {total}. Refine os filtros para localizar
+                        os demais.
+                    </p>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
 
 function whatsappUrl(value: string | null, message: string) {
@@ -192,10 +282,13 @@ function LeadKanbanCard({
                         {lead.company_name}
                     </h3>
                     <p className="truncate text-xs text-muted-foreground">
-                        {lead.contact_name ||
+                    {lead.contact_name ||
                             lead.whatsapp ||
                             lead.phone ||
                             '-'}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                        Responsável: {lead.user?.name ?? 'Não definido'}
                     </p>
                 </div>
                 <Badge variant="secondary">
@@ -320,16 +413,23 @@ function LeadKanbanCard({
 export default function LeadsIndex({
     filters,
     kanbanLeads,
+    kanbanTotal,
+    taskLeads,
+    taskTotals,
     leads,
     lostReasons,
     metrics,
     products,
     statuses,
 }: Props) {
-    const [activeTab, setActiveTab] = useState<'leads' | 'kanban' | 'metrics'>(
-        'leads',
-    );
+    const [activeTab, setActiveTab] = useState<
+        'leads' | 'tasks' | 'kanban' | 'metrics'
+    >('leads');
     const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
+    const [leadAwaitingLostReason, setLeadAwaitingLostReason] =
+        useState<Lead | null>(null);
+    const [selectedLostReason, setSelectedLostReason] =
+        useState('no_response');
     const [whatsappMessages, setWhatsappMessages] = useState(
         whatsappMessageTemplates,
     );
@@ -353,6 +453,24 @@ export default function LeadsIndex({
         event.dataTransfer.setData('text/plain', String(lead.id));
     };
 
+    const submitLeadStatus = (
+        lead: Lead,
+        targetStatus: string,
+        lostReason: string | null = null,
+    ) => {
+        router.patch(
+            `/leads/${lead.id}/status`,
+            {
+                status: targetStatus,
+                lost_reason: targetStatus === 'lost' ? lostReason : null,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
+
     const updateLeadStatus = (targetStatus: string) => {
         if (!draggedLeadId) {
             return;
@@ -367,31 +485,16 @@ export default function LeadsIndex({
             return;
         }
 
-        const lostReason =
-            targetStatus === 'lost'
-                ? window.prompt(
-                      `Motivo da perda:\n${Object.entries(lostReasons)
-                          .map(([value, label]) => `${value} - ${label}`)
-                          .join('\n')}`,
-                      draggedLead.lost_reason ?? 'no_response',
-                  )
-                : null;
+        if (targetStatus === 'lost') {
+            setSelectedLostReason(
+                draggedLead.lost_reason ?? 'no_response',
+            );
+            setLeadAwaitingLostReason(draggedLead);
 
-        if (targetStatus === 'lost' && !lostReason) {
             return;
         }
 
-        router.patch(
-            `/leads/${draggedLead.id}/status`,
-            {
-                status: targetStatus,
-                lost_reason: targetStatus === 'lost' ? lostReason : null,
-            },
-            {
-                preserveScroll: true,
-                preserveState: true,
-            },
-        );
+        submitLeadStatus(draggedLead, targetStatus);
     };
 
     useEffect(() => {
@@ -408,6 +511,73 @@ export default function LeadsIndex({
         <>
             <Head title="Prospecção" />
 
+            <Dialog
+                open={leadAwaitingLostReason !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setLeadAwaitingLostReason(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Marcar lead como perdido</DialogTitle>
+                        <DialogDescription>
+                            Informe o motivo da perda de{' '}
+                            {leadAwaitingLostReason?.company_name}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-2">
+                        <Label htmlFor="kanban-lost-reason">
+                            Motivo da perda
+                        </Label>
+                        <select
+                            id="kanban-lost-reason"
+                            value={selectedLostReason}
+                            onChange={(event) =>
+                                setSelectedLostReason(event.target.value)
+                            }
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+                        >
+                            {Object.entries(lostReasons).map(
+                                ([value, label]) => (
+                                    <option key={value} value={value}>
+                                        {label}
+                                    </option>
+                                ),
+                            )}
+                        </select>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setLeadAwaitingLostReason(null)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => {
+                                if (!leadAwaitingLostReason) {
+                                    return;
+                                }
+
+                                submitLeadStatus(
+                                    leadAwaitingLostReason,
+                                    'lost',
+                                    selectedLostReason,
+                                );
+                                setLeadAwaitingLostReason(null);
+                            }}
+                        >
+                            Confirmar perda
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <div className="space-y-6 p-4">
                 <div className="flex flex-col gap-4">
                     <Heading
@@ -415,7 +585,7 @@ export default function LeadsIndex({
                         description="Organize leads, contatos e follow-ups comerciais."
                     />
 
-                    <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-3">
+                    <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-4">
                         <button
                             type="button"
                             onClick={() => setActiveTab('leads')}
@@ -428,6 +598,19 @@ export default function LeadsIndex({
                         >
                             <Plus className="size-4" />
                             Leads
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('tasks')}
+                            className={cn(
+                                'inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors',
+                                activeTab === 'tasks'
+                                    ? 'bg-background text-foreground shadow-xs'
+                                    : 'text-muted-foreground hover:text-foreground',
+                            )}
+                        >
+                            <ListTodo className="size-4" />
+                            Tarefas
                         </button>
                         <button
                             type="button"
@@ -460,7 +643,14 @@ export default function LeadsIndex({
 
                 {activeTab === 'kanban' && (
                     <div className="space-y-3">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        {kanbanTotal > kanbanLeads.length && (
+                            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                                Exibindo os {kanbanLeads.length} leads mais
+                                recentes de {kanbanTotal}. Use os filtros para
+                                visualizar os demais no funil.
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                             <Form
                                 {...index.form()}
                                 className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-6xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.85fr_0.75fr_auto]"
@@ -704,7 +894,7 @@ export default function LeadsIndex({
                             </Card>
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-4">
                             <Link
                                 href={index({
                                     query: { follow_up: 'overdue' },
@@ -751,13 +941,97 @@ export default function LeadsIndex({
                                     </CardHeader>
                                 </Card>
                             </Link>
+                            <Link
+                                href={index({ query: { follow_up: 'none' } })}
+                            >
+                                <Card className="transition hover:border-primary/50">
+                                    <CardHeader className="pb-2">
+                                        <CardDescription>
+                                            Sem follow-up
+                                        </CardDescription>
+                                        <CardTitle className="text-2xl">
+                                            {
+                                                metrics.follow_ups
+                                                    .without_follow_up
+                                            }
+                                        </CardTitle>
+                                    </CardHeader>
+                                </Card>
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'tasks' && (
+                    <div className="space-y-4">
+                        <Form
+                            {...index.form()}
+                            className="grid gap-2 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-[1.4fr_1fr_1fr_auto]"
+                        >
+                            <Input
+                                name="search"
+                                defaultValue={filters.search ?? ''}
+                                placeholder="Buscar empresa ou contato"
+                            />
+                            <select
+                                name="product"
+                                defaultValue={filters.product ?? ''}
+                                className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Todos os produtos</option>
+                                {Object.entries(products).map(
+                                    ([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                            <select
+                                name="owner"
+                                defaultValue={filters.owner ?? ''}
+                                className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Todos os responsáveis</option>
+                                <option value="mine">Meus leads</option>
+                            </select>
+                            <Button variant="outline">
+                                <Search className="size-4" />
+                                Filtrar tarefas
+                            </Button>
+                        </Form>
+                        <div className="grid gap-4 xl:grid-cols-3">
+                            <TaskColumn
+                                title="Atrasados"
+                                description="Follow-ups que já passaram da data."
+                                leads={taskLeads.overdue}
+                                total={taskTotals.overdue}
+                                products={products}
+                                whatsappMessages={whatsappMessages}
+                            />
+                            <TaskColumn
+                                title="Para hoje"
+                                description="Contatos programados para hoje."
+                                leads={taskLeads.today}
+                                total={taskTotals.today}
+                                products={products}
+                                whatsappMessages={whatsappMessages}
+                            />
+                            <TaskColumn
+                                title="Sem follow-up"
+                                description="Leads abertos que ainda não têm próxima ação."
+                                leads={taskLeads.without_follow_up}
+                                total={taskTotals.without_follow_up}
+                                products={products}
+                                whatsappMessages={whatsappMessages}
+                            />
                         </div>
                     </div>
                 )}
 
                 {activeTab === 'leads' && (
                     <div className="space-y-3">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                             <Form
                                 {...index.form()}
                                 className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-7xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.8fr_0.85fr_0.75fr_auto]"
@@ -897,14 +1171,14 @@ export default function LeadsIndex({
                                 </div>
                             </Form>
 
-                            <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end lg:justify-end">
                                 <Form
                                     action="/leads/import"
                                     method="post"
                                     className="flex flex-col gap-2 sm:flex-row"
                                 >
                                     {({ errors, processing }) => (
-                                        <div className="grid gap-1 sm:grid-cols-[minmax(220px,1fr)_auto]">
+                                        <div className="grid items-end gap-1 sm:grid-cols-[minmax(220px,1fr)_auto]">
                                             <div>
                                                 <Input
                                                     id="csv"
@@ -958,6 +1232,9 @@ export default function LeadsIndex({
                                                 Cidade
                                             </th>
                                             <th className="px-3 py-2">
+                                                Responsável
+                                            </th>
+                                            <th className="px-3 py-2">
                                                 Status
                                             </th>
                                             <th className="px-3 py-2">
@@ -975,7 +1252,7 @@ export default function LeadsIndex({
                                         {leads.data.length === 0 ? (
                                             <tr>
                                                 <td
-                                                    colSpan={9}
+                                                    colSpan={10}
                                                     className="h-24 px-3 text-center text-sm text-muted-foreground"
                                                 >
                                                     Nenhum lead encontrado.
@@ -1058,6 +1335,13 @@ export default function LeadsIndex({
                                                                 .filter(Boolean)
                                                                 .join(' / ') ||
                                                                 '-'}
+                                                        </td>
+                                                        <td className="max-w-40 px-3 py-2 text-muted-foreground">
+                                                            <span className="line-clamp-1">
+                                                                {lead.user
+                                                                    ?.name ??
+                                                                    'Não definido'}
+                                                            </span>
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Badge

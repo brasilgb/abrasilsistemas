@@ -255,6 +255,12 @@ export default function Welcome() {
                             >
                                 Nossa visão
                             </a>
+                            <Link
+                                href="/conhecimento"
+                                className="transition hover:text-white"
+                            >
+                                Conhecimento
+                            </Link>
                         </nav>
                         <Link
                             href={user ? dashboard() : login()}
