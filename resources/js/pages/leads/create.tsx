@@ -66,16 +66,3 @@ export default function CreateLead({ lostReasons, products, statuses }: Props) {
         </>
     );
 }
-
-CreateLead.layout = {
-    breadcrumbs: [
-        {
-            title: 'Prospecção',
-            href: index(),
-        },
-        {
-            title: 'Novo lead',
-            href: create(),
-        },
-    ],
-};

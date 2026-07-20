@@ -1,5 +1,6 @@
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
@@ -8,12 +9,14 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { dashboard } from '@/routes';
+import { index as blogIndex } from '@/routes/blog';
 import { edit, index as leadsIndex } from '@/routes/leads';
 import { Head, Link } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowRight,
     BarChart3,
+    BookOpen,
     CalendarClock,
     CheckCircle2,
     CircleDollarSign,
@@ -130,13 +133,20 @@ export default function Dashboard({
                         title="Dashboard comercial"
                         description="Acompanhe funil, conversões e follow-ups do CRM."
                     />
-                    <Link
-                        href={leadsIndex()}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:bg-muted"
-                    >
-                        Ver leads
-                        <ArrowRight className="size-4" />
-                    </Link>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button asChild variant="outline">
+                            <Link href={leadsIndex()}>
+                                Ver leads
+                                <ArrowRight className="ml-2 size-4" />
+                            </Link>
+                        </Button>
+                        <Button asChild>
+                            <Link href={blogIndex()}>
+                                Blog
+                                <BookOpen className="ml-2 size-4" />
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

@@ -133,6 +133,27 @@ const customDevelopmentSteps = [
     },
 ];
 
+const blogPosts = [
+    {
+        id: 1,
+        title: 'Como um sistema de gestão transforma sua assistência técnica',
+        category: 'Gestão',
+        date: '18 de Julho, 2026',
+        description:
+            'Descubra como a tecnologia pode otimizar processos, da ordem de serviço ao controle financeiro.',
+        href: '#',
+    },
+    {
+        id: 2,
+        title: 'O guia completo para automatizar vendas no mercado pet',
+        category: 'Vendas',
+        date: '15 de Julho, 2026',
+        description:
+            'Aumente a produtividade da sua equipe comercial com ferramentas que simplificam a rotina de vendas.',
+        href: '#',
+    },
+];
+
 function BrandMark() {
     return (
         <a
@@ -255,12 +276,9 @@ export default function Welcome() {
                             >
                                 Nossa visão
                             </a>
-                            <Link
-                                href="/conhecimento"
-                                className="transition hover:text-white"
-                            >
-                                Conhecimento
-                            </Link>
+                            <a href="#blog" className="transition hover:text-white">
+                                Blog
+                            </a>
                         </nav>
                         <Link
                             href={user ? dashboard() : login()}
@@ -671,6 +689,48 @@ export default function Welcome() {
                         </div>
                     </section>
 
+                    <section id="blog" className="py-24 sm:py-32">
+                        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+                            <div className="max-w-2xl">
+                                <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                                    Do nosso blog
+                                </h2>
+                                <p className="mt-2 text-lg leading-8 text-slate-400">
+                                    Ideias e práticas para transformar a gestão
+                                    do seu negócio.
+                                </p>
+                            </div>
+                            <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-20 lg:mx-0 lg:max-w-none lg:grid-cols-2">
+                                {blogPosts.map((post) => (
+                                    <article
+                                        key={post.id}
+                                        className="flex flex-col items-start justify-between"
+                                    >
+                                        <div className="relative w-full">
+                                            <div className="relative w-full">
+                                                <time
+                                                    dateTime={post.date}
+                                                    className="text-xs text-slate-500"
+                                                >
+                                                    {post.date}
+                                                </time>
+                                                <h3 className="mt-3 text-lg font-semibold leading-6 text-white group-hover:text-slate-300">
+                                                    <a href={post.href}>
+                                                        <span className="absolute inset-0" />
+                                                        {post.title}
+                                                    </a>
+                                                </h3>
+                                                <p className="mt-4 text-sm leading-6 text-slate-400 line-clamp-3">
+                                                    {post.description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
                     <section className="px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
                         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-sky-300/15 bg-gradient-to-br from-blue-600/18 via-[#0b1729] to-violet-600/16 px-7 py-14 text-center sm:px-12 sm:py-20">
                             <div className="absolute top-0 left-1/2 h-32 w-2/3 -translate-x-1/2 rounded-full bg-sky-400/15 blur-3xl" />
@@ -739,9 +799,7 @@ export default function Welcome() {
                                 VetorOS · VetorPet
                             </p>
                             <p className="mt-2">
-                                © {new Date().getFullYear()} AB Sistemas. Todos
-                                os direitos reservados.
-                            </p>
+                        </p>
                         </div>
                     </div>
                 </footer>
