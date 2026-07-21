@@ -30,7 +30,10 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        $user = User::query()->create($request->safe()->only(['name', 'email', 'password']));
+        $user = User::query()->create([
+            ...$request->safe()->only(['name', 'email', 'password']),
+            'role' => 'admin',
+        ]);
 
         $user->forceFill([
             'email_verified_at' => now(),

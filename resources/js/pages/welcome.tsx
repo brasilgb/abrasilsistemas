@@ -133,26 +133,14 @@ const customDevelopmentSteps = [
     },
 ];
 
-const blogPosts = [
-    {
-        id: 1,
-        title: 'Como um sistema de gestão transforma sua assistência técnica',
-        category: 'Gestão',
-        date: '18 de Julho, 2026',
-        description:
-            'Descubra como a tecnologia pode otimizar processos, da ordem de serviço ao controle financeiro.',
-        href: '#',
-    },
-    {
-        id: 2,
-        title: 'O guia completo para automatizar vendas no mercado pet',
-        category: 'Vendas',
-        date: '15 de Julho, 2026',
-        description:
-            'Aumente a produtividade da sua equipe comercial com ferramentas que simplificam a rotina de vendas.',
-        href: '#',
-    },
-];
+type BlogPostSummary = {
+    id: number;
+    title: string;
+    slug: string;
+    excerpt: string;
+    published_at: string;
+    category?: { name: string; slug: string } | null;
+};
 
 function BrandMark() {
     return (
@@ -178,7 +166,11 @@ function BrandMark() {
     );
 }
 
-export default function Welcome() {
+export default function Welcome({
+    blogPosts,
+}: {
+    blogPosts: BlogPostSummary[];
+}) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
     const user = auth.user;
 
@@ -276,9 +268,12 @@ export default function Welcome() {
                             >
                                 Nossa visão
                             </a>
-                            <a href="#blog" className="transition hover:text-white">
+                            <Link
+                                href="/blog"
+                                className="transition hover:text-white"
+                            >
                                 Blog
-                            </a>
+                            </Link>
                         </nav>
                         <Link
                             href={user ? dashboard() : login()}
@@ -709,19 +704,28 @@ export default function Welcome() {
                                         <div className="relative w-full">
                                             <div className="relative w-full">
                                                 <time
-                                                    dateTime={post.date}
+                                                    dateTime={post.published_at}
                                                     className="text-xs text-slate-500"
                                                 >
-                                                    {post.date}
+                                                    {new Intl.DateTimeFormat(
+                                                        'pt-BR',
+                                                        { dateStyle: 'long' },
+                                                    ).format(
+                                                        new Date(
+                                                            post.published_at,
+                                                        ),
+                                                    )}
                                                 </time>
-                                                <h3 className="mt-3 text-lg font-semibold leading-6 text-white group-hover:text-slate-300">
-                                                    <a href={post.href}>
+                                                <h3 className="mt-3 text-lg leading-6 font-semibold text-white group-hover:text-slate-300">
+                                                    <Link
+                                                        href={`/blog/${post.slug}`}
+                                                    >
                                                         <span className="absolute inset-0" />
                                                         {post.title}
-                                                    </a>
+                                                    </Link>
                                                 </h3>
-                                                <p className="mt-4 text-sm leading-6 text-slate-400 line-clamp-3">
-                                                    {post.description}
+                                                <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-400">
+                                                    {post.excerpt}
                                                 </p>
                                             </div>
                                         </div>
@@ -798,8 +802,7 @@ export default function Welcome() {
                             <p className="mt-5 text-slate-600">
                                 VetorOS · VetorPet
                             </p>
-                            <p className="mt-2">
-                        </p>
+                            <p className="mt-2"></p>
                         </div>
                     </div>
                 </footer>

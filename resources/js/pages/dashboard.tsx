@@ -9,7 +9,6 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { dashboard } from '@/routes';
-import { index as blogIndex } from '@/routes/blog';
 import { edit, index as leadsIndex } from '@/routes/leads';
 import { Head, Link } from '@inertiajs/react';
 import {
@@ -141,7 +140,7 @@ export default function Dashboard({
                             </Link>
                         </Button>
                         <Button asChild>
-                            <Link href={blogIndex()}>
+                            <Link href="/admin/blog/posts">
                                 Blog
                                 <BookOpen className="ml-2 size-4" />
                             </Link>

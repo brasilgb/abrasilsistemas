@@ -1,5 +1,12 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, LayoutGrid, Settings, Target, Users } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import {
+    BookOpen,
+    LayoutGrid,
+    Newspaper,
+    Settings,
+    Target,
+    Users,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -16,9 +23,14 @@ import { dashboard } from '@/routes';
 import { index as leadsIndex } from '@/routes/leads';
 import { edit as profileEdit } from '@/routes/profile';
 import { index as usersIndex } from '@/routes/users';
-import type { NavItem } from '@/types';
+import type { NavItem, User } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
+    {
+        title: 'Blog',
+        href: '/admin/blog/posts',
+        icon: Newspaper,
+    },
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -47,6 +59,14 @@ const mainNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage<{ auth: { user: User } }>().props;
+    const mainNavItems =
+        auth.user.role === 'admin'
+            ? adminNavItems
+            : adminNavItems.filter((item) =>
+                  ['Minha biblioteca', 'Configurações'].includes(item.title),
+              );
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>

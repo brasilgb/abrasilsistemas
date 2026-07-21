@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -13,6 +14,8 @@ test('registration screen can be rendered', function () {
 });
 
 test('new users can register', function () {
+    User::factory()->create();
+
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -21,5 +24,6 @@ test('new users can register', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('ebooks.library', absolute: false));
+    $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'role' => 'reader']);
 });
