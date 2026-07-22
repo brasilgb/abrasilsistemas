@@ -28,6 +28,7 @@ test('the public API imports a Google Maps lead', function () {
     $lead = Lead::query()->firstOrFail();
 
     expect($lead->company_name)->toBe('Assistência Técnica Exemplo')
+        ->and($lead->whatsapp)->toBe('(43) 0000-0000')
         ->and($lead->source)->toBe('AB Prospect - Google Maps')
         ->and($lead->product)->toBe('vetoros')
         ->and($lead->state)->toBe('PR')

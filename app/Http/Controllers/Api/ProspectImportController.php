@@ -27,6 +27,7 @@ class ProspectImportController extends Controller
             'prospects.*.name' => ['required', 'string', 'max:255'],
             'prospects.*.address' => ['nullable', 'string', 'max:500'],
             'prospects.*.phone' => ['nullable', 'string', 'max:255'],
+            'prospects.*.whatsapp' => ['nullable', 'string', 'max:255'],
             'prospects.*.website' => ['nullable', 'url:http,https', 'max:2048'],
             'prospects.*.hasWebsite' => ['required', 'boolean'],
             'prospects.*.siteStatus' => ['nullable', 'string', 'max:255'],
@@ -47,10 +48,17 @@ class ProspectImportController extends Controller
             $ids = [];
 
             foreach ($validated['prospects'] as $prospect) {
+                $whatsapp = trim((string) ($prospect['whatsapp'] ?? ''));
+
+                if ($whatsapp === '') {
+                    $whatsapp = $prospect['phone'] ?? null;
+                }
+
                 $attributes = [
                     'company_name' => $prospect['name'],
                     'address' => $prospect['address'] ?? null,
                     'phone' => $prospect['phone'] ?? null,
+                    'whatsapp' => $whatsapp,
                     'website' => $prospect['website'] ?? null,
                     'has_website' => $prospect['hasWebsite'],
                     'site_status' => $prospect['siteStatus'] ?? null,
