@@ -4,6 +4,8 @@ use App\Models\BlogCategory;
 use App\Models\BlogComment;
 use App\Models\BlogPost;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('published posts are public and drafts are hidden', function () {
@@ -28,6 +30,7 @@ test('reader can comment but cannot access administration', function () {
     expect(BlogComment::first())->status->toBe('pending');
     $this->actingAs($reader)->get(route('admin.blog.posts.index'))->assertForbidden();
     $this->actingAs($reader)->get(route('leads.index'))->assertForbidden();
+    $this->actingAs($reader)->get(route('lead-settings.edit'))->assertForbidden();
 });
 
 test('administrator can create article and moderate comment', function () {
@@ -40,4 +43,28 @@ test('administrator can create article and moderate comment', function () {
     $comment = BlogComment::create(['blog_post_id' => $post->id, 'user_id' => $reader->id, 'body' => 'Comentário', 'status' => 'pending']);
     $this->patch(route('admin.blog.comments.approve', $comment))->assertRedirect();
     expect($comment->fresh()->status)->toBe('approved');
+});
+
+test('administrator can upload blog images', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create();
+
+    $response = $this->actingAs($admin)->postJson(
+        route('admin.blog.images.store'),
+        ['image' => UploadedFile::fake()->image('artigo.jpg', 1200, 630)],
+    );
+
+    $response->assertCreated()->assertJsonStructure(['url']);
+    Storage::disk('public')->assertExists(
+        'blog/'.basename((string) $response->json('url')),
+    );
+});
+
+test('restricted area sends readers back to the blog', function () {
+    $reader = User::factory()->reader()->create();
+
+    $this->get(route('restricted-area'))->assertRedirect(route('login'));
+    $this->actingAs($reader)
+        ->get(route('restricted-area'))
+        ->assertRedirect(route('blog.index', absolute: false));
 });

@@ -24,6 +24,6 @@ test('new users can register', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('ebooks.library', absolute: false));
+    $response->assertRedirect(route('blog.index', absolute: false));
     $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'role' => 'reader']);
 });

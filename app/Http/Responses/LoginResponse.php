@@ -8,6 +8,6 @@ class LoginResponse implements LoginResponseContract
 {
     public function toResponse($request)
     {
-        return redirect()->intended($request->user()->isAdmin() ? route('dashboard') : route('ebooks.library'));
+        return redirect()->intended($request->user()->isAdmin() ? route('dashboard') : route('blog.index'));
     }
 }

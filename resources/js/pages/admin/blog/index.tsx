@@ -6,6 +6,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     BookOpen,
     Eye,
+    ExternalLink,
+    Globe,
     MessageSquare,
     Pencil,
     Plus,
@@ -17,6 +19,7 @@ import type { LucideIcon } from 'lucide-react';
 type Post = {
     id: number;
     title: string;
+    slug: string;
     status: string;
     views: number;
     created_at: string;
@@ -55,7 +58,13 @@ export default function AdminBlogIndex({ posts, metrics }: Props) {
                         title="Administração do Blog"
                         description="Gerencie artigos, categorias e comentários."
                     />
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <a href="/blog" target="_blank" rel="noreferrer">
+                                <Globe />
+                                Ir para o site
+                            </a>
+                        </Button>
                         <Button asChild variant="outline">
                             <Link href="/admin/blog/categories">
                                 <Tags />
@@ -118,7 +127,23 @@ export default function AdminBlogIndex({ posts, metrics }: Props) {
                                             visualizações
                                         </p>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2">
+                                        {post.status === 'published' && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                asChild
+                                            >
+                                                <a
+                                                    href={`/blog/${post.slug}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <ExternalLink />
+                                                    Visualizar artigo
+                                                </a>
+                                            </Button>
+                                        )}
                                         <Button
                                             size="sm"
                                             variant="outline"

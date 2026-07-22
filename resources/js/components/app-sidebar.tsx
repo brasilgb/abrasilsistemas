@@ -1,6 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
-    BookOpen,
     LayoutGrid,
     Newspaper,
     Settings,
@@ -47,11 +46,6 @@ const adminNavItems: NavItem[] = [
         icon: Users,
     },
     {
-        title: 'Minha biblioteca',
-        href: '/minha-biblioteca',
-        icon: BookOpen,
-    },
-    {
         title: 'Configurações',
         href: profileEdit(),
         icon: Settings,
@@ -64,7 +58,7 @@ export function AppSidebar() {
         auth.user.role === 'admin'
             ? adminNavItems
             : adminNavItems.filter((item) =>
-                  ['Minha biblioteca', 'Configurações'].includes(item.title),
+                  ['Configurações'].includes(item.title),
               );
 
     return (
@@ -73,7 +67,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href="/">
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>

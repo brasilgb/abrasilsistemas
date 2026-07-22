@@ -16,7 +16,7 @@ type Props = {
 export default function Register({ passwordRules }: Props) {
     return (
         <>
-            <Head title="Criar usuário" />
+            <Head title="Criar conta" />
 
             <Form
                 {...store.form()}
@@ -98,7 +98,7 @@ export default function Register({ passwordRules }: Props) {
                                 data-test="register-user-button"
                             >
                                 {processing && <Spinner />}
-                                {processing ? 'Criando...' : 'Criar usuário'}
+                                {processing ? 'Criando...' : 'Criar conta'}
                             </Button>
                         </div>
 
@@ -116,6 +116,6 @@ export default function Register({ passwordRules }: Props) {
 }
 
 Register.layout = {
-    title: 'Criar primeiro usuário',
-    description: 'Cadastre o usuário inicial para acessar o sistema',
+    title: 'Crie sua conta',
+    description: 'Cadastre-se para participar do Blog da ABrasil Sistemas',
 };

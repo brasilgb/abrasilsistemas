@@ -21,7 +21,7 @@ class PublicBlogController extends Controller
                 $query->where('title', 'like', $search)->orWhere('excerpt', 'like', $search);
             }))
             ->latest('published_at')
-            ->paginate(9)
+            ->paginate(10)
             ->withQueryString();
 
         return Inertia::render('blog/index', [

@@ -8,6 +8,6 @@ class RegisterResponse implements RegisterResponseContract
 {
     public function toResponse($request)
     {
-        return redirect()->intended($request->user()->isAdmin() ? route('dashboard') : route('ebooks.library'));
+        return to_route($request->user()->isAdmin() ? 'dashboard' : 'blog.index');
     }
 }

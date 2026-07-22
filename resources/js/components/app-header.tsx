@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { LayoutGrid, Menu, Search, Target, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -35,13 +34,13 @@ import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { index as leadsIndex } from '@/routes/leads';
 import { index as usersIndex } from '@/routes/users';
-import type { BreadcrumbItem, NavItem } from '@/types';
+import type { BreadcrumbItem, NavItem, User } from '@/types';
 
 type Props = {
     breadcrumbs?: BreadcrumbItem[];
 };
 
-const mainNavItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -63,8 +62,8 @@ const activeItemStyles =
     'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
 
 export function AppHeader({ breadcrumbs = [] }: Props) {
-    const page = usePage();
-    const { auth } = page.props;
+    const { auth } = usePage<{ auth: { user: User } }>().props;
+    const mainNavItems = auth.user.role === 'admin' ? adminNavItems : [];
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
 
@@ -92,7 +91,9 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                     Navigation menu
                                 </SheetTitle>
                                 <SheetHeader className="flex justify-start text-left">
-                                    <AppLogoIcon className="h-6 w-6 fill-current text-black dark:text-white" />
+                                    <Link href="/">
+                                        <AppLogo />
+                                    </Link>
                                 </SheetHeader>
                                 <div className="flex h-full flex-1 flex-col space-y-4 p-4">
                                     <div className="flex h-full flex-col justify-between text-sm">
@@ -118,11 +119,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                         </Sheet>
                     </div>
 
-                    <Link
-                        href={dashboard()}
-                        prefetch
-                        className="flex items-center space-x-2"
-                    >
+                    <Link href="/" className="flex items-center space-x-2">
                         <AppLogo />
                     </Link>
 

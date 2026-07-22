@@ -1,135 +1,137 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import {
     ArrowRight,
     ArrowUpRight,
     BarChart3,
-    Blocks,
     Check,
+    CheckCircle2,
     ClipboardCheck,
-    Cloud,
     Code2,
     Headphones,
-    Layers3,
-    Lightbulb,
     Mail,
+    Menu,
     MessageCircle,
-    Package,
-    Rocket,
+    MonitorSmartphone,
     ShieldCheck,
     ShoppingCart,
     Smartphone,
-    Sparkles,
     Users,
+    X,
+    Zap,
 } from 'lucide-react';
-import { dashboard, login } from '@/routes';
-import type { User } from '@/types';
+import { useState } from 'react';
 
-const products = [
+const whatsappUrl =
+    'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20gostaria%20de%20conhecer%20as%20solu%C3%A7%C3%B5es%20da%20ABrasil%20Sistemas.';
+
+const solutions = [
     {
         id: 'vetoros',
+        eyebrow: 'Assistências técnicas',
         name: 'VetorOS',
-        url: 'https://vetoros.com.br',
-        domain: 'vetoros.com.br',
-        label: 'Gestão para assistências técnicas',
-        headline: 'Da recepção ao pós-serviço, tudo sob controle.',
+        headline: 'Sua assistência organizada do atendimento ao financeiro.',
         description:
-            'Uma plataforma web completa para organizar atendimento, ordens de serviço, bancada, equipe em campo, estoque, vendas, financeiro e relacionamento com clientes.',
+            'Controle ordens de serviço, clientes, equipamentos, estoque, vendas e equipe em uma única plataforma.',
+        url: 'https://vetoros.com.br',
+        external: true,
         logo: '/images/logo_os.png',
-        logoAlt: 'Logo do VetorOS',
-        tone: 'sky',
+        tone: 'blue',
+        icon: ClipboardCheck,
         features: [
             'Ordens de serviço e orçamentos',
-            'Clientes, equipamentos e estoque',
-            'Financeiro, caixa e notas fiscais',
-            'Apps para atendimento, imagens e técnicos',
-        ],
-        stats: [
-            { icon: ClipboardCheck, text: 'Fluxo completo de OS' },
-            { icon: Smartphone, text: 'Web + apps móveis' },
-            { icon: BarChart3, text: 'Gestão e indicadores' },
+            'Estoque, caixa e financeiro',
+            'Aplicativos para equipe e clientes',
         ],
     },
     {
         id: 'vetorpet',
+        eyebrow: 'Mercado pet',
         name: 'VetorPet',
+        headline: 'Mais agilidade para vender e atender o mercado pet.',
+        description:
+            'Organize clientes, catálogo, visitas e pedidos para sua equipe comercial vender melhor dentro e fora da empresa.',
         url: 'https://vetorpet.com.br',
-        domain: 'vetorpet.com.br',
-        label: 'Vendas para o mercado pet',
-        headline: 'Da visita ao pedido, uma operação comercial conectada.',
-        description:
-            'Feito para distribuidores, representantes e vendedores de suprimentos para pet shops, clínicas veterinárias e agropecuárias venderem com mais organização e agilidade.',
+        external: true,
         logo: '/images/logo_pet.png',
-        logoAlt: 'Logo do VetorPet',
         tone: 'violet',
+        icon: ShoppingCart,
         features: [
-            'Carteira de clientes e regiões',
-            'Catálogo de produtos e preços',
-            'Agenda de visitas e pedidos em campo',
-            'Painel de gestão e aplicativo Android',
-        ],
-        stats: [
-            { icon: Users, text: 'Equipe ou vendedor individual' },
-            { icon: Package, text: 'Catálogo sempre à mão' },
-            { icon: ShoppingCart, text: 'Pedidos pelo celular' },
+            'Carteira e histórico de clientes',
+            'Catálogo e pedidos pelo celular',
+            'Gestão da equipe comercial',
         ],
     },
-];
+] as const;
 
-const principles = [
+const services = [
     {
-        icon: Layers3,
-        title: 'Tudo conectado',
+        icon: MonitorSmartphone,
+        title: 'Sites para empresas',
         description:
-            'Produtos que unem operação, pessoas e informação em fluxos simples e consistentes.',
+            'Sites institucionais e landing pages que apresentam sua marca e geram oportunidades.',
+        href: '/desenvolvimento-de-sites-para-empresas',
+        linkLabel: 'Conhecer o serviço',
     },
     {
-        icon: Cloud,
-        title: 'Pronto para crescer',
+        icon: Code2,
+        title: 'Sistemas sob medida',
         description:
-            'Tecnologia em nuvem para acompanhar a evolução da empresa, do primeiro acesso à expansão da equipe.',
+            'Soluções personalizadas para digitalizar processos e atender necessidades específicas da operação.',
+        href: whatsappUrl,
+        linkLabel: 'Conversar sobre um projeto',
+    },
+    {
+        icon: Smartphone,
+        title: 'Aplicativos e integrações',
+        description:
+            'Aplicativos e conexões entre ferramentas para levar informação e produtividade a toda a equipe.',
+        href: whatsappUrl,
+        linkLabel: 'Falar com especialista',
+    },
+] as const;
+
+const benefits = [
+    {
+        icon: Zap,
+        title: 'Negócio antes da tecnologia',
+        description:
+            'Entendemos a operação e os objetivos antes de indicar ou desenvolver qualquer solução.',
+    },
+    {
+        icon: BarChart3,
+        title: 'Experiência em operações reais',
+        description:
+            'Nossos produtos nasceram de necessidades reais e evoluem com o uso diário das empresas.',
+    },
+    {
+        icon: Users,
+        title: 'Atendimento direto e próximo',
+        description:
+            'Você conversa com quem entende o projeto e acompanha as decisões do início à evolução.',
     },
     {
         icon: ShieldCheck,
-        title: 'Dados protegidos',
+        title: 'Tecnologia para evoluir',
         description:
-            'Ambientes separados por empresa, permissões por usuário e cuidado em cada camada da operação.',
-    },
-    {
-        icon: Headphones,
-        title: 'Experiência próxima',
-        description:
-            'Soluções brasileiras, linguagem clara e uma experiência pensada para a realidade de quem trabalha.',
+            'Construímos bases seguras e sustentáveis para acompanhar as mudanças e o crescimento da empresa.',
     },
 ];
 
-const customDevelopmentSteps = [
+const steps = [
     {
         number: '01',
-        icon: Lightbulb,
-        title: 'Entendemos a ideia',
-        description:
-            'Mergulhamos no problema, no público e nos objetivos para transformar uma visão inicial em um projeto claro e viável.',
+        title: 'Entendemos o desafio',
+        description: 'Conversamos sobre sua operação, objetivos e prioridades.',
     },
     {
         number: '02',
-        icon: Blocks,
-        title: 'Desenhamos a solução',
-        description:
-            'Definimos experiência, funcionalidades e arquitetura para construir o produto certo, sem complexidade desnecessária.',
+        title: 'Indicamos o caminho',
+        description: 'Identificamos a solução mais adequada para o seu momento.',
     },
     {
         number: '03',
-        icon: Code2,
-        title: 'Construímos o produto',
-        description:
-            'Desenvolvemos sistemas web e aplicativos com foco em qualidade, segurança, desempenho e facilidade de uso.',
-    },
-    {
-        number: '04',
-        icon: Rocket,
-        title: 'Lançamos e evoluímos',
-        description:
-            'Colocamos a solução em operação e seguimos aprimorando o produto conforme o negócio e os usuários evoluem.',
+        title: 'Colocamos para funcionar',
+        description: 'Apoiamos a implantação para sua equipe aproveitar a tecnologia.',
     },
 ];
 
@@ -142,435 +144,347 @@ type BlogPostSummary = {
     category?: { name: string; slug: string } | null;
 };
 
-function BrandMark() {
+function Logo({ footer = false }: { footer?: boolean }) {
     return (
-        <a
-            href="#inicio"
-            className="flex items-center gap-2"
-            aria-label="AB Sistemas — início"
-        >
+        <Link href="/" className="flex items-center gap-3" aria-label="ABrasil Sistemas">
             <img
                 src="/images/logo_ab.png"
                 alt=""
-                className="size-14 rounded-2xl border border-white/60 object-contain shadow-lg shadow-black/25 sm:size-16"
+                className="size-12 rounded-xl border border-slate-200 bg-white object-contain shadow-sm"
             />
             <div className="leading-none">
-                <span className="block text-base font-bold tracking-tight text-white sm:text-lg">
-                    AB Sistemas
+                <span className={`block font-bold ${footer ? 'text-white' : 'text-slate-950'}`}>
+                    ABrasil Sistemas
                 </span>
-                <span className="mt-1.5 block text-[8px] font-medium tracking-[0.18em] text-slate-400 uppercase sm:text-[9px]">
-                    Tecnologia que transforma negócios
+                <span className={`mt-1.5 block text-[8px] font-semibold tracking-[0.16em] uppercase ${footer ? 'text-slate-500' : 'text-slate-500'}`}>
+                    Tecnologia para empresas
                 </span>
             </div>
-        </a>
+        </Link>
     );
 }
 
-export default function Welcome({
-    blogPosts,
-}: {
-    blogPosts: BlogPostSummary[];
-}) {
-    const { auth } = usePage<{ auth: { user: User | null } }>().props;
-    const user = auth.user;
+export default function Welcome({ blogPosts }: { blogPosts: BlogPostSummary[] }) {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const structuredData = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: 'AB Sistemas',
-        alternateName: 'ABrasilSistemas',
+        name: 'ABrasil Sistemas',
         description:
-            'Empresa brasileira de tecnologia especializada em plataformas de gestão para assistências técnicas e operações comerciais do mercado pet.',
+            'Sistemas de gestão, aplicativos e sites profissionais para empresas organizarem processos, venderem mais e crescerem.',
         logo: '/images/logo_ab.png',
-        brand: products.map((product) => ({
-            '@type': 'Brand',
-            name: product.name,
-            url: product.url,
-            description: product.description,
-        })),
         knowsAbout: [
-            'Desenvolvimento de software',
-            'Gestão de assistências técnicas',
+            'Sistemas de gestão',
             'Ordens de serviço',
-            'Automação de vendas',
-            'Gestão comercial para o mercado pet',
+            'Gestão comercial',
+            'Desenvolvimento de sites',
+            'Desenvolvimento de software',
         ],
     };
 
     return (
         <>
-            <Head title="Sistemas de gestão para negócios que querem crescer">
+            <Head title="Sistemas e sites para sua empresa crescer">
                 <meta
                     name="description"
-                    content="A AB Sistemas desenvolve plataformas de gestão para assistências técnicas e operações comerciais do mercado pet. Conheça VetorOS e VetorPet."
+                    content="Sistemas de gestão, aplicativos e sites profissionais que ajudam sua empresa a organizar processos, vender mais e crescer. Conheça a ABrasil Sistemas."
                 />
                 <meta
                     name="keywords"
-                    content="AB Sistemas, software de gestão, sistema para assistência técnica, ordem de serviço, gestão comercial, representantes comerciais, mercado pet, VetorOS, VetorPet"
+                    content="ABrasil Sistemas, sistema de gestão, ordem de serviço, gestão comercial, desenvolvimento de sites, VetorOS, VetorPet"
                 />
-                <meta name="author" content="AB Sistemas" />
-                <meta
-                    name="robots"
-                    content="index, follow, max-image-preview:large"
-                />
-                <meta name="theme-color" content="#060d19" />
-
+                <meta name="robots" content="index, follow, max-image-preview:large" />
+                <meta name="theme-color" content="#ffffff" />
                 <meta property="og:locale" content="pt_BR" />
                 <meta property="og:type" content="website" />
-                <meta property="og:site_name" content="AB Sistemas" />
-                <meta
-                    property="og:title"
-                    content="AB Sistemas — Tecnologia que transforma negócios"
-                />
+                <meta property="og:site_name" content="ABrasil Sistemas" />
+                <meta property="og:title" content="ABrasil Sistemas — Tecnologia para sua empresa crescer" />
                 <meta
                     property="og:description"
-                    content="Plataformas brasileiras que organizam operações, conectam equipes e transformam processos em resultados."
+                    content="Soluções digitais para organizar sua operação, melhorar o atendimento e gerar novas oportunidades."
                 />
                 <meta property="og:image" content="/images/logo_ab.png" />
-                <meta property="og:image:alt" content="Marca da AB Sistemas" />
-
                 <meta name="twitter:card" content="summary_large_image" />
-                <meta
-                    name="twitter:title"
-                    content="AB Sistemas — Tecnologia que transforma negócios"
-                />
-                <meta
-                    name="twitter:description"
-                    content="Conheça VetorOS e VetorPet, soluções digitais criadas para operações que querem trabalhar melhor e crescer."
-                />
-                <meta name="twitter:image" content="/images/logo_ab.png" />
-
-                <script type="application/ld+json">
-                    {JSON.stringify(structuredData)}
-                </script>
+                <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
             </Head>
 
-            <div className="min-h-screen overflow-hidden bg-[#060d19] text-white selection:bg-sky-300 selection:text-slate-950">
-                <header className="fixed inset-x-0 top-0 z-50 border-b border-white/8 bg-[#060d19]/80 backdrop-blur-xl">
+            <div className="min-h-screen bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-950">
+                <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
                     <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
-                        <BrandMark />
-                        <nav className="hidden items-center gap-8 text-sm font-medium text-slate-400 md:flex">
-                            <a
-                                href="#solucoes"
-                                className="transition hover:text-white"
-                            >
-                                Soluções
-                            </a>
-                            <a
-                                href="#sob-medida"
-                                className="transition hover:text-white"
-                            >
-                                Sob medida
-                            </a>
-                            <a
-                                href="#tecnologia"
-                                className="transition hover:text-white"
-                            >
-                                Nossa visão
-                            </a>
-                            <Link
-                                href="/blog"
-                                className="transition hover:text-white"
-                            >
-                                Blog
-                            </Link>
+                        <Logo />
+                        <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-600 lg:flex">
+                            <a href="#solucoes" className="transition hover:text-blue-700">Soluções</a>
+                            <a href="#servicos" className="transition hover:text-blue-700">Serviços</a>
+                            <a href="#diferenciais" className="transition hover:text-blue-700">Diferenciais</a>
+                            <Link href="/blog" className="transition hover:text-blue-700">Blog</Link>
                         </nav>
-                        <Link
-                            href={user ? dashboard() : login()}
-                            className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/12 bg-white/6 px-3 py-2 text-xs font-semibold transition hover:border-sky-300/40 hover:bg-white/10 sm:px-4"
-                        >
-                            <ShieldCheck className="size-3.5 shrink-0 text-sky-300" />
-                            <span className="hidden sm:inline">
+                        <div className="hidden items-center gap-3 sm:flex">
+                            <Link
+                                href="/area-restrita"
+                                className="px-3 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+                            >
                                 Área restrita
-                            </span>
-                            {user && (
-                                <span className="max-w-28 truncate text-sky-100 sm:max-w-40">
-                                    {user.name}
-                                </span>
-                            )}
-                            <ArrowRight className="size-3.5 shrink-0" />
-                        </Link>
+                            </Link>
+                            <a
+                                href={whatsappUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800"
+                            >
+                                <MessageCircle className="size-4" />
+                                Falar com especialista
+                            </a>
+                        </div>
+                        <button
+                            type="button"
+                            aria-label="Abrir menu"
+                            className="grid size-10 place-items-center rounded-lg border border-slate-200 lg:hidden"
+                            onClick={() => setMobileMenuOpen((open) => !open)}
+                        >
+                            {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+                        </button>
                     </div>
+                    {mobileMenuOpen && (
+                        <div className="border-t border-slate-100 bg-white px-5 py-5 lg:hidden">
+                            <nav className="grid gap-1 text-sm font-semibold">
+                                <a href="#solucoes" className="rounded-lg px-3 py-3 hover:bg-slate-50" onClick={() => setMobileMenuOpen(false)}>Soluções</a>
+                                <a href="#servicos" className="rounded-lg px-3 py-3 hover:bg-slate-50" onClick={() => setMobileMenuOpen(false)}>Serviços</a>
+                                <a href="#diferenciais" className="rounded-lg px-3 py-3 hover:bg-slate-50" onClick={() => setMobileMenuOpen(false)}>Diferenciais</a>
+                                <Link href="/blog" className="rounded-lg px-3 py-3 hover:bg-slate-50">Blog</Link>
+                                <Link href="/area-restrita" className="rounded-lg px-3 py-3 hover:bg-slate-50">Área restrita</Link>
+                                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-3 text-white">
+                                    <MessageCircle className="size-4" /> Falar com especialista
+                                </a>
+                            </nav>
+                        </div>
+                    )}
                 </header>
 
                 <main>
-                    <section
-                        id="inicio"
-                        className="relative flex min-h-[92svh] items-center pt-28"
-                    >
-                        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                            <div className="absolute top-[-14rem] left-[-12rem] size-[42rem] rounded-full bg-blue-600/18 blur-[130px]" />
-                            <div className="absolute top-[16%] right-[-18rem] size-[42rem] rounded-full bg-violet-600/12 blur-[140px]" />
-                            <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.045)_1px,transparent_1px)] [mask-image:linear-gradient(to_bottom,black,transparent_85%)] bg-[size:72px_72px]" />
-                            <div className="absolute top-1/2 left-1/2 h-px w-[70%] -translate-x-1/2 rotate-[-18deg] bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
-                        </div>
-
-                        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[1.12fr_0.88fr] lg:px-12">
+                    <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
+                        <div className="absolute inset-x-0 top-0 -z-10 h-[44rem] bg-gradient-to-b from-blue-50 via-white to-white" />
+                        <div className="absolute top-32 right-[-12rem] -z-10 size-[34rem] rounded-full bg-cyan-100/60 blur-3xl" />
+                        <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 sm:px-8 lg:grid-cols-[1.04fr_0.96fr] lg:px-12">
                             <div>
-                                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/6 px-4 py-2 text-[10px] font-bold tracking-[0.2em] text-sky-200 uppercase sm:text-xs">
-                                    <Sparkles className="size-3.5" />
-                                    Software brasileiro para negócios reais
+                                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-xs font-bold text-blue-700 shadow-sm">
+                                    <CheckCircle2 className="size-4" />
+                                    Tecnologia simples para negócios reais
                                 </div>
-                                <h1 className="max-w-4xl text-5xl leading-[0.98] font-semibold tracking-[-0.055em] text-balance sm:text-7xl lg:text-[5.4rem]">
-                                    Tecnologia que transforma{' '}
-                                    <span className="bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-                                        complexidade
-                                    </span>{' '}
-                                    em direção.
+                                <h1 className="mt-7 max-w-3xl text-5xl leading-[1.04] font-bold tracking-[-0.05em] text-balance text-slate-950 sm:text-7xl">
+                                    Sua empresa mais organizada, produtiva e pronta para{' '}
+                                    <span className="text-blue-700">crescer.</span>
                                 </h1>
-                                <p className="mt-8 max-w-2xl text-base leading-7 text-slate-400 sm:text-xl sm:leading-8">
-                                    Na AB Sistemas, criamos plataformas que
-                                    organizam rotinas, conectam equipes e dão
-                                    clareza para empresas tomarem decisões
-                                    melhores.
+                                <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
+                                    Criamos sistemas, aplicativos e sites que simplificam a operação, melhoram o atendimento e ajudam sua empresa a vender mais.
                                 </p>
-                                <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-                                    <a
-                                        href="#solucoes"
-                                        className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-slate-950 transition hover:bg-sky-100"
-                                    >
-                                        Explorar soluções
+                                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                                    <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex h-13 items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 text-sm font-bold text-white shadow-lg shadow-blue-700/15 transition hover:-translate-y-0.5 hover:bg-blue-800">
+                                        Conversar sobre minha empresa
                                         <ArrowRight className="size-4" />
                                     </a>
-                                    <div className="flex h-13 items-center gap-3 px-2 text-sm text-slate-400">
-                                        <span className="relative flex size-2">
-                                            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                                            <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                                    <a href="#solucoes" className="inline-flex h-13 items-center justify-center rounded-lg border border-slate-300 bg-white px-6 text-sm font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                                        Conhecer as soluções
+                                    </a>
+                                </div>
+                                <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-500">
+                                    {['Atendimento próximo', 'Soluções brasileiras', 'Tecnologia segura'].map((item) => (
+                                        <span key={item} className="inline-flex items-center gap-2">
+                                            <Check className="size-4 text-emerald-600" strokeWidth={3} />
+                                            {item}
                                         </span>
-                                        Produtos ativos e em evolução
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
-                                <div className="absolute inset-12 rounded-full bg-sky-500/15 blur-3xl" />
-                                <div className="relative grid gap-3 rounded-[2rem] border border-white/10 bg-white/[0.035] p-3 shadow-2xl shadow-black/30 backdrop-blur-sm">
-                                    {products.map((product, index) => (
-                                        <a
-                                            key={product.id}
-                                            href={`#${product.id}`}
-                                            className="group flex items-center gap-4 rounded-2xl border border-white/8 bg-[#0a1424]/80 p-4 transition hover:border-sky-300/25 hover:bg-white/[0.06] sm:p-5"
-                                        >
-                                            <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/80 bg-white p-1.5 sm:size-20">
-                                                <img
-                                                    src={product.logo}
-                                                    alt={product.logoAlt}
-                                                    className="size-full object-contain"
-                                                />
+                            <div className="relative mx-auto w-full max-w-xl">
+                                <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 sm:p-6">
+                                    <div className="rounded-2xl bg-slate-950 p-6 text-white sm:p-8">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-semibold text-blue-300">Visão da operação</p>
+                                                <p className="mt-1 text-xl font-bold">Tudo em um só lugar</p>
                                             </div>
-                                            <div className="min-w-0 flex-1">
-                                                <span className="text-[9px] font-bold tracking-[0.17em] text-slate-500 uppercase">
-                                                    Solução 0{index + 1}
-                                                </span>
-                                                <h2 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
-                                                    {product.name}
-                                                </h2>
-                                                <p className="mt-1 truncate text-xs text-slate-400 sm:text-sm">
-                                                    {product.label}
-                                                </p>
+                                            <BarChart3 className="size-7 text-blue-300" />
+                                        </div>
+                                        <div className="mt-8 grid grid-cols-3 gap-3">
+                                            {[
+                                                ['Atendimentos', '128'],
+                                                ['Em andamento', '34'],
+                                                ['Concluídos', '94'],
+                                            ].map(([label, value]) => (
+                                                <div key={label} className="rounded-xl bg-white/8 p-3 sm:p-4">
+                                                    <p className="text-lg font-bold sm:text-2xl">{value}</p>
+                                                    <p className="mt-1 text-[10px] text-slate-400 sm:text-xs">{label}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-4 rounded-xl bg-white/8 p-4">
+                                            <div className="flex h-28 items-end gap-2">
+                                                {[32, 45, 38, 62, 55, 78, 90, 72, 88, 100].map((height, index) => (
+                                                    <div key={index} className="flex-1 rounded-t bg-blue-400" style={{ height: `${height}%`, opacity: 0.45 + index * 0.05 }} />
+                                                ))}
                                             </div>
-                                            <ArrowUpRight className="size-5 shrink-0 text-slate-600 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-sky-300" />
-                                        </a>
-                                    ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 grid grid-cols-2 gap-3">
+                                        <div className="rounded-xl border border-slate-200 p-4">
+                                            <Smartphone className="size-5 text-blue-700" />
+                                            <p className="mt-3 text-sm font-bold">Acesse de onde estiver</p>
+                                        </div>
+                                        <div className="rounded-xl border border-slate-200 p-4">
+                                            <Headphones className="size-5 text-emerald-600" />
+                                            <p className="mt-3 text-sm font-bold">Conte com nosso suporte</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <section
-                        id="solucoes"
-                        className="border-y border-white/8 bg-[#08111f] py-24 sm:py-32"
-                    >
+                    <section className="border-y border-slate-200 bg-slate-50">
+                        <div className="mx-auto grid max-w-7xl divide-y divide-slate-200 px-5 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-8 lg:px-12">
+                            {[
+                                ['Organize', 'Centralize informações e acompanhe sua operação.'],
+                                ['Simplifique', 'Reduza tarefas manuais e ganhe produtividade.'],
+                                ['Cresça', 'Atenda melhor e encontre novas oportunidades.'],
+                            ].map(([title, description]) => (
+                                <div key={title} className="py-7 sm:px-7 lg:px-10">
+                                    <p className="text-lg font-bold text-slate-950">{title}</p>
+                                    <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <section id="solucoes" className="scroll-mt-20 py-24 sm:py-32">
                         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
                             <div className="max-w-3xl">
-                                <p className="text-xs font-bold tracking-[0.22em] text-sky-300 uppercase">
-                                    Nosso ecossistema
-                                </p>
-                                <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-6xl">
-                                    Soluções especializadas. Resultados
-                                    concretos.
+                                <p className="text-sm font-bold text-blue-700">Produtos próprios</p>
+                                <h2 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-balance text-slate-950 sm:text-6xl">
+                                    Tecnologia que resolve o que importa.
                                 </h2>
-                                <p className="mt-6 text-lg leading-8 text-slate-400">
-                                    Cada produto nasce de uma operação real e
-                                    resolve desafios específicos com
-                                    profundidade, simplicidade e foco em
-                                    produtividade.
+                                <p className="mt-5 text-lg leading-8 text-slate-600">
+                                    Produtos próprios, criados a partir de operações reais e especializados em desafios específicos.
                                 </p>
                             </div>
-
-                            <div className="mt-16 space-y-8">
-                                {products.map((product, index) => {
-                                    return (
-                                        <article
-                                            id={product.id}
-                                            key={product.id}
-                                            className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1627] shadow-2xl shadow-black/20"
-                                        >
-                                            <div className="grid lg:grid-cols-[0.92fr_1.08fr]">
-                                                <div
-                                                    className={`relative overflow-hidden p-7 sm:p-10 lg:p-12 ${index === 1 ? 'lg:order-2' : ''}`}
-                                                >
-                                                    <div
-                                                        className={`absolute inset-0 ${product.tone === 'sky' ? 'bg-gradient-to-br from-sky-500/12 via-transparent to-blue-600/8' : 'bg-gradient-to-br from-violet-500/12 via-transparent to-fuchsia-600/8'}`}
-                                                    />
-                                                    <div className="relative">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="grid size-20 place-items-center overflow-hidden rounded-2xl border border-white/80 bg-white p-1.5 shadow-xl sm:size-24">
-                                                                <img
-                                                                    src={
-                                                                        product.logo
-                                                                    }
-                                                                    alt={
-                                                                        product.logoAlt
-                                                                    }
-                                                                    className="size-full object-contain"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <p
-                                                                    className={`text-[10px] font-bold tracking-[0.2em] uppercase ${product.tone === 'sky' ? 'text-sky-300' : 'text-violet-300'}`}
-                                                                >
-                                                                    {
-                                                                        product.label
-                                                                    }
-                                                                </p>
-                                                                <h3 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
-                                                                    {
-                                                                        product.name
-                                                                    }
-                                                                </h3>
-                                                            </div>
-                                                        </div>
-                                                        <h4 className="mt-9 max-w-xl text-3xl leading-tight font-semibold tracking-[-0.03em] text-balance sm:text-4xl">
-                                                            {product.headline}
-                                                        </h4>
-                                                        <p className="mt-5 max-w-xl text-base leading-7 text-slate-400">
-                                                            {
-                                                                product.description
-                                                            }
-                                                        </p>
-                                                        <a
-                                                            href={product.url}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className={`mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-slate-950 transition ${product.tone === 'sky' ? 'bg-sky-300 hover:bg-sky-200' : 'bg-violet-300 hover:bg-violet-200'}`}
-                                                        >
-                                                            Conhecer{' '}
-                                                            {product.name}
-                                                            <ArrowUpRight className="size-4" />
-                                                        </a>
-                                                        <p className="mt-3 text-xs text-slate-600">
-                                                            {product.domain}
-                                                        </p>
+                            <div className="mt-14 grid gap-6 lg:grid-cols-2">
+                                {solutions.map((solution) => {
+                                    const Icon = solution.icon;
+                                    const content = (
+                                        <>
+                                            <div className="flex items-start justify-between gap-4">
+                                                {solution.logo ? (
+                                                    <div className="grid size-16 place-items-center rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+                                                        <img src={solution.logo} alt={`Logo ${solution.name}`} className="size-full object-contain" />
                                                     </div>
-                                                </div>
-
-                                                <div
-                                                    className={`border-white/8 bg-[#07101d] p-7 sm:p-10 lg:p-12 ${index === 1 ? 'lg:order-1 lg:border-r' : 'lg:border-l'}`}
-                                                >
-                                                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                                                        {product.stats.map(
-                                                            (stat) => {
-                                                                const StatIcon =
-                                                                    stat.icon;
-                                                                return (
-                                                                    <div
-                                                                        key={
-                                                                            stat.text
-                                                                        }
-                                                                        className="rounded-2xl border border-white/8 bg-white/[0.035] p-3 sm:p-4"
-                                                                    >
-                                                                        <StatIcon
-                                                                            className={`size-5 ${product.tone === 'sky' ? 'text-sky-300' : 'text-violet-300'}`}
-                                                                        />
-                                                                        <p className="mt-4 text-[10px] leading-4 font-semibold text-slate-300 sm:text-xs sm:leading-5">
-                                                                            {
-                                                                                stat.text
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-                                                                );
-                                                            },
-                                                        )}
+                                                ) : (
+                                                    <div className="grid size-16 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                                                        <Icon className="size-7" />
                                                     </div>
-                                                    <div className="mt-8">
-                                                        <p className="mb-5 text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase">
-                                                            Principais recursos
-                                                        </p>
-                                                        <ul className="grid gap-4 sm:grid-cols-2">
-                                                            {product.features.map(
-                                                                (feature) => (
-                                                                    <li
-                                                                        key={
-                                                                            feature
-                                                                        }
-                                                                        className="flex items-start gap-3 text-sm leading-6 text-slate-300"
-                                                                    >
-                                                                        <span
-                                                                            className={`mt-1 grid size-5 shrink-0 place-items-center rounded-full ${product.tone === 'sky' ? 'bg-sky-400/12 text-sky-300' : 'bg-violet-400/12 text-violet-300'}`}
-                                                                        >
-                                                                            <Check
-                                                                                className="size-3"
-                                                                                strokeWidth={
-                                                                                    3
-                                                                                }
-                                                                            />
-                                                                        </span>
-                                                                        {
-                                                                            feature
-                                                                        }
-                                                                    </li>
-                                                                ),
-                                                            )}
-                                                        </ul>
-                                                    </div>
-                                                </div>
+                                                )}
+                                                <ArrowUpRight className="size-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-blue-700" />
                                             </div>
-                                        </article>
+                                            <p className="mt-7 text-xs font-bold tracking-[0.12em] text-blue-700 uppercase">{solution.eyebrow}</p>
+                                            <h3 className="mt-2 text-2xl font-bold text-slate-950">{solution.name}</h3>
+                                            <h4 className="mt-5 text-xl leading-7 font-semibold text-slate-900">{solution.headline}</h4>
+                                            <p className="mt-3 text-sm leading-6 text-slate-600">{solution.description}</p>
+                                            <ul className="mt-7 space-y-3 border-t border-slate-200 pt-6">
+                                                {solution.features.map((feature) => (
+                                                    <li key={feature} className="flex items-start gap-2.5 text-sm text-slate-700">
+                                                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                                                        {feature}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <span className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-blue-700">
+                                                Conhecer solução <ArrowRight className="size-4" />
+                                            </span>
+                                        </>
+                                    );
+
+                                    const className =
+                                        'group flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-900/8';
+
+                                    return solution.external ? (
+                                        <a key={solution.id} href={solution.url} target="_blank" rel="noreferrer" className={className}>
+                                            {content}
+                                        </a>
+                                    ) : (
+                                        <Link key={solution.id} href={solution.url} className={className}>
+                                            {content}
+                                        </Link>
                                     );
                                 })}
                             </div>
                         </div>
                     </section>
 
-                    <section
-                        id="tecnologia"
-                        className="relative py-24 sm:py-32"
-                    >
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(14,165,233,0.08),transparent_45%)]" />
-                        <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-                            <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+                    <section id="servicos" className="scroll-mt-20 border-y border-slate-200 bg-slate-50 py-24 sm:py-32">
+                        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+                            <div className="max-w-3xl">
+                                <p className="text-sm font-bold text-blue-700">Serviços</p>
+                                <h2 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-balance text-slate-950 sm:text-6xl">
+                                    Tecnologia construída para a realidade da sua empresa.
+                                </h2>
+                                <p className="mt-5 text-lg leading-8 text-slate-600">
+                                    Quando um produto pronto não resolve, planejamos e desenvolvemos o projeto certo para seu objetivo.
+                                </p>
+                            </div>
+                            <div className="mt-14 grid gap-6 lg:grid-cols-3">
+                                {services.map((service) => {
+                                    const Icon = service.icon;
+                                    const external = service.href.startsWith('http');
+
+                                    return (
+                                        <a
+                                            key={service.title}
+                                            href={service.href}
+                                            target={external ? '_blank' : undefined}
+                                            rel={external ? 'noreferrer' : undefined}
+                                            className="group rounded-2xl border border-slate-200 bg-white p-7 transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg"
+                                        >
+                                            <div className="grid size-12 place-items-center rounded-xl bg-blue-50 text-blue-700">
+                                                <Icon className="size-6" />
+                                            </div>
+                                            <h3 className="mt-6 text-2xl font-bold text-slate-950">
+                                                {service.title}
+                                            </h3>
+                                            <p className="mt-3 text-sm leading-6 text-slate-600">
+                                                {service.description}
+                                            </p>
+                                            <span className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-blue-700">
+                                                {service.linkLabel}
+                                                <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+                                            </span>
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="diferenciais" className="scroll-mt-20 bg-slate-950 py-24 text-white sm:py-32">
+                        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+                            <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
                                 <div>
-                                    <p className="text-xs font-bold tracking-[0.22em] text-sky-300 uppercase">
-                                        Como construímos
-                                    </p>
-                                    <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-5xl">
-                                        Tecnologia a serviço de quem faz
-                                        acontecer.
+                                    <p className="text-sm font-bold text-blue-300">Diferenciais da ABrasil Sistemas</p>
+                                    <h2 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-balance sm:text-5xl">
+                                        Tecnologia sem complicação.
                                     </h2>
-                                    <p className="mt-6 text-base leading-7 text-slate-400">
-                                        Não criamos apenas telas. Entendemos
-                                        rotinas, eliminamos atritos e
-                                        transformamos processos em experiências
-                                        claras.
+                                    <p className="mt-5 max-w-xl text-base leading-7 text-slate-400">
+                                        Unimos conhecimento técnico e entendimento do negócio para entregar soluções que as pessoas realmente conseguem usar.
                                     </p>
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2">
-                                    {principles.map((principle) => {
-                                        const Icon = principle.icon;
+                                    {benefits.map((benefit) => {
+                                        const Icon = benefit.icon;
                                         return (
-                                            <div
-                                                key={principle.title}
-                                                className="group rounded-2xl border border-white/8 bg-white/[0.03] p-6 transition hover:-translate-y-1 hover:border-sky-300/20 hover:bg-white/[0.05]"
-                                            >
-                                                <Icon className="size-6 text-sky-300" />
-                                                <h3 className="mt-5 text-lg font-bold">
-                                                    {principle.title}
-                                                </h3>
-                                                <p className="mt-2 text-sm leading-6 text-slate-400">
-                                                    {principle.description}
-                                                </p>
-                                            </div>
+                                            <article key={benefit.title} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                                                <Icon className="size-6 text-blue-300" />
+                                                <h3 className="mt-5 text-lg font-bold">{benefit.title}</h3>
+                                                <p className="mt-2 text-sm leading-6 text-slate-400">{benefit.description}</p>
+                                            </article>
                                         );
                                     })}
                                 </div>
@@ -578,232 +492,100 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    <section
-                        id="sob-medida"
-                        className="scroll-mt-20 border-y border-white/8 bg-[#08111f] py-24 sm:py-32"
-                    >
+                    <section className="py-24 sm:py-32">
                         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-                            <div className="grid gap-12 lg:grid-cols-[0.88fr_1.12fr] lg:gap-20">
-                                <div className="lg:sticky lg:top-32 lg:self-start">
-                                    <div className="inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-300/6 px-4 py-2 text-[10px] font-bold tracking-[0.2em] text-violet-200 uppercase sm:text-xs">
-                                        <Lightbulb className="size-3.5" />
-                                        Desenvolvimento sob medida
-                                    </div>
-                                    <h2 className="mt-6 text-4xl leading-tight font-semibold tracking-[-0.045em] text-balance sm:text-6xl">
-                                        Tem uma ideia? Nós ajudamos a
-                                        transformá-la em{' '}
-                                        <span className="bg-gradient-to-r from-sky-300 to-violet-400 bg-clip-text text-transparent">
-                                            produto digital.
-                                        </span>
-                                    </h2>
-                                    <p className="mt-6 max-w-xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-                                        Além das nossas plataformas,
-                                        desenvolvemos sistemas e aplicativos
-                                        personalizados para empresas que
-                                        precisam resolver desafios únicos,
-                                        digitalizar processos ou lançar um novo
-                                        negócio.
-                                    </p>
-                                    <div className="mt-8 rounded-2xl border border-sky-300/15 bg-sky-300/[0.045] p-5">
-                                        <p className="text-sm leading-6 text-slate-300">
-                                            <strong className="font-semibold text-white">
-                                                Sua operação não precisa se
-                                                adaptar a uma ferramenta
-                                                genérica.
-                                            </strong>{' '}
-                                            Criamos a tecnologia para se adaptar
-                                            à realidade e aos objetivos do seu
-                                            negócio.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="relative">
-                                    <div className="absolute top-8 bottom-8 left-6 w-px bg-gradient-to-b from-sky-400/50 via-violet-400/30 to-transparent sm:left-8" />
-                                    <div className="space-y-4">
-                                        {customDevelopmentSteps.map((step) => {
-                                            const Icon = step.icon;
-                                            return (
-                                                <article
-                                                    key={step.number}
-                                                    className="group relative rounded-3xl border border-white/8 bg-[#0b1627] p-6 pl-20 transition duration-300 hover:-translate-y-0.5 hover:border-violet-300/20 hover:bg-white/[0.045] sm:p-8 sm:pl-24"
-                                                >
-                                                    <div className="absolute top-6 left-4 z-10 grid size-12 place-items-center rounded-2xl border border-white/15 bg-[#101e33] shadow-xl transition group-hover:border-sky-300/30 sm:top-8 sm:left-5 sm:size-14">
-                                                        <Icon className="size-5 text-sky-300 sm:size-6" />
-                                                    </div>
-                                                    <span className="text-[10px] font-bold tracking-[0.2em] text-violet-300 uppercase">
-                                                        Etapa {step.number}
-                                                    </span>
-                                                    <h3 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
-                                                        {step.title}
-                                                    </h3>
-                                                    <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base sm:leading-7">
-                                                        {step.description}
-                                                    </p>
-                                                </article>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                            <div className="text-center">
+                                <p className="text-sm font-bold text-blue-700">Como trabalhamos</p>
+                                <h2 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-slate-950 sm:text-5xl">Do desafio à solução em funcionamento.</h2>
                             </div>
-
-                            <div className="mt-16 flex flex-col items-start justify-between gap-6 rounded-3xl border border-white/10 bg-gradient-to-r from-sky-500/10 via-blue-500/8 to-violet-500/10 p-7 sm:p-10 md:flex-row md:items-center">
-                                <div>
-                                    <p className="text-xs font-bold tracking-[0.18em] text-sky-300 uppercase">
-                                        Vamos conversar
-                                    </p>
-                                    <h3 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-                                        Toda grande solução começa com uma boa
-                                        conversa.
-                                    </h3>
-                                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                                        Conte o que você imagina. Nós ajudamos a
-                                        encontrar o melhor caminho para
-                                        construir.
-                                    </p>
-                                </div>
-                                <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-                                    <a
-                                        href="mailto:contato@absistemas.com.br?subject=Tenho uma ideia para desenvolver"
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/6 px-5 py-3.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/10"
-                                    >
-                                        <Mail className="size-4" />
-                                        Enviar e-mail
-                                    </a>
-                                    <a
-                                        href="https://wa.me/5551998931325?text=Ol%C3%A1%2C%20tenho%20uma%20ideia%20de%20sistema%20ou%20aplicativo%20para%20desenvolver."
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3.5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-100"
-                                    >
-                                        <MessageCircle className="size-4" />
-                                        Falar no WhatsApp
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="blog" className="py-24 sm:py-32">
-                        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-                            <div className="max-w-2xl">
-                                <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                                    Do nosso blog
-                                </h2>
-                                <p className="mt-2 text-lg leading-8 text-slate-400">
-                                    Ideias e práticas para transformar a gestão
-                                    do seu negócio.
-                                </p>
-                            </div>
-                            <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-20 lg:mx-0 lg:max-w-none lg:grid-cols-2">
-                                {blogPosts.map((post) => (
-                                    <article
-                                        key={post.id}
-                                        className="flex flex-col items-start justify-between"
-                                    >
-                                        <div className="relative w-full">
-                                            <div className="relative w-full">
-                                                <time
-                                                    dateTime={post.published_at}
-                                                    className="text-xs text-slate-500"
-                                                >
-                                                    {new Intl.DateTimeFormat(
-                                                        'pt-BR',
-                                                        { dateStyle: 'long' },
-                                                    ).format(
-                                                        new Date(
-                                                            post.published_at,
-                                                        ),
-                                                    )}
-                                                </time>
-                                                <h3 className="mt-3 text-lg leading-6 font-semibold text-white group-hover:text-slate-300">
-                                                    <Link
-                                                        href={`/blog/${post.slug}`}
-                                                    >
-                                                        <span className="absolute inset-0" />
-                                                        {post.title}
-                                                    </Link>
-                                                </h3>
-                                                <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-400">
-                                                    {post.excerpt}
-                                                </p>
-                                            </div>
-                                        </div>
+                            <div className="relative mt-14 grid gap-5 md:grid-cols-3">
+                                {steps.map((step) => (
+                                    <article key={step.number} className="rounded-2xl border border-slate-200 bg-white p-7 text-center">
+                                        <span className="mx-auto grid size-11 place-items-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">{step.number}</span>
+                                        <h3 className="mt-5 text-xl font-bold text-slate-950">{step.title}</h3>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
                                     </article>
                                 ))}
                             </div>
                         </div>
                     </section>
 
-                    <section className="px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
-                        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-sky-300/15 bg-gradient-to-br from-blue-600/18 via-[#0b1729] to-violet-600/16 px-7 py-14 text-center sm:px-12 sm:py-20">
-                            <div className="absolute top-0 left-1/2 h-32 w-2/3 -translate-x-1/2 rounded-full bg-sky-400/15 blur-3xl" />
-                            <div className="relative">
-                                <p className="text-xs font-bold tracking-[0.22em] text-sky-300 uppercase">
-                                    AB Sistemas
-                                </p>
-                                <h2 className="mx-auto mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-balance sm:text-6xl">
-                                    O próximo passo do seu negócio começa com
-                                    clareza.
-                                </h2>
-                                <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
-                                    Escolha a solução que entende sua operação e
-                                    descubra uma forma mais simples de
-                                    trabalhar, acompanhar e crescer.
-                                </p>
-                                <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-                                    {products.map((product) => (
-                                        <a
-                                            key={product.id}
-                                            href={product.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-100"
-                                        >
-                                            Conhecer {product.name}
-                                            <ArrowUpRight className="size-4" />
-                                        </a>
+                    {blogPosts.length > 0 && (
+                        <section className="border-y border-slate-200 bg-slate-50 py-24">
+                            <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+                                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                                    <div>
+                                        <p className="text-sm font-bold text-blue-700">Blog da ABrasil Sistemas</p>
+                                        <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Ideias para melhorar sua gestão</h2>
+                                    </div>
+                                    <Link href="/blog" className="inline-flex items-center gap-2 text-sm font-bold text-blue-700">Ver todos os artigos <ArrowRight className="size-4" /></Link>
+                                </div>
+                                <div className="mt-10 grid gap-5 md:grid-cols-3">
+                                    {blogPosts.slice(0, 3).map((post) => (
+                                        <Link key={post.id} href={`/blog/${post.slug}`} className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-200 hover:shadow-lg">
+                                            <time className="text-xs font-semibold text-slate-500">
+                                                {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date(post.published_at))}
+                                            </time>
+                                            <h3 className="mt-3 text-lg leading-6 font-bold text-slate-950 group-hover:text-blue-700">{post.title}</h3>
+                                            <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{post.excerpt}</p>
+                                        </Link>
                                     ))}
                                 </div>
+                            </div>
+                        </section>
+                    )}
+
+                    <section className="px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
+                        <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl bg-blue-700 px-7 py-14 text-center text-white shadow-2xl shadow-blue-700/15 sm:px-12 sm:py-20">
+                            <Code2 className="mx-auto size-8 text-blue-200" />
+                            <h2 className="mx-auto mt-5 max-w-3xl text-4xl font-bold tracking-[-0.04em] text-balance sm:text-6xl">
+                                Pronto para dar o próximo passo?
+                            </h2>
+                            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-blue-100 sm:text-lg">
+                                Conte o que sua empresa precisa. Vamos conversar sem compromisso e indicar o melhor caminho.
+                            </p>
+                            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3.5 text-sm font-bold text-blue-800 transition hover:bg-blue-50">
+                                    <MessageCircle className="size-4" /> Falar pelo WhatsApp
+                                </a>
+                                <a href="mailto:contato@absistemas.com.br?subject=Quero conhecer as soluções da ABrasil Sistemas" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-6 py-3.5 text-sm font-bold transition hover:bg-white/10">
+                                    <Mail className="size-4" /> Enviar e-mail
+                                </a>
                             </div>
                         </div>
                     </section>
                 </main>
 
-                <footer className="border-t border-white/8 bg-[#040a13]">
-                    <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-10 sm:px-8 md:flex-row md:items-end md:justify-between lg:px-12">
+                <footer className="bg-slate-950 text-white">
+                    <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-3 lg:px-12">
                         <div>
-                            <BrandMark />
-                            <p className="mt-5 max-w-sm text-xs leading-5 text-slate-500">
-                                Soluções digitais brasileiras para operações que
-                                querem trabalhar com mais controle, agilidade e
-                                visão.
+                            <Logo footer />
+                            <p className="mt-5 max-w-sm text-sm leading-6 text-slate-400">
+                                Sistemas, aplicativos e sites que ajudam empresas a trabalhar melhor e crescer.
                             </p>
                         </div>
-                        <div className="text-xs text-slate-500 md:text-right">
-                            <div className="flex flex-col gap-2 md:items-end">
-                                <a
-                                    href="mailto:contato@absistemas.com.br"
-                                    className="inline-flex items-center gap-2 transition hover:text-white"
-                                >
-                                    <Mail className="size-3.5" />
-                                    contato@absistemas.com.br
-                                </a>
-                                <a
-                                    href="https://wa.me/5551998931325"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-2 transition hover:text-white"
-                                >
-                                    <MessageCircle className="size-3.5" />
-                                    (51) 99893-1325
-                                </a>
+                        <div>
+                            <p className="text-sm font-bold">Produtos</p>
+                            <div className="mt-4 grid gap-3 text-sm text-slate-400">
+                                <a href="https://vetoros.com.br" target="_blank" rel="noreferrer" className="hover:text-white">VetorOS</a>
+                                <a href="https://vetorpet.com.br" target="_blank" rel="noreferrer" className="hover:text-white">VetorPet</a>
                             </div>
-                            <p className="mt-5 text-slate-600">
-                                VetorOS · VetorPet
-                            </p>
-                            <p className="mt-2"></p>
+                            <p className="mt-6 text-sm font-bold">Serviços</p>
+                            <div className="mt-4 grid gap-3 text-sm text-slate-400">
+                                <Link href="/desenvolvimento-de-sites-para-empresas" className="hover:text-white">Sites para empresas</Link>
+                                <a href="#servicos" className="hover:text-white">Sistemas, aplicativos e integrações</a>
+                            </div>
                         </div>
+                        <div className="md:text-right">
+                            <p className="text-sm font-bold">Fale conosco</p>
+                            <div className="mt-4 grid gap-3 text-sm text-slate-400 md:justify-items-end">
+                                <a href="mailto:contato@absistemas.com.br" className="inline-flex items-center gap-2 hover:text-white"><Mail className="size-4" /> contato@absistemas.com.br</a>
+                                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-white"><MessageCircle className="size-4" /> (51) 99893-1325</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="border-t border-white/10 py-5 text-center text-xs text-slate-500">
+                        ABrasil Sistemas · Tecnologia para empresas
                     </div>
                 </footer>
             </div>
