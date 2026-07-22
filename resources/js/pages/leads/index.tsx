@@ -42,7 +42,7 @@ import {
     whatsappMessageTemplates,
 } from '@/lib/lead-whatsapp-messages';
 import { cn } from '@/lib/utils';
-import { create, edit, index } from '@/routes/leads';
+import { create, destroy, edit, index } from '@/routes/leads';
 import type { Lead } from '@/pages/leads/form';
 
 type Paginated<T> = PaginationData & {
@@ -1474,6 +1474,32 @@ export default function LeadsIndex({
                                                                     >
                                                                         <Pencil className="size-4" />
                                                                     </Link>
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="icon"
+                                                                    title="Excluir prospect"
+                                                                    aria-label={`Excluir prospect ${lead.company_name}`}
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            confirm(
+                                                                                `Excluir o prospect “${lead.company_name}”?`,
+                                                                            )
+                                                                        ) {
+                                                                            router.delete(
+                                                                                destroy.url(
+                                                                                    lead.id,
+                                                                                ),
+                                                                                {
+                                                                                    preserveScroll:
+                                                                                        true,
+                                                                                },
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="size-4" />
                                                                 </Button>
                                                             </div>
                                                         </td>
