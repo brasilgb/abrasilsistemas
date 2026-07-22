@@ -9,6 +9,7 @@ import {
     Pencil,
     Plus,
     Search,
+    Trash2,
 } from 'lucide-react';
 import { type DragEvent, useEffect, useMemo, useState } from 'react';
 import AppPagination, {
@@ -250,6 +251,21 @@ function LeadActions({
                 <Link href={edit({ lead: lead.id })}>
                     <Pencil className="size-4" />
                 </Link>
+            </Button>
+            <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                title="Excluir prospect"
+                onClick={() => {
+                    if (confirm(`Excluir o prospect “${lead.company_name}”?`)) {
+                        router.delete(`/leads/${lead.id}`, {
+                            preserveScroll: true,
+                        });
+                    }
+                }}
+            >
+                <Trash2 className="size-4" />
             </Button>
         </div>
     );
@@ -584,6 +600,25 @@ export default function LeadsIndex({
                         title="Prospecção"
                         description="Organize leads, contatos e follow-ups comerciais."
                     />
+
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        className="self-start"
+                        disabled={kanbanTotal === 0}
+                        onClick={() => {
+                            if (
+                                confirm(
+                                    `Remover definitivamente todos os ${kanbanTotal} prospects e seus históricos?`,
+                                )
+                            ) {
+                                router.delete('/leads/clear');
+                            }
+                        }}
+                    >
+                        <Trash2 className="size-4" />
+                        Limpar prospects
+                    </Button>
 
                     <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-4">
                         <button

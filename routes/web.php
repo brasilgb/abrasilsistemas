@@ -41,8 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
         Route::redirect('admin', '/dashboard')->name('admin');
         Route::post('leads/import', [LeadController::class, 'import'])->name('leads.import');
+        Route::delete('leads/clear', [LeadController::class, 'clear'])->name('leads.clear');
         Route::patch('leads/{lead}/status', [LeadController::class, 'status'])->name('leads.status');
-        Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+        Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
 

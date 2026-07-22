@@ -256,6 +256,29 @@ class LeadController extends Controller
         return to_route('leads.index');
     }
 
+    public function destroy(Lead $lead): RedirectResponse
+    {
+        $lead->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Prospect excluído.']);
+
+        return to_route('leads.index');
+    }
+
+    public function clear(): RedirectResponse
+    {
+        $deleted = Lead::query()->count();
+
+        Lead::query()->delete();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "{$deleted} prospect(s) removido(s).",
+        ]);
+
+        return to_route('leads.index');
+    }
+
     public function status(Request $request, Lead $lead): RedirectResponse
     {
         $data = $request->validate([
