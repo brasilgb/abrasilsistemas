@@ -810,7 +810,13 @@ export default function LeadsIndex({
                                                 {columnLeads.length}
                                             </span>
                                         </header>
-                                        <div className="flex flex-1 flex-col gap-2 p-2">
+                                        <div
+                                            className={cn(
+                                                'flex flex-1 flex-col gap-2 p-2',
+                                                columnLeads.length > 10 &&
+                                                    'max-h-[70vh] overflow-y-auto overscroll-contain',
+                                            )}
+                                        >
                                             {columnLeads.length ? (
                                                 columnLeads.map((lead) => (
                                                     <LeadKanbanCard
@@ -1282,6 +1288,13 @@ export default function LeadsIndex({
                                                                     lead.company_name
                                                                 }
                                                             </div>
+                                                            {lead.rating && (
+                                                                <div className="text-xs text-amber-600">
+                                                                    ★ {lead.rating}
+                                                                    {lead.reviews !== null &&
+                                                                        ` · ${lead.reviews} avaliações`}
+                                                                </div>
+                                                            )}
                                                             {lead.website && (
                                                                 <div
                                                                     className="truncate text-xs text-muted-foreground"
@@ -1323,7 +1336,8 @@ export default function LeadsIndex({
                                                         </td>
                                                         <td className="max-w-40 px-3 py-2 text-muted-foreground">
                                                             <span className="line-clamp-1">
-                                                                {lead.industry ||
+                                                                {lead.category ||
+                                                                    lead.industry ||
                                                                     '-'}
                                                             </span>
                                                         </td>
@@ -1335,6 +1349,14 @@ export default function LeadsIndex({
                                                                 .filter(Boolean)
                                                                 .join(' / ') ||
                                                                 '-'}
+                                                            {lead.address && (
+                                                                <div
+                                                                    className="max-w-52 truncate text-xs"
+                                                                    title={lead.address}
+                                                                >
+                                                                    {lead.address}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="max-w-40 px-3 py-2 text-muted-foreground">
                                                             <span className="line-clamp-1">

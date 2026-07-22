@@ -1,8 +1,17 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { CalendarClock, History, MessageSquarePlus } from 'lucide-react';
+import {
+    CalendarClock,
+    ExternalLink,
+    Globe,
+    History,
+    MapPin,
+    MessageSquarePlus,
+    Star,
+} from 'lucide-react';
 import LeadController from '@/actions/App/Http/Controllers/LeadController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -110,6 +119,85 @@ export default function EditLead({
                     </Card>
 
                     <div className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Dados da prospecção</CardTitle>
+                                <CardDescription>
+                                    Informações capturadas no Google Maps.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 text-sm">
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Categoria</p>
+                                        <p className="font-medium">{lead.category ?? lead.industry ?? '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Avaliação</p>
+                                        <p className="flex items-center gap-1 font-medium">
+                                            <Star className="size-4 fill-amber-400 text-amber-500" />
+                                            {lead.rating ?? '-'}
+                                            {lead.reviews !== null && ` (${lead.reviews} avaliações)`}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs text-muted-foreground">Endereço</p>
+                                    <p className="flex items-start gap-2 font-medium">
+                                        <MapPin className="mt-0.5 size-4 shrink-0" />
+                                        {[lead.address, lead.city, lead.state].filter(Boolean).join(' · ') || '-'}
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Possui site</p>
+                                        <Badge variant="outline">{lead.has_website ? 'Sim' : 'Não'}</Badge>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Pode melhorar</p>
+                                        <Badge variant="outline">{lead.can_improve ? 'Sim' : 'Não'}</Badge>
+                                    </div>
+                                </div>
+
+                                {lead.site_status && (
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Situação do site</p>
+                                        <p>{lead.site_status}</p>
+                                    </div>
+                                )}
+
+                                {lead.opportunity && (
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Oportunidade</p>
+                                        <p className="whitespace-pre-line">{lead.opportunity}</p>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap gap-2">
+                                    {lead.website && (
+                                        <Button asChild size="sm" variant="outline">
+                                            <a href={lead.website} target="_blank" rel="noreferrer">
+                                                <Globe className="size-4" /> Site
+                                            </a>
+                                        </Button>
+                                    )}
+                                    {lead.maps_url && (
+                                        <Button asChild size="sm" variant="outline">
+                                            <a href={lead.maps_url} target="_blank" rel="noreferrer">
+                                                <ExternalLink className="size-4" /> Google Maps
+                                            </a>
+                                        </Button>
+                                    )}
+                                </div>
+
+                                <p className="text-xs text-muted-foreground">
+                                    Capturado em: {formatDateTime(lead.captured_at)}
+                                </p>
+                            </CardContent>
+                        </Card>
+
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
