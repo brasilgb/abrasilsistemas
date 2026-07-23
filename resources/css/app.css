@@ -184,3 +184,39 @@
         @apply mt-3 text-center text-sm text-slate-500;
     }
 }
+
+/* Tema escuro das páginas públicas. */
+.dark .ab-public-site {
+    background: #020617 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .ab-public-site header,
+.dark .ab-public-site [class~='bg-white'] {
+    background-color: #0f172a !important;
+}
+
+.dark .ab-public-site [class~='bg-slate-50'] {
+    background-color: #111c30 !important;
+}
+
+.dark .ab-public-site [class*='text-slate-9'],
+.dark .ab-public-site [class*='text-slate-7'],
+.dark .ab-public-site [class*='text-slate-6'] {
+    color: #e2e8f0 !important;
+}
+
+.dark .ab-public-site [class*='text-slate-5'] {
+    color: #94a3b8 !important;
+}
+
+.dark .ab-public-site [class*='border-slate-2'],
+.dark .ab-public-site [class*='border-slate-1'],
+.dark .ab-public-site [class*='border-slate-3'] {
+    border-color: #334155 !important;
+}
+
+.dark .ab-public-site [class*='from-blue-50'],
+.dark .ab-public-site [class*='from-white'] {
+    background-image: linear-gradient(to bottom, #111c30, #020617) !important;
+}

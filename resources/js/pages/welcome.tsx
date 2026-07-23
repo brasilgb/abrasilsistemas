@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { PublicThemeSelector } from '@/components/public-theme-selector';
 import {
     ArrowRight,
     ArrowUpRight,
@@ -209,7 +210,7 @@ export default function Welcome({ blogPosts }: { blogPosts: BlogPostSummary[] })
                 <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
             </Head>
 
-            <div className="min-h-screen bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-950">
+            <div className="ab-public-site min-h-screen bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-950">
                 <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
                     <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
                         <Logo />
@@ -220,6 +221,7 @@ export default function Welcome({ blogPosts }: { blogPosts: BlogPostSummary[] })
                             <Link href="/blog" className="transition hover:text-blue-700">Blog</Link>
                         </nav>
                         <div className="hidden items-center gap-3 sm:flex">
+                            <PublicThemeSelector />
                             <Link
                                 href="/area-restrita"
                                 className="px-3 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
@@ -236,6 +238,7 @@ export default function Welcome({ blogPosts }: { blogPosts: BlogPostSummary[] })
                                 Falar com especialista
                             </a>
                         </div>
+                        <div className="ml-auto mr-2 sm:hidden"><PublicThemeSelector /></div>
                         <button
                             type="button"
                             aria-label="Abrir menu"
