@@ -610,7 +610,7 @@ export default function Welcome({
                         className="scroll-mt-20 bg-[#dffbff] py-24 sm:py-32"
                     >
                         <div className="mx-auto grid max-w-[86rem] items-center gap-16 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
-                            <div>
+                            <div className="vetoros-copy">
                                 <p className="text-xs font-extrabold tracking-[0.18em] text-blue-800 uppercase">
                                     VetorOS
                                 </p>

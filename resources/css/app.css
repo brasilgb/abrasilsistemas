@@ -219,6 +219,17 @@
     color: #020617 !important;
 }
 
+/* A vitrine clara do VetorOS mantém contraste independentemente do tema do sistema. */
+.dark .ab-public-site #vetoros .vetoros-copy h2,
+.dark .ab-public-site #vetoros .vetoros-copy p,
+.dark .ab-public-site #vetoros .vetoros-copy li {
+    color: #0f172a !important;
+}
+
+.dark .ab-public-site #vetoros .vetoros-copy h2 [class*='text-blue'] {
+    color: #1d4ed8 !important;
+}
+
 .dark .ab-public-site [class*='border-slate-2'],
 .dark .ab-public-site [class*='border-slate-1'],
 .dark .ab-public-site [class*='border-slate-3'] {
