@@ -244,7 +244,7 @@ export default function Welcome({
                 </script>
             </Head>
 
-            <div className="ab-public-site min-h-screen overflow-x-hidden bg-[#f7f8fa] text-slate-900 selection:bg-cyan-200 selection:text-slate-950">
+            <div className="ab-public-site ab-marketing-home min-h-screen overflow-x-hidden bg-[#f7f8fa] text-slate-900 selection:bg-cyan-200 selection:text-slate-950">
                 <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#08111f]/90 text-white backdrop-blur-xl">
                     <div className="mx-auto flex h-20 max-w-[86rem] items-center justify-between px-5 sm:px-8 lg:px-12">
                         <Brand inverse />
@@ -341,20 +341,20 @@ export default function Welcome({
                 </header>
 
                 <main>
-                    <section className="relative isolate overflow-hidden bg-[#08111f] pt-32 text-white sm:pt-40">
+                    <section className="relative isolate overflow-hidden bg-slate-950/95 pt-32 text-white sm:pt-40">
                         <div className="absolute inset-0 -z-20 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:44px_44px]" />
-                        <div className="absolute top-10 right-[-12rem] -z-10 size-[38rem] rounded-full bg-blue-600/25 blur-[120px]" />
-                        <div className="absolute bottom-[-18rem] left-[25%] -z-10 size-[32rem] rounded-full bg-cyan-400/10 blur-[100px]" />
+                        <div className="absolute top-10 right-[-12rem] -z-10 size-[38rem] rounded-full bg-sky-500/20 blur-[120px]" />
+                        <div className="absolute bottom-[-18rem] left-[25%] -z-10 size-[32rem] rounded-full bg-sky-400/10 blur-[100px]" />
 
                         <div className="mx-auto grid max-w-[86rem] items-center gap-16 px-5 pb-20 sm:px-8 sm:pb-28 lg:grid-cols-[0.92fr_1.08fr] lg:px-12">
                             <div>
-                                <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-xs font-extrabold tracking-[0.12em] text-cyan-200 uppercase">
+                                <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/25 bg-sky-300/10 px-4 py-2 text-xs font-extrabold tracking-[0.12em] text-sky-200 uppercase">
                                     <Sparkles className="size-3.5" />
                                     Gestão feita para assistência técnica
                                 </p>
                                 <h1 className="mt-7 max-w-3xl text-[clamp(3.5rem,7vw,6.6rem)] leading-[0.88] font-black tracking-[-0.075em] text-balance">
                                     Menos caos.
-                                    <span className="mt-2 block text-cyan-300">
+                                    <span className="mt-2 block text-sky-300">
                                         Mais controle.
                                     </span>
                                 </h1>
@@ -368,7 +368,7 @@ export default function Welcome({
                                         href={vetorosPlansUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-cyan-300 px-7 text-sm font-extrabold text-slate-950 shadow-[0_18px_60px_rgba(34,211,238,.18)] transition hover:-translate-y-1 hover:bg-cyan-200"
+                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-sky-400 px-7 text-sm font-extrabold text-slate-950 shadow-[0_18px_60px_rgba(56,189,248,.18)] transition hover:-translate-y-1 hover:bg-sky-300"
                                     >
                                         Quero testar o VetorOS
                                         <ArrowRight className="size-4" />
@@ -387,14 +387,34 @@ export default function Welcome({
                                 </p>
                             </div>
 
-                            <div className="relative">
+                            <div className="relative aspect-[1920/934]">
                                 <div className="absolute -inset-5 rounded-[2.2rem] bg-gradient-to-br from-cyan-300/20 via-blue-600/5 to-transparent blur-2xl" />
-                                <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-[#0d1929] shadow-2xl shadow-black/40">
-                                    <div className="flex h-12 items-center gap-2 border-b border-white/10 px-5">
-                                        <span className="size-2 rounded-full bg-red-400/80" />
-                                        <span className="size-2 rounded-full bg-amber-300/80" />
-                                        <span className="size-2 rounded-full bg-emerald-400/80" />
-                                        <span className="ml-3 text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase">
+                                <div className="absolute inset-0 z-10 overflow-hidden rounded-[1.4rem] border border-slate-700/60 bg-slate-950 shadow-2xl shadow-black/40">
+                                    <img
+                                        src="/images/dashboard-vetoros.webp"
+                                        alt="Dashboard real do VetorOS exibindo prioridades, ordens de serviço, agenda, mensagens, estoque e indicadores da operação"
+                                        width="1920"
+                                        height="934"
+                                        fetchPriority="high"
+                                        className="h-full w-full object-cover"
+                                    />
+                                </div>
+                                <div className="hidden">
+                                    <div className="flex h-12 items-center gap-3 border-b border-slate-700/50 px-5">
+                                        <img
+                                            src="/images/logo_os.png"
+                                            alt="VetorOS"
+                                            className="h-8 w-8 rounded-2xl bg-slate-900/90 p-1"
+                                        />
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-100">
+                                                VetorOS
+                                            </p>
+                                            <p className="text-[10px] text-slate-500">
+                                                Painel de operação
+                                            </p>
+                                        </div>
+                                        <span className="ml-auto text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase">
                                             Central da operação
                                         </span>
                                     </div>
@@ -454,14 +474,14 @@ export default function Welcome({
                                                     ([value, label, color]) => (
                                                         <div
                                                             key={label}
-                                                            className="rounded-xl border border-white/8 bg-white/[.035] p-3 sm:p-4"
+                                                            className="rounded-xl border border-slate-700/50 bg-slate-900/80 p-3 sm:p-4"
                                                         >
                                                             <p
                                                                 className={`text-2xl font-black sm:text-3xl ${color}`}
                                                             >
                                                                 {value}
                                                             </p>
-                                                            <p className="mt-1 text-[9px] text-slate-500 sm:text-[11px]">
+                                                            <p className="mt-1 text-[9px] text-slate-400 sm:text-[11px]">
                                                                 {label}
                                                             </p>
                                                         </div>
@@ -535,7 +555,7 @@ export default function Welcome({
                                         </div>
                                     </div>
                                 </div>
-                                <div className="absolute -right-3 -bottom-5 rounded-2xl border border-cyan-300/20 bg-cyan-300 px-4 py-3 text-slate-950 shadow-xl sm:-right-7">
+                                <div className="absolute -right-3 -bottom-5 z-20 rounded-2xl border border-cyan-300/20 bg-cyan-300 px-4 py-3 text-slate-950 shadow-xl sm:-right-7">
                                     <p className="text-[10px] font-bold uppercase">
                                         Tudo conectado
                                     </p>
