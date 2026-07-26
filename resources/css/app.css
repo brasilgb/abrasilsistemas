@@ -143,6 +143,10 @@
 }
 
 @layer components {
+    .ab-public-site {
+        isolation: isolate;
+    }
+
     .article-content {
         @apply mt-12 text-lg leading-8 text-slate-700;
     }
