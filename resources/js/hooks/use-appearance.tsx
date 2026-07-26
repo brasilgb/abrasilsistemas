@@ -68,7 +68,12 @@ const mediaQuery = (): MediaQueryList | null => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
-const handleSystemThemeChange = (): void => applyTheme(currentAppearance);
+const handleSystemThemeChange = (): void => {
+    applyTheme(currentAppearance);
+    notify();
+};
+
+let systemThemeListenerInitialized = false;
 
 export function initializeTheme(): void {
     if (typeof window === 'undefined') {
@@ -83,8 +88,10 @@ export function initializeTheme(): void {
     currentAppearance = getStoredAppearance();
     applyTheme(currentAppearance);
 
-    // Set up system theme change listener
-    mediaQuery()?.addEventListener('change', handleSystemThemeChange);
+    if (!systemThemeListenerInitialized) {
+        mediaQuery()?.addEventListener('change', handleSystemThemeChange);
+        systemThemeListenerInitialized = true;
+    }
 }
 
 export function useAppearance(): UseAppearanceReturn {
