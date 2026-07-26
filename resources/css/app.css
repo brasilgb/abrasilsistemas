@@ -214,6 +214,11 @@
     color: #94a3b8 !important;
 }
 
+/* CTAs claros devem manter texto escuro também no tema escuro. */
+.dark .ab-public-site [class~='bg-cyan-300'] {
+    color: #020617 !important;
+}
+
 .dark .ab-public-site [class*='border-slate-2'],
 .dark .ab-public-site [class*='border-slate-1'],
 .dark .ab-public-site [class*='border-slate-3'] {
