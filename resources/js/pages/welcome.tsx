@@ -14,7 +14,6 @@ import {
     MessageCircle,
     MonitorSmartphone,
     PackageCheck,
-    ShoppingCart,
     Sparkles,
     Users,
     Wrench,
@@ -22,8 +21,6 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-const vetorosUrl = 'https://vetoros.com.br/';
-const vetorosPlansUrl = 'https://vetoros.com.br/planos';
 const contactWhatsappUrl =
     'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20uma%20solu%C3%A7%C3%A3o%20da%20ABrasil.';
 
@@ -31,23 +28,23 @@ const outcomes = [
     {
         icon: ClipboardCheck,
         number: '01',
-        title: 'Nenhuma OS esquecida',
+        title: 'Operações organizadas',
         description:
-            'Acompanhe cada equipamento da entrada à entrega, com histórico e responsável.',
+            'Centralize processos, históricos e responsáveis em sistemas feitos para a rotina real.',
     },
     {
         icon: MessageCircle,
         number: '02',
-        title: 'Cliente bem informado',
+        title: 'Equipes mais produtivas',
         description:
-            'Reduza ligações repetidas e envie atualizações com mais agilidade.',
+            'Reduza tarefas manuais e dê à equipe informações claras para atender e vender melhor.',
     },
     {
         icon: BarChart3,
         number: '03',
-        title: 'Margem sob controle',
+        title: 'Decisões com dados',
         description:
-            'Enxergue estoque, caixa, vendas e resultados sem depender de planilhas.',
+            'Acompanhe operação, vendas e resultados sem depender de informações espalhadas.',
     },
 ] as const;
 
@@ -59,16 +56,6 @@ const productFeatures = [
 ] as const;
 
 const otherSolutions = [
-    {
-        icon: ShoppingCart,
-        eyebrow: 'Gestão comercial',
-        title: 'VetorPet',
-        description:
-            'Carteira de clientes, catálogo, visitas e pedidos para equipes que vendem no mercado pet.',
-        href: 'https://vetorpet.com.br',
-        action: 'Conhecer o VetorPet',
-        accent: 'violet',
-    },
     {
         icon: MonitorSmartphone,
         eyebrow: 'Presença digital',
@@ -93,8 +80,8 @@ const otherSolutions = [
 
 const journey = [
     [
-        'Conheça os planos',
-        'Compare as opções e escolha aquela que acompanha o momento da sua assistência.',
+        'Escolha a solução',
+        'Conheça o VetorOS e o VetorPet e encontre o produto criado para a sua operação.',
     ],
     [
         'Crie sua conta',
@@ -102,7 +89,7 @@ const journey = [
     ],
     [
         'Teste por 14 dias',
-        'Explore o VetorOS gratuitamente e valide a solução na rotina da sua empresa.',
+        'Explore a solução gratuitamente e valide os recursos na rotina da sua empresa.',
     ],
 ] as const;
 
@@ -198,6 +185,8 @@ export default function Welcome({
                 logo: 'https://abrasilsistemas.com.br/images/logo_ab.png',
                 email: 'contato@absistemas.com.br',
                 telephone: '+55-51-99893-1325',
+                description:
+                    'Empresa brasileira de tecnologia responsável pelo VetorOS e VetorPet, além do desenvolvimento de sistemas sob medida e sites profissionais.',
             },
             {
                 '@type': 'SoftwareApplication',
@@ -207,15 +196,23 @@ export default function Welcome({
                 description:
                     'Sistema de gestão para assistências técnicas com ordens de serviço, estoque, vendas e financeiro.',
             },
+            {
+                '@type': 'SoftwareApplication',
+                name: 'VetorPet',
+                applicationCategory: 'BusinessApplication',
+                operatingSystem: 'Web, Android',
+                description:
+                    'Sistema de gestão comercial para distribuidores e representantes que vendem para o mercado pet.',
+            },
         ],
     };
 
     return (
         <>
-            <Head title="Sistema para assistência técnica | VetorOS">
+            <Head title="Sistemas, sites e software sob medida | ABrasil Sistemas">
                 <meta
                     name="description"
-                    content="Organize ordens de serviço, clientes, equipamentos, estoque, vendas e financeiro da sua assistência técnica com o VetorOS."
+                    content="A ABrasil Sistemas desenvolve o VetorOS, o VetorPet, sistemas sob medida e sites profissionais para empresas."
                 />
                 <meta
                     name="robots"
@@ -227,15 +224,15 @@ export default function Welcome({
                 <meta property="og:site_name" content="ABrasil Sistemas" />
                 <meta
                     property="og:title"
-                    content="VetorOS — Sua assistência sob controle"
+                    content="ABrasil Sistemas — Produtos digitais e desenvolvimento"
                 />
                 <meta
                     property="og:description"
-                    content="Da entrada do equipamento ao financeiro: organize toda a operação da sua assistência técnica."
+                    content="VetorOS, VetorPet, desenvolvimento de sistemas sob medida e criação de sites profissionais."
                 />
                 <meta
                     property="og:image"
-                    content="https://abrasilsistemas.com.br/images/logo_os.png"
+                    content="https://abrasilsistemas.com.br/images/logo_ab.png"
                 />
                 <meta name="twitter:card" content="summary_large_image" />
                 <link rel="canonical" href="https://abrasilsistemas.com.br/" />
@@ -253,10 +250,10 @@ export default function Welcome({
                             aria-label="Navegação principal"
                         >
                             <a
-                                href="#vetoros"
+                                href="#produtos"
                                 className="transition hover:text-white"
                             >
-                                VetorOS
+                                Produtos
                             </a>
                             <a
                                 href="#resultados"
@@ -268,7 +265,7 @@ export default function Welcome({
                                 href="#solucoes"
                                 className="transition hover:text-white"
                             >
-                                Outras soluções
+                                Serviços
                             </a>
                             <Link
                                 href="/blog"
@@ -278,13 +275,11 @@ export default function Welcome({
                             </Link>
                         </nav>
                         <a
-                            href={vetorosPlansUrl}
-                            target="_blank"
-                            rel="noreferrer"
+                            href="#produtos"
                             className="hidden items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:inline-flex"
                         >
-                            Testar grátis por 14 dias
-                            <ArrowUpRight className="size-4" />
+                            Conhecer as soluções
+                            <ArrowRight className="size-4" />
                         </a>
                         <button
                             type="button"
@@ -308,9 +303,9 @@ export default function Welcome({
                             aria-label="Navegação móvel"
                         >
                             {[
-                                ['#vetoros', 'VetorOS'],
+                                ['#produtos', 'Produtos'],
                                 ['#resultados', 'Resultados'],
-                                ['#solucoes', 'Outras soluções'],
+                                ['#solucoes', 'Serviços'],
                             ].map(([href, label]) => (
                                 <a
                                     key={href}
@@ -328,12 +323,11 @@ export default function Welcome({
                                 Conteúdo
                             </Link>
                             <a
-                                href={vetorosPlansUrl}
-                                target="_blank"
-                                rel="noreferrer"
+                                href="#produtos"
                                 className="mt-5 flex items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3.5 text-slate-950"
+                                onClick={() => setMobileMenuOpen(false)}
                             >
-                                Começar teste grátis{' '}
+                                Conhecer as soluções{' '}
                                 <ArrowRight className="size-4" />
                             </a>
                         </nav>
@@ -341,7 +335,7 @@ export default function Welcome({
                 </header>
 
                 <main>
-                    <section className="relative isolate overflow-hidden bg-slate-950/95 pt-32 text-white sm:pt-40">
+                    <section id="produtos" className="relative isolate scroll-mt-20 overflow-hidden bg-slate-950/95 pt-32 text-white sm:pt-40">
                         <div className="absolute inset-0 -z-20 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:44px_44px]" />
                         <div className="absolute top-10 right-[-12rem] -z-10 size-[38rem] rounded-full bg-sky-500/20 blur-[120px]" />
                         <div className="absolute bottom-[-18rem] left-[25%] -z-10 size-[32rem] rounded-full bg-sky-400/10 blur-[100px]" />
@@ -350,54 +344,69 @@ export default function Welcome({
                             <div>
                                 <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/25 bg-sky-300/10 px-4 py-2 text-xs font-extrabold tracking-[0.12em] text-sky-200 uppercase">
                                     <Sparkles className="size-3.5" />
-                                    Gestão feita para assistência técnica
+                                    Produtos próprios e projetos para empresas
                                 </p>
                                 <h1 className="mt-7 max-w-3xl text-[clamp(3.5rem,7vw,6.6rem)] leading-[0.88] font-black tracking-[-0.075em] text-balance">
-                                    Menos caos.
+                                    Tecnologia para
                                     <span className="mt-2 block text-sky-300">
-                                        Mais controle.
+                                        fazer seu negócio avançar.
                                     </span>
                                 </h1>
                                 <p className="mt-8 max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
-                                    Do equipamento que entra ao dinheiro que
-                                    sai: o VetorOS coloca sua assistência
-                                    inteira em uma única operação.
+                                    A ABrasil é a empresa por trás do VetorOS e
+                                    do VetorPet. Também desenvolvemos sistemas
+                                    sob medida e sites profissionais para
+                                    transformar ideias e processos em
+                                    resultados.
                                 </p>
                                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                                     <a
-                                        href={vetorosPlansUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                        href="#produtos"
                                         className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-sky-400 px-7 text-sm font-extrabold text-slate-950 shadow-[0_18px_60px_rgba(56,189,248,.18)] transition hover:-translate-y-1 hover:bg-sky-300"
                                     >
-                                        Quero testar o VetorOS
+                                        Conhecer nossos produtos
                                         <ArrowRight className="size-4" />
                                     </a>
                                     <a
-                                        href="#vetoros"
+                                        href="#solucoes"
                                         className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white/15 px-7 text-sm font-bold text-white transition hover:bg-white/5"
                                     >
-                                        Ver como funciona
+                                        Desenvolvimento e sites
+                                        <ArrowRight className="size-4" />
                                     </a>
                                 </div>
                                 <p className="mt-5 flex items-center gap-2 text-xs text-slate-500">
                                     <Check className="size-4 text-cyan-300" />{' '}
-                                    Cadastro online e 14 dias para testar
-                                    gratuitamente.
+                                    Produtos digitais, projetos personalizados
+                                    e atendimento próximo.
                                 </p>
                             </div>
 
-                            <div className="relative aspect-[1920/934]">
+                            <div className="relative grid gap-4 sm:grid-cols-2">
                                 <div className="absolute -inset-5 rounded-[2.2rem] bg-gradient-to-br from-cyan-300/20 via-blue-600/5 to-transparent blur-2xl" />
-                                <div className="absolute inset-0 z-10 overflow-hidden rounded-[1.4rem] border border-slate-700/60 bg-slate-950 shadow-2xl shadow-black/40">
-                                    <img
-                                        src="/images/dashboard-vetoros.webp"
-                                        alt="Dashboard real do VetorOS exibindo prioridades, ordens de serviço, agenda, mensagens, estoque e indicadores da operação"
-                                        width="1920"
-                                        height="934"
-                                        fetchPriority="high"
-                                        className="h-full w-full object-cover"
-                                    />
+                                <div className="relative z-10 flex min-h-80 flex-col rounded-[1.4rem] border border-sky-300/20 bg-[#0b1625] p-6 shadow-2xl shadow-black/40">
+                                    <img src="/images/logo_os.png" alt="" className="size-14 rounded-2xl object-contain" />
+                                    <p className="mt-8 text-xs font-bold tracking-[0.15em] text-sky-300 uppercase">Assistências técnicas</p>
+                                    <h2 className="mt-3 text-3xl font-black">VetorOS</h2>
+                                    <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
+                                        Ordens de serviço, clientes, estoque, vendas e financeiro em uma única operação.
+                                    </p>
+                                    <span className="mt-6 flex items-center justify-between border-t border-white/10 pt-5 text-sm font-black text-white">
+                                        Produto ABrasil
+                                        <CheckCircle2 className="size-4 text-sky-300" />
+                                    </span>
+                                </div>
+                                <div className="relative z-10 flex min-h-80 flex-col rounded-[1.4rem] border border-violet-300/20 bg-[#11152a] p-6 shadow-2xl shadow-black/40 sm:translate-y-8">
+                                    <img src="/images/logo_pet.png" alt="" className="size-14 rounded-2xl bg-white object-contain p-1" />
+                                    <p className="mt-8 text-xs font-bold tracking-[0.15em] text-violet-300 uppercase">Vendas no mercado pet</p>
+                                    <h2 className="mt-3 text-3xl font-black">VetorPet</h2>
+                                    <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
+                                        Clientes, catálogo, visitas, pedidos e vendedores no painel web e aplicativo Android.
+                                    </p>
+                                    <span className="mt-6 flex items-center justify-between border-t border-white/10 pt-5 text-sm font-black text-white">
+                                        Produto ABrasil
+                                        <CheckCircle2 className="size-4 text-violet-300" />
+                                    </span>
                                 </div>
                                 <div className="hidden">
                                     <div className="flex h-12 items-center gap-3 border-b border-slate-700/50 px-5">
@@ -663,13 +672,13 @@ export default function Welcome({
                                     ))}
                                 </ul>
                                 <a
-                                    href={vetorosUrl}
+                                    href={contactWhatsappUrl}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="mt-10 inline-flex items-center gap-2 text-sm font-black text-blue-800"
                                 >
-                                    Explorar todos os recursos{' '}
-                                    <ArrowUpRight className="size-4" />
+                                    Falar sobre esta solução{' '}
+                                    <MessageCircle className="size-4" />
                                 </a>
                             </div>
                             <div className="relative">
@@ -734,13 +743,110 @@ export default function Welcome({
                                             </p>
                                         </div>
                                         <a
-                                            href={vetorosPlansUrl}
+                                            href={contactWhatsappUrl}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="inline-flex shrink-0 items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950"
                                         >
-                                            Testar grátis{' '}
-                                            <ArrowRight className="size-4" />
+                                            Falar com a ABrasil{' '}
+                                            <MessageCircle className="size-4" />
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section
+                        id="vetorpet"
+                        className="scroll-mt-20 bg-violet-50 py-24 sm:py-32"
+                    >
+                        <div className="mx-auto grid max-w-[86rem] items-center gap-16 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
+                            <div>
+                                <p className="text-xs font-extrabold tracking-[0.18em] text-violet-700 uppercase">
+                                    VetorPet
+                                </p>
+                                <h2 className="mt-5 text-5xl leading-[0.98] font-black tracking-[-0.06em] text-balance text-slate-950 sm:text-7xl">
+                                    Da visita.
+                                    <span className="block text-violet-700">
+                                        Ao pedido.
+                                    </span>
+                                </h2>
+                                <p className="mt-7 max-w-xl text-lg leading-8 text-slate-700">
+                                    O VetorPet conecta carteira de clientes,
+                                    catálogo, agenda, pedidos e gestão de equipe
+                                    para quem vende suprimentos no mercado pet.
+                                </p>
+                                <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+                                    {[
+                                        'Painel web e aplicativo Android',
+                                        'Carteira de clientes e regiões',
+                                        'Catálogo e pedidos em campo',
+                                        'Visitas, comissões e resultados',
+                                    ].map((feature) => (
+                                        <li
+                                            key={feature}
+                                            className="flex items-start gap-3 text-sm font-bold text-slate-800"
+                                        >
+                                            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-violet-700 text-white">
+                                                <Check className="size-3" strokeWidth={3} />
+                                            </span>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <a
+                                    href={contactWhatsappUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-10 inline-flex items-center gap-2 text-sm font-black text-violet-800"
+                                >
+                                    Falar sobre esta solução{' '}
+                                    <MessageCircle className="size-4" />
+                                </a>
+                            </div>
+
+                            <div className="relative">
+                                <div className="absolute top-4 right-4 -bottom-4 left-4 rounded-[2rem] bg-violet-700" />
+                                <div className="relative rounded-[2rem] bg-slate-950 p-7 text-white shadow-2xl sm:p-10">
+                                    <div className="flex items-center gap-4">
+                                        <img
+                                            src="/images/logo_pet.png"
+                                            alt="VetorPet"
+                                            className="size-14 rounded-2xl bg-white object-contain p-1"
+                                        />
+                                        <div>
+                                            <p className="text-xs font-bold tracking-[0.14em] text-violet-300 uppercase">
+                                                Gestão comercial especializada
+                                            </p>
+                                            <p className="mt-1 text-2xl font-black">
+                                                Venda em campo com controle
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                                        {[
+                                            ['Para o vendedor', 'Consulte clientes e produtos, registre visitas e monte pedidos pelo celular.'],
+                                            ['Para o gestor', 'Organize equipe e regiões e acompanhe pedidos, comissões e resultados no painel.'],
+                                        ].map(([title, description]) => (
+                                            <div key={title} className="rounded-2xl border border-violet-300/20 bg-violet-300/10 p-6">
+                                                <p className="font-black text-violet-200">{title}</p>
+                                                <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-6 flex flex-col items-start justify-between gap-5 border-t border-white/10 pt-6 sm:flex-row sm:items-center">
+                                        <div>
+                                            <p className="font-black">Teste com a sua operação.</p>
+                                            <p className="mt-1 text-sm text-slate-400">Comece sem cartão de crédito.</p>
+                                        </div>
+                                        <a
+                                            href={contactWhatsappUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-violet-300 px-5 py-3 text-sm font-black text-slate-950"
+                                        >
+                                            Falar com a ABrasil <MessageCircle className="size-4" />
                                         </a>
                                     </div>
                                 </div>
@@ -784,10 +890,10 @@ export default function Welcome({
                         <div className="mx-auto max-w-[86rem] px-5 sm:px-8 lg:px-12">
                             <SectionHeading
                                 eyebrow="Ecossistema ABrasil"
-                                title="Outros desafios. A mesma visão de negócio."
+                                title="Serviços para outros desafios digitais."
                                 description="Soluções especializadas para vender, comunicar e transformar processos — sempre com tecnologia a serviço da operação."
                             />
-                            <div className="mt-14 grid gap-5 lg:grid-cols-3">
+                            <div className="mt-14 grid gap-5 lg:grid-cols-2">
                                 {otherSolutions.map((solution) => {
                                     const Icon = solution.icon;
                                     const external =
@@ -887,33 +993,39 @@ export default function Welcome({
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.35),transparent_30%),radial-gradient(circle_at_90%_80%,rgba(15,23,42,.28),transparent_35%)]" />
                         <div className="relative mx-auto max-w-5xl text-center">
                             <p className="text-xs font-extrabold tracking-[0.18em] text-cyan-200 uppercase">
-                                Pronto para organizar?
+                                Encontre a solução certa
                             </p>
                             <h2 className="mt-6 text-5xl leading-[0.98] font-black tracking-[-0.065em] text-balance sm:text-7xl">
                                 Sua operação pode ser mais simples.
                             </h2>
                             <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-blue-100">
-                                Crie sua conta, explore todos os recursos por 14
-                                dias e descubra como o VetorOS devolve controle
-                                e tempo para você.
+                                Conheça nossos produtos ou converse com a gente
+                                sobre um sistema sob medida ou um novo site para
+                                sua empresa.
                             </p>
-                            <a
-                                href={vetorosPlansUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-10 inline-flex h-14 items-center gap-3 rounded-full bg-white px-7 text-sm font-black text-blue-800 shadow-xl transition hover:-translate-y-1"
-                            >
-                                <ArrowRight className="size-5" />
-                                Começar meu teste grátis
-                            </a>
+                            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                                <a
+                                    href="#produtos"
+                                    className="inline-flex h-14 items-center gap-3 rounded-full bg-white px-7 text-sm font-black text-blue-800 shadow-xl transition hover:-translate-y-1"
+                                >
+                                    Conhecer os produtos <ArrowRight className="size-4" />
+                                </a>
+                                <a
+                                    href="#solucoes"
+                                    className="inline-flex h-14 items-center gap-3 rounded-full border border-white/30 bg-white/10 px-7 text-sm font-black text-white transition hover:-translate-y-1 hover:bg-white/20"
+                                >
+                                    Solicitar um projeto <ArrowRight className="size-4" />
+                                </a>
+                            </div>
                             <p className="mt-4 text-xs text-blue-200">
-                                Cadastro online, sem esperar atendimento.
+                                VetorOS, VetorPet, sistemas personalizados e
+                                sites profissionais.
                             </p>
                         </div>
                     </section>
                 </main>
 
-                <footer className="bg-[#050b13] text-white">
+                <footer id="contato" className="bg-[#050b13] text-white">
                     <div className="mx-auto grid max-w-[86rem] gap-12 px-5 py-14 sm:px-8 md:grid-cols-[1.2fr_0.8fr_0.8fr] lg:px-12">
                         <div>
                             <Brand inverse />
@@ -928,21 +1040,8 @@ export default function Welcome({
                                 Soluções
                             </p>
                             <div className="mt-5 grid gap-3 text-sm text-slate-400">
-                                <a
-                                    href={vetorosUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="hover:text-white"
-                                >
-                                    VetorOS
-                                </a>
-                                <a
-                                    href="https://vetorpet.com.br"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="hover:text-white"
-                                >
-                                    VetorPet
+                                <a href="#produtos" className="hover:text-white">
+                                    Produtos próprios
                                 </a>
                                 <Link
                                     href="/desenvolvimento-de-sites-para-empresas"
@@ -950,6 +1049,12 @@ export default function Welcome({
                                 >
                                     Sites para empresas
                                 </Link>
+                                <a
+                                    href="mailto:contato@absistemas.com.br?subject=Projeto de software sob medida"
+                                    className="hover:text-white"
+                                >
+                                    Sistemas sob medida
+                                </a>
                                 <Link href="/blog" className="hover:text-white">
                                     Conteúdo
                                 </Link>
