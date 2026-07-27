@@ -192,6 +192,20 @@ function whatsappUrl(value: string | null, message: string) {
     return `https://wa.me/${normalizedPhone}${query}`;
 }
 
+let whatsappWindow: Window | null = null;
+
+function openWhatsapp(url: string) {
+    if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.location.href = url;
+        whatsappWindow.focus();
+
+        return;
+    }
+
+    whatsappWindow = window.open(url, 'leads-whatsapp');
+    whatsappWindow?.focus();
+}
+
 function statusClass(status: string) {
     return (
         {
@@ -237,14 +251,13 @@ function LeadActions({
         <div className="flex justify-end gap-1">
             {whatsapp && (
                 <Button
-                    asChild
+                    type="button"
                     variant="outline"
                     size="icon"
                     title={`Conversar sobre ${products[lead.product] ?? lead.product}`}
+                    onClick={() => openWhatsapp(whatsapp)}
                 >
-                    <a href={whatsapp} target="_blank" rel="noreferrer">
-                        <MessageCircle className="size-4 text-emerald-600" />
-                    </a>
+                    <MessageCircle className="size-4 text-emerald-600" />
                 </Button>
             )}
             <Button asChild variant="outline" size="icon" title="Editar lead">
@@ -1443,20 +1456,17 @@ export default function LeadsIndex({
                                                             <div className="flex justify-end gap-1">
                                                                 {whatsapp && (
                                                                     <Button
-                                                                        asChild
+                                                                        type="button"
                                                                         variant="outline"
                                                                         size="icon"
                                                                         title="Conversar no WhatsApp"
+                                                                        onClick={() =>
+                                                                            openWhatsapp(
+                                                                                whatsapp,
+                                                                            )
+                                                                        }
                                                                     >
-                                                                        <a
-                                                                            href={
-                                                                                whatsapp
-                                                                            }
-                                                                            target="_blank"
-                                                                            rel="noreferrer"
-                                                                        >
-                                                                            <MessageCircle className="size-4 text-emerald-600" />
-                                                                        </a>
+                                                                        <MessageCircle className="size-4 text-emerald-600" />
                                                                     </Button>
                                                                 )}
                                                                 <Button
