@@ -3,7 +3,6 @@ import { loadState, saveProspects, saveSettings } from './services/storage.js';
 import { extractFromMaps } from './services/maps.js';
 import { analyzeWebsite } from './services/site-analyzer.js';
 import { sendToCrm, buildPayload, MAX_PROSPECTS_PER_REQUEST } from './services/crm.js';
-import { exportCsv, exportJson } from './utils/export.js';
 
 const $ = (id) => document.getElementById(id);
 let prospects = [];
@@ -27,8 +26,6 @@ function bindEvents() {
   $('captureVisible').addEventListener('click', () => capture('visible'));
   $('analyzeSelected').addEventListener('click', analyzeSelected);
   $('sendSelected').addEventListener('click', sendSelected);
-  $('exportCsv').addEventListener('click', () => exportCsv(filteredProspects()));
-  $('exportJson').addEventListener('click', () => exportJson(filteredProspects()));
   $('clearAll').addEventListener('click', clearAll);
   $('selectAll').addEventListener('change', toggleAll);
   $('search').addEventListener('input', renderList);
