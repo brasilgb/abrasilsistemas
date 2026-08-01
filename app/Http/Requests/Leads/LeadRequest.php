@@ -13,6 +13,7 @@ class LeadRequest extends FormRequest
         $this->merge([
             'email' => $this->filled('email') ? strtolower(trim((string) $this->input('email'))) : null,
             'phone' => $this->filled('phone') ? (preg_replace('/\D+/', '', (string) $this->input('phone')) ?? '') : null,
+            'product' => $this->filled('product') ? strtolower(trim((string) $this->input('product'))) : null,
             'state' => $this->filled('state') ? strtoupper(trim((string) $this->input('state'))) : null,
             'whatsapp' => $this->filled('whatsapp') ? (preg_replace('/\D+/', '', (string) $this->input('whatsapp')) ?? '') : null,
         ]);
@@ -30,7 +31,7 @@ class LeadRequest extends FormRequest
             'user_id' => ['nullable', 'exists:users,id'],
             'company_name' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
-            'product' => ['required', 'string', Rule::in(array_keys(Lead::PRODUCTS))],
+            'product' => ['required', 'string', 'max:255'],
             'contact_name' => ['nullable', 'string', 'max:255'],
             'industry' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],

@@ -108,19 +108,20 @@ export default function LeadForm({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="product">Produto</Label>
-                    <select
+                    <Label htmlFor="product">Destino (produto)</Label>
+                    <Input
                         id="product"
                         name="product"
+                        required
                         defaultValue={lead?.product ?? 'vetoros'}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                    >
-                        {Object.entries(products).map(([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
+                        placeholder="vetoros, vetorpet ou outro nome"
+                        list="product-suggestions"
+                    />
+                    <datalist id="product-suggestions">
+                        {Object.keys(products).map((value) => (
+                            <option key={value} value={value} />
                         ))}
-                    </select>
+                    </datalist>
                     <InputError message={errors.product} />
                 </div>
 

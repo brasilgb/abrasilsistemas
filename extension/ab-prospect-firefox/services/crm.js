@@ -3,6 +3,7 @@ export const MAX_PROSPECTS_PER_REQUEST = 50;
 export function buildPayload(prospects, settings) {
   return {
     source: settings.crmSource || 'AB Prospect - Google Maps',
+    product: settings.crmProduct || 'vetoros',
     prospects: prospects.map((item) => ({
       name: item.name || '',
       address: item.address || '',

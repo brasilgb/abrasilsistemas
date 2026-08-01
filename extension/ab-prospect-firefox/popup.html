@@ -9,7 +9,7 @@
 <body>
   <header class="app-header">
     <div><div class="brand">AB Prospect</div><div class="subtitle">Google Maps → CRM AB Sistemas</div></div>
-    <span class="version">v1.2</span>
+    <span class="version">v1.3</span>
   </header>
 
   <nav class="tabs">
@@ -60,6 +60,11 @@
     <section id="settingsPanel" class="panel hidden">
       <label>Endpoint do CRM<input id="crmUrl" type="url" placeholder="https://abrasilsistemas.com.br/api/prospects/import"></label>
       <label>Origem do lote<input id="crmSource" type="text"></label>
+      <label>Produto/destino<input id="crmProduct" type="text" list="crmProductSuggestions" placeholder="vetoros, vetorpet ou outro nome"></label>
+      <datalist id="crmProductSuggestions">
+        <option value="vetoros"></option>
+        <option value="vetorpet"></option>
+      </datalist>
       <label>Token Bearer opcional<input id="crmToken" type="password" autocomplete="off" placeholder="Deixe vazio se o endpoint não exigir token"></label>
       <div class="actions"><button id="saveSettings" class="primary">Salvar configurações</button><button id="testPayload">Visualizar payload</button></div>
       <pre id="payloadPreview" class="payload">Selecione prospects e clique em “Visualizar payload”.</pre>

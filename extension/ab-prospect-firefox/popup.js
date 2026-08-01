@@ -204,7 +204,8 @@ async function persistSettings() {
   settings = {
     crmUrl: $('crmUrl').value.trim(),
     crmToken: $('crmToken').value.trim(),
-    crmSource: $('crmSource').value.trim() || DEFAULT_SETTINGS.crmSource
+    crmSource: $('crmSource').value.trim() || DEFAULT_SETTINGS.crmSource,
+    crmProduct: $('crmProduct').value.trim() || DEFAULT_SETTINGS.crmProduct
   };
   await saveSettings(settings);
   status('Configurações salvas.', 'success');
@@ -214,6 +215,7 @@ function fillSettings() {
   $('crmUrl').value = settings.crmUrl;
   $('crmToken').value = settings.crmToken;
   $('crmSource').value = settings.crmSource;
+  $('crmProduct').value = settings.crmProduct;
 }
 
 function previewPayload() {
@@ -221,7 +223,8 @@ function previewPayload() {
   $('payloadPreview').textContent = JSON.stringify(buildPayload(selected, {
     crmUrl: $('crmUrl').value.trim(),
     crmToken: $('crmToken').value.trim(),
-    crmSource: $('crmSource').value.trim() || DEFAULT_SETTINGS.crmSource
+    crmSource: $('crmSource').value.trim() || DEFAULT_SETTINGS.crmSource,
+    crmProduct: $('crmProduct').value.trim() || DEFAULT_SETTINGS.crmProduct
   }), null, 2);
 }
 

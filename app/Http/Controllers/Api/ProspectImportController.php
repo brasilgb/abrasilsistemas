@@ -23,6 +23,7 @@ class ProspectImportController extends Controller
 
         $validated = $request->validate([
             'source' => ['required', 'string', 'max:255'],
+            'product' => ['nullable', 'string', 'max:255'],
             'prospects' => ['required', 'array', 'min:1', 'max:100'],
             'prospects.*.name' => ['required', 'string', 'max:255'],
             'prospects.*.address' => ['nullable', 'string', 'max:500'],
@@ -73,7 +74,9 @@ class ProspectImportController extends Controller
                     'reviews' => $prospect['reviews'] ?? null,
                     'captured_at' => $prospect['capturedAt'] ?? null,
                     'source' => $validated['source'],
-                    'product' => 'vetoros',
+                    'product' => isset($validated['product']) && trim($validated['product']) !== ''
+                        ? strtolower(trim($validated['product']))
+                        : 'vetoros',
                     'status' => 'new',
                 ];
 
