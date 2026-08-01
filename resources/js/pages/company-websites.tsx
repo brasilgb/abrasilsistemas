@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import {
     ArrowRight,
+    ArrowUpRight,
     BarChart3,
     Check,
     CheckCircle2,
@@ -15,6 +16,11 @@ import {
     Store,
     Target,
 } from 'lucide-react';
+import { useState } from 'react';
+import { PublicBrand } from '@/components/public-brand';
+import { PublicFooter } from '@/components/public-footer';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { WhatsAppFloat } from '@/components/whatsapp-float';
 
 const whatsappUrl =
     'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20quero%20um%20site%20profissional%20para%20minha%20empresa.';
@@ -64,19 +70,9 @@ const faqs = [
     ['O site poderá aparecer no Google?', 'O projeto nasce com fundamentos de SEO técnico, conteúdo estruturado e boa performance. O posicionamento também depende da concorrência e da estratégia contínua.'],
 ];
 
-function Logo({ dark = false }: { dark?: boolean }) {
-    return (
-        <Link href="/" className="flex items-center gap-3" aria-label="ABrasil Sistemas">
-            <img src="/images/logo_ab.png" alt="" className="size-12 rounded-xl border border-slate-200 bg-white object-contain shadow-sm" />
-            <div className="leading-none">
-                <span className={`block font-bold ${dark ? 'text-white' : 'text-slate-950'}`}>ABrasil Sistemas</span>
-                <span className="mt-1.5 block text-[8px] font-semibold tracking-[0.16em] text-slate-500 uppercase">Tecnologia para empresas</span>
-            </div>
-        </Link>
-    );
-}
-
 export default function CompanyWebsites() {
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
     const structuredData = {
         '@context': 'https://schema.org',
         '@type': 'Service',
@@ -99,21 +95,31 @@ export default function CompanyWebsites() {
                 <meta property="og:site_name" content="ABrasil Sistemas" />
                 <meta property="og:title" content="Desenvolvimento de sites para empresas | ABrasil Sistemas" />
                 <meta property="og:description" content="Um site rápido, profissional e feito para gerar oportunidades para sua empresa." />
-                <meta property="og:image" content="/images/logo_ab.png" />
+                <meta property="og:image" content="https://abrasilsistemas.com.br/images/dashboard-vetoros.webp" />
+                <meta property="og:image:type" content="image/webp" />
+                <meta property="og:image:width" content="1926" />
+                <meta property="og:image:height" content="934" />
                 <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:image" content="https://abrasilsistemas.com.br/images/dashboard-vetoros.webp" />
                 <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
             </Head>
 
             <div className="min-h-screen bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-950">
-                <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
+                <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#08111f]/90 text-white backdrop-blur-xl">
                     <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
-                        <Logo />
-                        <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 md:flex">
-                            <a href="#beneficios" className="hover:text-blue-700">Benefícios</a>
-                            <a href="#solucoes" className="hover:text-blue-700">Tipos de site</a>
-                            <a href="#processo" className="hover:text-blue-700">Como funciona</a>
+                        <PublicBrand inverse />
+                        <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-300 md:flex">
+                            <a href="#beneficios" className="transition hover:text-white">Benefícios</a>
+                            <a href="#solucoes" className="transition hover:text-white">Tipos de site</a>
+                            <a href="#processo" className="transition hover:text-white">Como funciona</a>
+                            <Link href="/" className="transition hover:text-white">Produtos ABrasil</Link>
                         </nav>
-                        <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-800 sm:text-sm">
+                        <a
+                            href={whatsappUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-2.5 text-xs font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:text-sm"
+                        >
                             <MessageCircle className="size-4" />
                             <span className="hidden sm:inline">Solicitar orçamento</span>
                             <span className="sm:hidden">Orçamento</span>
@@ -183,6 +189,7 @@ export default function CompanyWebsites() {
                             <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                                 {benefits.map((benefit) => {
                                     const Icon = benefit.icon;
+
                                     return <article key={benefit.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="grid size-11 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon className="size-5" /></div><h3 className="mt-5 text-lg font-bold text-slate-950">{benefit.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{benefit.description}</p></article>;
                                 })}
                             </div>
@@ -195,6 +202,7 @@ export default function CompanyWebsites() {
                             <div className="mt-14 grid gap-5 lg:grid-cols-3">
                                 {websiteTypes.map((type) => {
                                     const Icon = type.icon;
+
                                     return <article key={type.title} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"><div className="grid size-12 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon className="size-6" /></div><h3 className="mt-6 text-2xl font-bold text-slate-950">{type.title}</h3><p className="mt-3 flex-1 text-sm leading-6 text-slate-600">{type.description}</p><ul className="mt-7 space-y-3 border-t border-slate-200 pt-6 text-sm text-slate-700">{type.items.map((item) => <li key={item} className="flex items-center gap-2.5"><CheckCircle2 className="size-4 text-emerald-600" />{item}</li>)}</ul></article>;
                                 })}
                             </div>
@@ -208,6 +216,70 @@ export default function CompanyWebsites() {
                         </div>
                     </section>
 
+                    <section className="scroll-mt-20 bg-[#08111f] py-24 text-white sm:py-32">
+                        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+                            <div className="mx-auto max-w-2xl text-center">
+                                <p className="text-xs font-extrabold tracking-[0.18em] text-cyan-300 uppercase">Não é só promessa</p>
+                                <h2 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-balance sm:text-5xl">
+                                    A ABrasil também constrói software que empresas usam todos os dias.
+                                </h2>
+                                <p className="mt-5 text-lg leading-8 text-slate-400">
+                                    Além de sites, somos a empresa por trás do VetorOS e do VetorPet — dois produtos próprios em produção,
+                                    com clientes reais. A mesma qualidade de desenvolvimento vai para o seu site.
+                                </p>
+                            </div>
+
+                            <div className="mt-14 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+                                <a
+                                    href="https://vetoros.com.br"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="group relative overflow-hidden rounded-[1.75rem] border border-sky-300/20 bg-[#0b1625] p-3 shadow-2xl shadow-black/40 transition hover:-translate-y-1"
+                                >
+                                    <img
+                                        src="/images/dashboard-vetoros.webp"
+                                        alt="Painel do VetorOS, sistema de gestão para assistências técnicas"
+                                        width="1926"
+                                        height="934"
+                                        className="rounded-2xl"
+                                    />
+                                    <div className="flex items-center justify-between px-4 py-5">
+                                        <div>
+                                            <p className="text-xs font-bold tracking-[0.14em] text-sky-300 uppercase">Produto ABrasil</p>
+                                            <p className="mt-1 text-lg font-black">VetorOS — gestão para assistências técnicas</p>
+                                        </div>
+                                        <ArrowUpRight className="size-5 shrink-0 text-sky-300 transition group-hover:translate-x-1 group-hover:-translate-y-1" />
+                                    </div>
+                                </a>
+
+                                <div className="flex flex-col gap-6">
+                                    <a
+                                        href="https://vetorpet.com.br"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="group flex flex-1 flex-col justify-between rounded-[1.75rem] border border-violet-300/20 bg-[#11152a] p-7 shadow-2xl shadow-black/40 transition hover:-translate-y-1"
+                                    >
+                                        <div>
+                                            <img src="/images/logo_pet.png" alt="" className="size-12 rounded-2xl bg-white object-contain p-1" />
+                                            <p className="mt-6 text-xs font-bold tracking-[0.14em] text-violet-300 uppercase">Produto ABrasil</p>
+                                            <p className="mt-1 text-lg font-black">VetorPet — gestão comercial para o mercado pet</p>
+                                        </div>
+                                        <span className="mt-6 flex items-center justify-between border-t border-white/10 pt-5 text-sm font-bold text-white">
+                                            Conhecer o VetorPet
+                                            <ArrowUpRight className="size-4 transition group-hover:translate-x-1 group-hover:-translate-y-1" />
+                                        </span>
+                                    </a>
+                                    <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-7">
+                                        <p className="text-sm leading-6 text-slate-400">
+                                            Sistemas em produção, com tenants pagantes, integrações fiscais e apps móveis — não são projetos de
+                                            portfólio, são operações reais que precisam funcionar todos os dias.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     <section className="px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
                         <div className="mx-auto max-w-7xl rounded-3xl bg-blue-700 px-7 py-14 text-center text-white shadow-2xl shadow-blue-700/15 sm:px-12 sm:py-20">
                             <h2 className="mx-auto max-w-3xl text-4xl font-bold tracking-[-0.04em] text-balance sm:text-6xl">Sua empresa merece um site à altura do que entrega.</h2>
@@ -216,12 +288,37 @@ export default function CompanyWebsites() {
                         </div>
                     </section>
 
-                    <section className="border-t border-slate-200 bg-slate-50 py-24">
-                        <div className="mx-auto max-w-3xl px-5 sm:px-8"><p className="text-center text-sm font-bold text-blue-700">Perguntas frequentes</p><h2 className="mt-3 text-center text-4xl font-bold text-slate-950">Antes de começar</h2><div className="mt-12 divide-y divide-slate-200 border-y border-slate-200">{faqs.map(([question, answer]) => <details key={question} className="group py-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-slate-950">{question}<ChevronDown className="size-5 shrink-0 text-blue-700 transition group-open:rotate-180" /></summary><p className="mt-3 pr-10 text-sm leading-6 text-slate-600">{answer}</p></details>)}</div></div>
+                    <section id="faq" className="scroll-mt-20 border-t border-slate-200 bg-slate-50 py-24">
+                        <div className="mx-auto max-w-3xl px-5 sm:px-8">
+                            <p className="text-center text-sm font-bold text-blue-700">Perguntas frequentes</p>
+                            <h2 className="mt-3 text-center text-4xl font-bold text-slate-950">Antes de começar</h2>
+                            <div className="mt-12 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-6">
+                                {faqs.map(([question, answer], index) => {
+                                    const isOpen = openFaqIndex === index;
+
+                                    return (
+                                        <Collapsible
+                                            key={question}
+                                            open={isOpen}
+                                            onOpenChange={(open) => setOpenFaqIndex(open ? index : null)}
+                                        >
+                                            <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 py-5 text-left font-bold text-slate-950">
+                                                {question}
+                                                <ChevronDown
+                                                    className={`size-5 shrink-0 text-blue-700 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                                />
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="pb-5 text-sm leading-6 text-slate-600">{answer}</CollapsibleContent>
+                                        </Collapsible>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </section>
                 </main>
 
-                <footer className="bg-slate-950 text-white"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12"><Logo dark /><div className="text-sm text-slate-400 md:text-right"><p>Desenvolvimento de sites para empresas</p><p className="mt-2">contato@absistemas.com.br · (51) 99893-1325</p></div></div></footer>
+                <PublicFooter />
+                <WhatsAppFloat />
             </div>
         </>
     );

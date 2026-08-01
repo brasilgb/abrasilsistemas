@@ -5,21 +5,21 @@ import {
     BarChart3,
     Check,
     CheckCircle2,
+    ChevronDown,
     ChevronRight,
     ClipboardCheck,
     Code2,
-    Headphones,
-    Mail,
     Menu,
     MessageCircle,
     MonitorSmartphone,
-    PackageCheck,
     Sparkles,
-    Users,
-    Wrench,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { PublicBrand } from '@/components/public-brand';
+import { PublicFooter } from '@/components/public-footer';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { WhatsAppFloat } from '@/components/whatsapp-float';
 
 const contactWhatsappUrl =
     'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20uma%20solu%C3%A7%C3%A3o%20da%20ABrasil.';
@@ -78,6 +78,25 @@ const otherSolutions = [
     },
 ] as const;
 
+const faqItems = [
+    {
+        question: 'VetorOS e VetorPet são produtos prontos, ou vocês desenvolvem sob medida?',
+        answer: 'São dois produtos próprios da ABrasil, prontos para usar: o VetorOS para assistências técnicas e o VetorPet para representantes do mercado pet. Além deles, também desenvolvemos sistemas sob medida quando uma ferramenta pronta não resolve o processo da empresa.',
+    },
+    {
+        question: 'Como funciona o teste gratuito do VetorOS e do VetorPet?',
+        answer: 'O cadastro é feito online, sem esperar contato comercial, e libera 14 dias de acesso completo sem pedir cartão de crédito.',
+    },
+    {
+        question: 'Vocês também desenvolvem sites para empresas que não usam o VetorOS ou o VetorPet?',
+        answer: 'Sim. Desenvolvemos sites institucionais, landing pages e catálogos digitais para qualquer empresa, independente de usar nossos produtos próprios.',
+    },
+    {
+        question: 'Como faço para falar com a equipe da ABrasil?',
+        answer: 'Pelo WhatsApp ou e-mail, com atendimento direto — sem central de atendimento automatizada.',
+    },
+] as const;
+
 const journey = [
     [
         'Escolha a solução',
@@ -102,34 +121,6 @@ type BlogPostSummary = {
     category?: { name: string; slug: string } | null;
 };
 
-function Brand({ inverse = false }: { inverse?: boolean }) {
-    return (
-        <Link
-            href="/"
-            className="group flex items-center gap-3"
-            aria-label="ABrasil Sistemas — início"
-        >
-            <span className="relative grid size-11 place-items-center overflow-hidden rounded-xl bg-blue-600 shadow-lg shadow-blue-950/20">
-                <span className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(255,255,255,.45),transparent_35%)]" />
-                <span className="relative text-lg font-black tracking-[-0.08em] text-white">
-                    AB
-                </span>
-            </span>
-            <span className="leading-none">
-                <span
-                    className={`block text-[15px] font-extrabold tracking-[-0.02em] ${inverse ? 'text-white' : 'text-slate-950'}`}
-                >
-                    ABrasil
-                </span>
-                <span
-                    className={`mt-1 block text-[9px] font-bold tracking-[0.18em] uppercase ${inverse ? 'text-slate-500' : 'text-slate-500'}`}
-                >
-                    Sistemas
-                </span>
-            </span>
-        </Link>
-    );
-}
 
 function SectionHeading({
     eyebrow,
@@ -174,6 +165,7 @@ export default function Welcome({
     blogPosts: BlogPostSummary[];
 }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
     const structuredData = {
         '@context': 'https://schema.org',
@@ -232,9 +224,16 @@ export default function Welcome({
                 />
                 <meta
                     property="og:image"
-                    content="https://abrasilsistemas.com.br/images/logo_ab.png"
+                    content="https://abrasilsistemas.com.br/images/dashboard-vetoros.webp"
                 />
+                <meta property="og:image:type" content="image/webp" />
+                <meta property="og:image:width" content="1926" />
+                <meta property="og:image:height" content="934" />
                 <meta name="twitter:card" content="summary_large_image" />
+                <meta
+                    name="twitter:image"
+                    content="https://abrasilsistemas.com.br/images/dashboard-vetoros.webp"
+                />
                 <link rel="canonical" href="https://abrasilsistemas.com.br/" />
                 <script type="application/ld+json">
                     {JSON.stringify(structuredData)}
@@ -244,7 +243,7 @@ export default function Welcome({
             <div className="ab-public-site ab-marketing-home min-h-screen overflow-x-hidden bg-[#f7f8fa] text-slate-900 selection:bg-cyan-200 selection:text-slate-950">
                 <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#08111f]/90 text-white backdrop-blur-xl">
                     <div className="mx-auto flex h-20 max-w-[86rem] items-center justify-between px-5 sm:px-8 lg:px-12">
-                        <Brand inverse />
+                        <PublicBrand inverse />
                         <nav
                             className="hidden items-center gap-8 text-sm font-semibold text-slate-300 lg:flex"
                             aria-label="Navegação principal"
@@ -407,162 +406,6 @@ export default function Welcome({
                                         Produto ABrasil
                                         <CheckCircle2 className="size-4 text-violet-300" />
                                     </span>
-                                </div>
-                                <div className="hidden">
-                                    <div className="flex h-12 items-center gap-3 border-b border-slate-700/50 px-5">
-                                        <img
-                                            src="/images/logo_os.png"
-                                            alt="VetorOS"
-                                            className="h-8 w-8 rounded-2xl bg-slate-900/90 p-1"
-                                        />
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-100">
-                                                VetorOS
-                                            </p>
-                                            <p className="text-[10px] text-slate-500">
-                                                Painel de operação
-                                            </p>
-                                        </div>
-                                        <span className="ml-auto text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase">
-                                            Central da operação
-                                        </span>
-                                    </div>
-                                    <div className="grid sm:grid-cols-[5rem_1fr]">
-                                        <aside className="hidden border-r border-white/10 py-6 sm:block">
-                                            <div className="mx-auto grid size-9 place-items-center rounded-lg bg-blue-600 text-xs font-black">
-                                                VO
-                                            </div>
-                                            <div className="mt-7 grid justify-center gap-4">
-                                                {[
-                                                    ClipboardCheck,
-                                                    Users,
-                                                    PackageCheck,
-                                                    BarChart3,
-                                                ].map((Icon, index) => (
-                                                    <span
-                                                        key={index}
-                                                        className={`grid size-9 place-items-center rounded-lg ${index === 0 ? 'bg-cyan-300 text-slate-950' : 'text-slate-500'}`}
-                                                    >
-                                                        <Icon className="size-4" />
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </aside>
-                                        <div className="p-5 sm:p-7">
-                                            <div className="flex items-end justify-between">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">
-                                                        Bom dia, equipe
-                                                    </p>
-                                                    <p className="mt-1 text-xl font-extrabold">
-                                                        Visão de hoje
-                                                    </p>
-                                                </div>
-                                                <span className="rounded-full bg-emerald-400/10 px-3 py-1.5 text-[10px] font-bold text-emerald-300">
-                                                    OPERAÇÃO ONLINE
-                                                </span>
-                                            </div>
-                                            <div className="mt-7 grid grid-cols-3 gap-3">
-                                                {[
-                                                    [
-                                                        '18',
-                                                        'Novas OS',
-                                                        'text-cyan-300',
-                                                    ],
-                                                    [
-                                                        '07',
-                                                        'Aguardando',
-                                                        'text-amber-300',
-                                                    ],
-                                                    [
-                                                        '12',
-                                                        'Prontas',
-                                                        'text-emerald-300',
-                                                    ],
-                                                ].map(
-                                                    ([value, label, color]) => (
-                                                        <div
-                                                            key={label}
-                                                            className="rounded-xl border border-slate-700/50 bg-slate-900/80 p-3 sm:p-4"
-                                                        >
-                                                            <p
-                                                                className={`text-2xl font-black sm:text-3xl ${color}`}
-                                                            >
-                                                                {value}
-                                                            </p>
-                                                            <p className="mt-1 text-[9px] text-slate-400 sm:text-[11px]">
-                                                                {label}
-                                                            </p>
-                                                        </div>
-                                                    ),
-                                                )}
-                                            </div>
-                                            <div className="mt-4 rounded-xl border border-white/8 bg-white/[.035] p-4">
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-xs font-bold">
-                                                        Fluxo de serviços
-                                                    </p>
-                                                    <p className="text-[10px] text-emerald-300">
-                                                        +18% este mês
-                                                    </p>
-                                                </div>
-                                                <div className="mt-5 flex h-28 items-end gap-2">
-                                                    {[
-                                                        38, 52, 44, 70, 56, 82,
-                                                        68, 94, 78, 100, 88, 96,
-                                                    ].map((height, index) => (
-                                                        <span
-                                                            key={index}
-                                                            className="flex-1 rounded-t-sm bg-gradient-to-t from-blue-700 to-cyan-300"
-                                                            style={{
-                                                                height: `${height}%`,
-                                                                opacity:
-                                                                    0.45 +
-                                                                    index *
-                                                                        0.04,
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                                                {[
-                                                    [
-                                                        'OS #2841',
-                                                        'Notebook Dell',
-                                                        'Em reparo',
-                                                    ],
-                                                    [
-                                                        'OS #2840',
-                                                        'iPhone 15',
-                                                        'Orçamento',
-                                                    ],
-                                                ].map(
-                                                    ([order, item, status]) => (
-                                                        <div
-                                                            key={order}
-                                                            className="flex items-center gap-3 rounded-xl border border-white/8 px-3 py-3"
-                                                        >
-                                                            <span className="grid size-8 place-items-center rounded-lg bg-blue-500/15">
-                                                                <Wrench className="size-3.5 text-blue-300" />
-                                                            </span>
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block text-[10px] font-bold">
-                                                                    {order}
-                                                                </span>
-                                                                <span className="block truncate text-[9px] text-slate-500">
-                                                                    {item}
-                                                                </span>
-                                                            </span>
-                                                            <span className="text-[9px] text-cyan-300">
-                                                                {status}
-                                                            </span>
-                                                        </div>
-                                                    ),
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                                 <div className="absolute -right-3 -bottom-5 z-20 rounded-2xl border border-cyan-300/20 bg-cyan-300 px-4 py-3 text-slate-950 shadow-xl sm:-right-7">
                                     <p className="text-[10px] font-bold uppercase">
@@ -989,6 +832,41 @@ export default function Welcome({
                         </section>
                     )}
 
+                    <section id="faq" className="scroll-mt-20 border-y border-slate-200 bg-slate-50 py-24 sm:py-32">
+                        <div className="mx-auto max-w-3xl px-5 sm:px-8">
+                            <div className="text-center">
+                                <p className="text-xs font-extrabold tracking-[0.18em] text-blue-700 uppercase">Perguntas frequentes</p>
+                                <h2 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-balance text-slate-950 sm:text-5xl">
+                                    Ainda com dúvidas?
+                                </h2>
+                            </div>
+
+                            <div className="mt-12 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-6">
+                                {faqItems.map((item, index) => {
+                                    const isOpen = openFaqIndex === index;
+
+                                    return (
+                                        <Collapsible
+                                            key={item.question}
+                                            open={isOpen}
+                                            onOpenChange={(open) => setOpenFaqIndex(open ? index : null)}
+                                        >
+                                            <CollapsibleTrigger className="flex w-full items-center justify-between gap-4 py-5 text-left text-base font-semibold text-slate-950">
+                                                {item.question}
+                                                <ChevronDown
+                                                    className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                                />
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="pb-5 text-sm leading-6 text-slate-600">
+                                                {item.answer}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </section>
+
                     <section className="relative overflow-hidden bg-blue-700 px-5 py-24 text-white sm:px-8 sm:py-32">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.35),transparent_30%),radial-gradient(circle_at_90%_80%,rgba(15,23,42,.28),transparent_35%)]" />
                         <div className="relative mx-auto max-w-5xl text-center">
@@ -1025,74 +903,8 @@ export default function Welcome({
                     </section>
                 </main>
 
-                <footer id="contato" className="bg-[#050b13] text-white">
-                    <div className="mx-auto grid max-w-[86rem] gap-12 px-5 py-14 sm:px-8 md:grid-cols-[1.2fr_0.8fr_0.8fr] lg:px-12">
-                        <div>
-                            <Brand inverse />
-                            <p className="mt-5 max-w-sm text-sm leading-6 text-slate-500">
-                                Tecnologia brasileira criada para simplificar
-                                operações reais e ajudar empresas a crescer com
-                                controle.
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs font-black tracking-[0.15em] text-slate-600 uppercase">
-                                Soluções
-                            </p>
-                            <div className="mt-5 grid gap-3 text-sm text-slate-400">
-                                <a href="#produtos" className="hover:text-white">
-                                    Produtos próprios
-                                </a>
-                                <Link
-                                    href="/desenvolvimento-de-sites-para-empresas"
-                                    className="hover:text-white"
-                                >
-                                    Sites para empresas
-                                </Link>
-                                <a
-                                    href="mailto:contato@absistemas.com.br?subject=Projeto de software sob medida"
-                                    className="hover:text-white"
-                                >
-                                    Sistemas sob medida
-                                </a>
-                                <Link href="/blog" className="hover:text-white">
-                                    Conteúdo
-                                </Link>
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-xs font-black tracking-[0.15em] text-slate-600 uppercase">
-                                Contato
-                            </p>
-                            <div className="mt-5 grid gap-3 text-sm text-slate-400">
-                                <a
-                                    href="mailto:contato@absistemas.com.br"
-                                    className="flex items-center gap-2 hover:text-white"
-                                >
-                                    <Mail className="size-4" />{' '}
-                                    contato@absistemas.com.br
-                                </a>
-                                <a
-                                    href={contactWhatsappUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-2 hover:text-white"
-                                >
-                                    <MessageCircle className="size-4" /> (51)
-                                    99893-1325
-                                </a>
-                                <span className="flex items-center gap-2">
-                                    <Headphones className="size-4" />{' '}
-                                    Atendimento próximo
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="border-t border-white/10 px-5 py-5 text-center text-[11px] text-slate-600">
-                        © {new Date().getFullYear()} ABrasil Sistemas. Feito no
-                        Brasil para negócios que fazem acontecer.
-                    </div>
-                </footer>
+                <PublicFooter />
+                <WhatsAppFloat />
             </div>
         </>
     );
