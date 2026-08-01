@@ -27,6 +27,7 @@ class LeadRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'user_id' => ['nullable', 'exists:users,id'],
             'company_name' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
             'product' => ['required', 'string', Rule::in(array_keys(Lead::PRODUCTS))],

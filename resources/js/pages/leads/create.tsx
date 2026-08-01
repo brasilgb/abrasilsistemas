@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import LeadController from '@/actions/App/Http/Controllers/LeadController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import type { User } from '@/types';
 import { create, index } from '@/routes/leads';
 import LeadForm from '@/pages/leads/form';
 
@@ -16,9 +17,12 @@ type Props = {
     lostReasons: Record<string, string>;
     products: Record<string, string>;
     statuses: Record<string, string>;
+    users: { id: number; name: string }[];
 };
 
-export default function CreateLead({ lostReasons, products, statuses }: Props) {
+export default function CreateLead({ lostReasons, products, statuses, users }: Props) {
+    const { auth } = usePage<{ auth: { user: User } }>().props;
+
     return (
         <>
             <Head title="Novo lead" />
@@ -49,6 +53,8 @@ export default function CreateLead({ lostReasons, products, statuses }: Props) {
                                         products={products}
                                         lostReasons={lostReasons}
                                         statuses={statuses}
+                                        users={users}
+                                        defaultUserId={auth.user.id}
                                         processing={processing}
                                         errors={errors}
                                     />

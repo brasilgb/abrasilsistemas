@@ -63,6 +63,8 @@ type Props = {
     products: Record<string, string>;
     lostReasons: Record<string, string>;
     statuses: Record<string, string>;
+    users: { id: number; name: string }[];
+    defaultUserId?: number;
     lead?: Lead;
     processing: boolean;
     errors: Record<string, string | undefined>;
@@ -72,6 +74,8 @@ export default function LeadForm({
     products,
     lostReasons,
     statuses,
+    users,
+    defaultUserId,
     lead,
     processing,
     errors,
@@ -342,6 +346,24 @@ export default function LeadForm({
                         placeholder="Indicação, lista, pesquisa..."
                     />
                     <InputError message={errors.source} />
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="user_id">Responsável</Label>
+                    <select
+                        id="user_id"
+                        name="user_id"
+                        defaultValue={lead?.user?.id ?? defaultUserId ?? ''}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        <option value="">Não definido</option>
+                        {users.map((user) => (
+                            <option key={user.id} value={user.id}>
+                                {user.name}
+                            </option>
+                        ))}
+                    </select>
+                    <InputError message={errors.user_id} />
                 </div>
 
                 <div className="grid gap-2">

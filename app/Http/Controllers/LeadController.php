@@ -6,6 +6,7 @@ use App\Http\Requests\Leads\LeadImportRequest;
 use App\Http\Requests\Leads\LeadRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,33 +23,11 @@ class LeadController extends Controller
     {
         $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up', 'owner']);
 
-        $baseQuery = Lead::query()
-            ->with('user:id,name')
-            ->when(($filters['owner'] ?? null) === 'mine', fn ($query) => $query->where('user_id', $request->user()->id))
-            ->when($filters['search'] ?? null, function ($query, string $search) {
-                $query->where(function ($query) use ($search) {
-                    $query
-                        ->where('company_name', 'like', "%{$search}%")
-                        ->orWhere('contact_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('whatsapp', 'like', "%{$search}%");
-                });
-            })
-            ->when($filters['product'] ?? null, fn ($query, string $product) => $query->where('product', $product))
-            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
-            ->when($filters['city'] ?? null, fn ($query, string $city) => $query->where('city', 'like', "%{$city}%"))
-            ->when($filters['state'] ?? null, fn ($query, string $state) => $query->where('state', strtoupper($state)))
-            ->when($filters['industry'] ?? null, fn ($query, string $industry) => $query->where('industry', 'like', "%{$industry}%"));
+        $baseQuery = $this->applyCommonFilters(Lead::query()->with('user:id,name'), $filters, $request);
 
         $taskQuery = (clone $baseQuery)->whereNotIn('status', ['converted', 'lost']);
 
-        $baseQuery->when($filters['follow_up'] ?? null, function ($query, string $followUp) {
-            $query
-                ->when($followUp === 'overdue', fn ($query) => $query->whereDate('next_follow_up_at', '<', today()))
-                ->when($followUp === 'today', fn ($query) => $query->whereDate('next_follow_up_at', today()))
-                ->when($followUp === 'upcoming', fn ($query) => $query->whereDate('next_follow_up_at', '>', today()))
-                ->when($followUp === 'none', fn ($query) => $query->whereNull('next_follow_up_at'));
-        });
+        $this->applyFollowUpFilter($baseQuery, $filters['follow_up'] ?? null);
 
         $leads = (clone $baseQuery)
             ->latest()
@@ -79,7 +58,49 @@ class LeadController extends Controller
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
+            'users' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);
+    }
+
+    /**
+     * @param  Builder<Lead>  $query
+     * @param  array<string, mixed>  $filters
+     * @return Builder<Lead>
+     */
+    private function applyCommonFilters(Builder $query, array $filters, Request $request): Builder
+    {
+        return $query
+            ->when(($filters['owner'] ?? null) === 'mine', fn ($query) => $query->where('user_id', $request->user()->id))
+            ->when(is_numeric($filters['owner'] ?? null), fn ($query) => $query->where('user_id', (int) $filters['owner']))
+            ->when($filters['search'] ?? null, function ($query, string $search) {
+                $query->where(function ($query) use ($search) {
+                    $query
+                        ->where('company_name', 'like', "%{$search}%")
+                        ->orWhere('contact_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('whatsapp', 'like', "%{$search}%");
+                });
+            })
+            ->when($filters['product'] ?? null, fn ($query, string $product) => $query->where('product', $product))
+            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
+            ->when($filters['city'] ?? null, fn ($query, string $city) => $query->where('city', 'like', "%{$city}%"))
+            ->when($filters['state'] ?? null, fn ($query, string $state) => $query->where('state', strtoupper($state)))
+            ->when($filters['industry'] ?? null, fn ($query, string $industry) => $query->where('industry', 'like', "%{$industry}%"));
+    }
+
+    /**
+     * @param  Builder<Lead>  $query
+     * @return Builder<Lead>
+     */
+    private function applyFollowUpFilter(Builder $query, ?string $followUp): Builder
+    {
+        return $query->when($followUp, function ($query, string $followUp) {
+            $query
+                ->when($followUp === 'overdue', fn ($query) => $query->whereDate('next_follow_up_at', '<', today()))
+                ->when($followUp === 'today', fn ($query) => $query->whereDate('next_follow_up_at', today()))
+                ->when($followUp === 'upcoming', fn ($query) => $query->whereDate('next_follow_up_at', '>', today()))
+                ->when($followUp === 'none', fn ($query) => $query->whereNull('next_follow_up_at'));
+        });
     }
 
     /**
@@ -126,6 +147,7 @@ class LeadController extends Controller
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
+            'users' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -137,7 +159,7 @@ class LeadController extends Controller
 
         $lead = Lead::query()->create([
             ...$data,
-            'user_id' => $request->user()->id,
+            'user_id' => $data['user_id'] ?? $request->user()->id,
         ]);
 
         if ($lead->status !== 'new') {
@@ -233,6 +255,7 @@ class LeadController extends Controller
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
+            'users' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -265,15 +288,24 @@ class LeadController extends Controller
         return to_route('leads.index');
     }
 
-    public function clear(): RedirectResponse
+    public function clear(Request $request): RedirectResponse
     {
-        $deleted = Lead::query()->count();
+        $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up', 'owner']);
+        $hasFilters = array_filter($filters) !== [];
 
-        Lead::query()->delete();
+        $query = $this->applyFollowUpFilter(
+            $this->applyCommonFilters(Lead::query(), $filters, $request),
+            $filters['follow_up'] ?? null
+        );
+
+        $deleted = $query->count();
+        $query->delete();
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => "{$deleted} prospect(s) removido(s).",
+            'message' => $hasFilters
+                ? "{$deleted} prospect(s) removido(s) conforme os filtros aplicados."
+                : "{$deleted} prospect(s) removido(s).",
         ]);
 
         return to_route('leads.index');

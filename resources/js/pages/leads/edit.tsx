@@ -33,6 +33,7 @@ type Props = {
     lostReasons: Record<string, string>;
     products: Record<string, string>;
     statuses: Record<string, string>;
+    users: { id: number; name: string }[];
 };
 
 function formatDateTime(value: string | null) {
@@ -67,6 +68,7 @@ export default function EditLead({
     lostReasons,
     products,
     statuses,
+    users,
 }: Props) {
     return (
         <>
@@ -102,6 +104,7 @@ export default function EditLead({
                                             products={products}
                                             lostReasons={lostReasons}
                                             statuses={statuses}
+                                            users={users}
                                             processing={processing}
                                             errors={errors}
                                         />
