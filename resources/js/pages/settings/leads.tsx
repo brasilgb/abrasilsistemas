@@ -1,7 +1,9 @@
 import { Head } from '@inertiajs/react';
+import { Copy, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     readWhatsappMessages,
@@ -16,10 +18,39 @@ const products: Record<WhatsappProduct, string> = {
     vetorpet: 'VetorPet',
 };
 
-export default function LeadSettings() {
+type Props = {
+    prospectApiToken: string | null;
+    prospectApiEndpoint: string;
+    prospectExtensionUrl: string | null;
+    prospectExtensionFilename: string | null;
+    prospectExtensionSigned: boolean;
+};
+
+export default function LeadSettings({
+    prospectApiToken,
+    prospectApiEndpoint,
+    prospectExtensionUrl,
+    prospectExtensionFilename,
+    prospectExtensionSigned,
+}: Props) {
     const [product, setProduct] = useState<WhatsappProduct>('vetoros');
     const [messages, setMessages] = useState(whatsappMessageTemplates);
     const [saved, setSaved] = useState(false);
+    const [tokenCopied, setTokenCopied] = useState(false);
+    const [endpointCopied, setEndpointCopied] = useState(false);
+
+    function copyToken() {
+        if (!prospectApiToken) return;
+        navigator.clipboard.writeText(prospectApiToken);
+        setTokenCopied(true);
+        window.setTimeout(() => setTokenCopied(false), 2500);
+    }
+
+    function copyEndpoint() {
+        navigator.clipboard.writeText(prospectApiEndpoint);
+        setEndpointCopied(true);
+        window.setTimeout(() => setEndpointCopied(false), 2500);
+    }
 
     useEffect(() => {
         setMessages(readWhatsappMessages());
@@ -48,7 +79,188 @@ export default function LeadSettings() {
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Leads"
+                    title="Captura via extensão (Google Maps)"
+                    description="Configure a extensão de navegador que captura prospects no Google Maps e envia para este CRM."
+                />
+
+                <div className="grid gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="prospect_extension">
+                            Extensão do Firefox
+                        </Label>
+                        {prospectExtensionUrl ? (
+                            <Button asChild className="w-fit">
+                                <a href={prospectExtensionUrl} download>
+                                    <Download />
+                                    Baixar {prospectExtensionFilename}
+                                </a>
+                            </Button>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Nenhum arquivo da extensão foi encontrado em
+                                public/files.
+                            </p>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                            {prospectExtensionSigned ? (
+                                <>
+                                    <p className="font-medium text-foreground">
+                                        Como instalar (extensão assinada
+                                        pela Mozilla, instalação
+                                        permanente):
+                                    </p>
+                                    <ol className="mt-1 list-decimal space-y-1 pl-4">
+                                        <li>
+                                            Baixe o arquivo acima
+                                            (.xpi).
+                                        </li>
+                                        <li>
+                                            Abra{' '}
+                                            <code className="rounded bg-muted px-1 py-0.5">
+                                                about:addons
+                                            </code>{' '}
+                                            no Firefox.
+                                        </li>
+                                        <li>
+                                            Clique na engrenagem (⚙) →
+                                            &quot;Instalar extensão a
+                                            partir de um arquivo&quot;.
+                                        </li>
+                                        <li>
+                                            Selecione o arquivo baixado.
+                                        </li>
+                                    </ol>
+                                    <p className="mt-2">
+                                        Assim instalada, a extensão fica
+                                        disponível permanentemente — não
+                                        some ao fechar o navegador.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="font-medium text-foreground">
+                                        Como instalar (extensão não
+                                        assinada, precisa ser carregada
+                                        como temporária):
+                                    </p>
+                                    <ol className="mt-1 list-decimal space-y-1 pl-4">
+                                        <li>
+                                            No Firefox, abra{' '}
+                                            <code className="rounded bg-muted px-1 py-0.5">
+                                                about:debugging
+                                            </code>{' '}
+                                            e clique em &quot;Este
+                                            Firefox&quot;.
+                                        </li>
+                                        <li>
+                                            Se já houver uma versão
+                                            carregada, clique em
+                                            &quot;Remover&quot; ou
+                                            &quot;Descarregar&quot; antes
+                                            de carregar a nova.
+                                        </li>
+                                        <li>
+                                            Extraia o ZIP baixado em uma
+                                            pasta.
+                                        </li>
+                                        <li>
+                                            Clique em &quot;Carregar
+                                            extensão temporária&quot;.
+                                        </li>
+                                        <li>
+                                            Selecione o arquivo{' '}
+                                            <code className="rounded bg-muted px-1 py-0.5">
+                                                manifest.json
+                                            </code>{' '}
+                                            dentro da pasta extraída.
+                                        </li>
+                                    </ol>
+                                    <p className="mt-2">
+                                        Por ser temporária, ela some
+                                        quando o Firefox é fechado —
+                                        repita esses passos toda vez que
+                                        abrir o navegador para usar a
+                                        extensão novamente.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="prospect_api_endpoint">
+                            Endpoint da API
+                        </Label>
+                        <div className="flex gap-2">
+                            <Input
+                                id="prospect_api_endpoint"
+                                readOnly
+                                value={prospectApiEndpoint}
+                                onFocus={(event) => event.target.select()}
+                                className="font-mono"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={copyEndpoint}
+                            >
+                                <Copy />
+                                {endpointCopied ? 'Copiado' : 'Copiar'}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="prospect_api_token">
+                            Token de integração
+                        </Label>
+                        <div className="flex gap-2">
+                            <Input
+                                id="prospect_api_token"
+                                readOnly
+                                value={prospectApiToken ?? ''}
+                                onFocus={(event) => event.target.select()}
+                                className="font-mono"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={copyToken}
+                                disabled={!prospectApiToken}
+                            >
+                                <Copy />
+                                {tokenCopied ? 'Copiado' : 'Copiar'}
+                            </Button>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            <p className="font-medium text-foreground">
+                                Como configurar na extensão:
+                            </p>
+                            <ol className="mt-1 list-decimal space-y-1 pl-4">
+                                <li>
+                                    Clique no ícone da extensão e abra a
+                                    aba &quot;Configurações&quot; no popup.
+                                </li>
+                                <li>
+                                    Cole a URL acima no campo
+                                    &quot;Endpoint do CRM&quot;.
+                                </li>
+                                <li>
+                                    Cole o token acima no campo &quot;Token
+                                    Bearer opcional&quot;.
+                                </li>
+                                <li>
+                                    Clique em &quot;Salvar
+                                    configurações&quot;.
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <Heading
+                    variant="small"
+                    title="Mensagens de WhatsApp"
                     description="Configure as mensagens usadas no primeiro contato por WhatsApp."
                 />
 

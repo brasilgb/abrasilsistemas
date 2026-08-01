@@ -1,0 +1,14 @@
+{
+  "name": "ab-prospect-firefox",
+  "private": true,
+  "version": "1.1.0",
+  "description": "Ferramentas de build e assinatura da extensão AB Prospect para Firefox.",
+  "scripts": {
+    "lint": "web-ext lint --source-dir=. --ignore-files=package.json --ignore-files=package-lock.json --ignore-files=README.md --ignore-files=\"scripts/**\" --ignore-files=\"artifacts/**\" --ignore-files=scripts",
+    "build": "web-ext build --source-dir=. --artifacts-dir=artifacts --overwrite-dest --ignore-files=package.json --ignore-files=package-lock.json --ignore-files=README.md --ignore-files=\"scripts/**\" --ignore-files=\"artifacts/**\" --ignore-files=scripts",
+    "sign": "bash scripts/release.sh"
+  },
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}

@@ -2,6 +2,11 @@
 
 use App\Models\Lead;
 
+function withProspectToken(): array
+{
+    return ['Authorization' => 'Bearer '.config('services.ab_prospect.token')];
+}
+
 test('the public API imports a Google Maps lead', function () {
     $response = $this->postJson('/api/prospects/import', [
         'name' => 'Assistência Técnica Exemplo',
@@ -19,7 +24,7 @@ test('the public API imports a Google Maps lead', function () {
         'rating' => 4.7,
         'reviews' => 132,
         'capturedAt' => '2026-07-22T09:15:22Z',
-    ]);
+    ], withProspectToken());
 
     $response->assertCreated()
         ->assertJsonPath('created', 1)
@@ -46,15 +51,32 @@ test('the public API updates a lead with the same Maps URL', function () {
         'mapsUrl' => 'https://www.google.com/maps/place/exemplo',
     ];
 
-    $this->postJson('/api/prospects/import', $payload)->assertCreated();
+    $this->postJson('/api/prospects/import', $payload, withProspectToken())->assertCreated();
 
     $payload['name'] = 'Nome atualizado';
 
-    $this->postJson('/api/prospects/import', $payload)
+    $this->postJson('/api/prospects/import', $payload, withProspectToken())
         ->assertOk()
         ->assertJsonPath('created', 0)
         ->assertJsonPath('updated', 1);
 
     expect(Lead::query()->count())->toBe(1)
         ->and(Lead::query()->first()->company_name)->toBe('Nome atualizado');
+});
+
+test('the API rejects requests without a valid token', function () {
+    $payload = [
+        'name' => 'Assistência Técnica Exemplo',
+        'hasWebsite' => false,
+        'canImprove' => true,
+        'mapsUrl' => 'https://www.google.com/maps/place/exemplo',
+    ];
+
+    $this->postJson('/api/prospects/import', $payload)
+        ->assertUnauthorized();
+
+    $this->postJson('/api/prospects/import', $payload, ['Authorization' => 'Bearer wrong-token'])
+        ->assertUnauthorized();
+
+    expect(Lead::query()->count())->toBe(0);
 });

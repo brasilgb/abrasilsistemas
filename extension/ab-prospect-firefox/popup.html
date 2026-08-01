@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AB Prospect</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="app-header">
+    <div><div class="brand">AB Prospect</div><div class="subtitle">Google Maps → CRM AB Sistemas</div></div>
+    <span class="version">v1.1</span>
+  </header>
+
+  <nav class="tabs">
+    <button class="active" data-tab="capture">Capturar</button>
+    <button data-tab="list">Prospects <span id="selectedCount" class="count">0</span></button>
+    <button data-tab="settings">Integração</button>
+  </nav>
+
+  <main>
+    <section id="capturePanel" class="panel">
+      <div class="hero"><strong>Busca assistida no Google Maps</strong><p>Pesquise uma região, carregue os resultados e capture somente as empresas visíveis.</p></div>
+      <div class="button-grid">
+        <button id="captureSelected" class="primary">Adicionar empresa selecionada</button>
+        <button id="captureVisible">Adicionar resultados visíveis</button>
+      </div>
+      <div class="metrics">
+        <div><strong id="metricTotal">0</strong><span>Total</span></div>
+        <div><strong id="metricWithSite">0</strong><span>Com site</span></div>
+        <div><strong id="metricWithoutSite">0</strong><span>Sem site</span></div>
+        <div><strong id="metricImprove">0</strong><span>Pode melhorar</span></div>
+      </div>
+      <div class="note">A extensão não percorre automaticamente todas as páginas do Maps. Role a lista e capture os resultados carregados quando desejar.</div>
+    </section>
+
+    <section id="listPanel" class="panel hidden">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Buscar nome, cidade ou categoria">
+        <select id="filter">
+          <option value="all">Todos</option>
+          <option value="with-site">Com site</option>
+          <option value="without-site">Sem site</option>
+          <option value="improve">Pode melhorar</option>
+          <option value="unsent">Ainda não enviados</option>
+          <option value="send-error">Envio com erro</option>
+          <option value="sent">Enviados</option>
+        </select>
+      </div>
+      <label class="select-all"><input id="selectAll" type="checkbox"> Selecionar resultados filtrados</label>
+      <div id="empty" class="empty">Nenhum prospect salvo.</div>
+      <div id="prospectList" class="lead-list"></div>
+      <div class="actions sticky">
+        <button id="analyzeSelected">Analisar sites</button>
+        <button id="sendSelected" class="primary">Enviar ao CRM</button>
+        <button id="exportCsv">CSV</button>
+        <button id="exportJson">JSON</button>
+        <button id="clearAll" class="danger">Limpar</button>
+      </div>
+    </section>
+
+    <section id="settingsPanel" class="panel hidden">
+      <label>Endpoint do CRM<input id="crmUrl" type="url" placeholder="https://abrasilsistemas.com.br/api/prospects/import"></label>
+      <label>Origem do lote<input id="crmSource" type="text"></label>
+      <label>Token Bearer opcional<input id="crmToken" type="password" autocomplete="off" placeholder="Deixe vazio se o endpoint não exigir token"></label>
+      <div class="actions"><button id="saveSettings" class="primary">Salvar configurações</button><button id="testPayload">Visualizar payload</button></div>
+      <pre id="payloadPreview" class="payload">Selecione prospects e clique em “Visualizar payload”.</pre>
+    </section>
+  </main>
+
+  <div id="status" class="status">Pronto para capturar.</div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

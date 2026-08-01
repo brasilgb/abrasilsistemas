@@ -40,4 +40,8 @@ return [
         'webhook_token' => env('MP_WEBHOOK_TOKEN'),
     ],
 
+    'ab_prospect' => [
+        'token' => env('AB_PROSPECT_API_TOKEN'),
+    ],
+
 ];

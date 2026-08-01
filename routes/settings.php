@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\LeadSettingsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Support\Facades\Route;
@@ -22,7 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
-    Route::inertia('settings/leads', 'settings/leads')
+    Route::get('settings/leads', [LeadSettingsController::class, 'edit'])
         ->middleware('admin')
         ->name('lead-settings.edit');
 });
