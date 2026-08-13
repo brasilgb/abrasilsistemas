@@ -27,3 +27,16 @@ test('new users can register', function () {
     $response->assertRedirect(route('blog.index', absolute: false));
     $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'role' => 'reader']);
 });
+
+test('first registered user becomes admin', function () {
+    $response = $this->post(route('register.store'), [
+        'name' => 'First User',
+        'email' => 'first@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('dashboard', absolute: false));
+    $this->assertDatabaseHas('users', ['email' => 'first@example.com', 'role' => 'admin']);
+});
