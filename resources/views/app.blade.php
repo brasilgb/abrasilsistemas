@@ -42,8 +42,36 @@
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
+        @php $seo = $page['props']['seo'] ?? []; @endphp
         <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
+            <title>{{ $seo['title'] ?? config('app.name', 'Laravel') }}</title>
+            @if (! empty($seo['description']))
+                <meta name="description" content="{{ $seo['description'] }}">
+            @endif
+            @if (! empty($seo['robots']))
+                <meta name="robots" content="{{ $seo['robots'] }}">
+            @endif
+            @if (! empty($seo['canonical']))
+                <link rel="canonical" href="{{ $seo['canonical'] }}">
+            @endif
+            @if (! empty($seo['siteName']))
+                <meta property="og:site_name" content="{{ $seo['siteName'] }}">
+            @endif
+            @if (! empty($seo['locale']))
+                <meta property="og:locale" content="{{ $seo['locale'] }}">
+            @endif
+            @if (! empty($seo))
+                <meta property="og:type" content="{{ $seo['ogType'] ?? 'website' }}">
+                <meta property="og:title" content="{{ $seo['ogTitle'] ?? $seo['title'] ?? config('app.name') }}">
+                @if (! empty($seo['ogDescription'] ?? $seo['description'] ?? null))
+                    <meta property="og:description" content="{{ $seo['ogDescription'] ?? $seo['description'] }}">
+                @endif
+                @if (! empty($seo['ogImage']))
+                    <meta property="og:image" content="{{ $seo['ogImage'] }}">
+                    <meta name="twitter:card" content="summary_large_image">
+                    <meta name="twitter:image" content="{{ $seo['ogImage'] }}">
+                @endif
+            @endif
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

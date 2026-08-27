@@ -1,4 +1,10 @@
 User-agent: *
-Disallow:
+Disallow: /login
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /area-restrita
+Disallow: /leads
+Disallow: /users
+Disallow: /admin
 
 Sitemap: https://abrasilsistemas.com.br/sitemap.xml

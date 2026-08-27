@@ -1,6 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Images,
     LayoutGrid,
+    MessageSquareQuote,
     Newspaper,
     Settings,
     Target,
@@ -39,6 +41,16 @@ const adminNavItems: NavItem[] = [
         title: 'Prospecção',
         href: leadsIndex(),
         icon: Target,
+    },
+    {
+        title: 'Depoimentos',
+        href: '/testimonials',
+        icon: MessageSquareQuote,
+    },
+    {
+        title: 'Trabalhos recentes',
+        href: '/portfolio',
+        icon: Images,
     },
     {
         title: 'Usuários',

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     ArrowUpRight,
@@ -9,10 +9,13 @@ import {
     ChevronRight,
     ClipboardCheck,
     Code2,
+    LogIn,
     Menu,
     MessageCircle,
     MonitorSmartphone,
+    Quote,
     Sparkles,
+    UserRound,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -20,6 +23,7 @@ import { PublicBrand } from '@/components/public-brand';
 import { PublicFooter } from '@/components/public-footer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { WhatsAppFloat } from '@/components/whatsapp-float';
+import type { User } from '@/types';
 
 const contactWhatsappUrl =
     'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20uma%20solu%C3%A7%C3%A3o%20da%20ABrasil.';
@@ -121,6 +125,22 @@ type BlogPostSummary = {
     category?: { name: string; slug: string } | null;
 };
 
+type TestimonialSummary = {
+    id: number;
+    author_name: string;
+    author_role: string | null;
+    photo_url: string | null;
+    quote: string;
+};
+
+type PortfolioItemSummary = {
+    id: number;
+    title: string;
+    description: string;
+    screenshot_url: string;
+    site_url: string | null;
+};
+
 
 function SectionHeading({
     eyebrow,
@@ -161,9 +181,14 @@ function SectionHeading({
 
 export default function Welcome({
     blogPosts,
+    testimonials,
+    portfolioItems,
 }: {
     blogPosts: BlogPostSummary[];
+    testimonials: TestimonialSummary[];
+    portfolioItems: PortfolioItemSummary[];
 }) {
+    const { auth } = usePage<{ auth: { user: User | null } }>().props;
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
@@ -266,6 +291,22 @@ export default function Welcome({
                             >
                                 Serviços
                             </a>
+                            {portfolioItems.length > 0 && (
+                                <a
+                                    href="#trabalhos"
+                                    className="transition hover:text-white"
+                                >
+                                    Trabalhos
+                                </a>
+                            )}
+                            {testimonials.length > 0 && (
+                                <a
+                                    href="#depoimentos"
+                                    className="transition hover:text-white"
+                                >
+                                    Depoimentos
+                                </a>
+                            )}
                             <Link
                                 href="/blog"
                                 className="transition hover:text-white"
@@ -273,13 +314,31 @@ export default function Welcome({
                                 Conteúdo
                             </Link>
                         </nav>
-                        <a
-                            href="#produtos"
-                            className="hidden items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:inline-flex"
-                        >
-                            Conhecer as soluções
-                            <ArrowRight className="size-4" />
-                        </a>
+                        <div className="hidden items-center gap-4 sm:flex">
+                            {auth.user ? (
+                                <Link
+                                    href={auth.user.role === 'admin' ? '/dashboard' : '/settings/profile'}
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
+                                >
+                                    <UserRound className="size-4 shrink-0" />
+                                    Minha conta
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/login"
+                                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
+                                >
+                                    <LogIn className="size-4" /> Entrar
+                                </Link>
+                            )}
+                            <a
+                                href="#produtos"
+                                className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200"
+                            >
+                                Conhecer as soluções
+                                <ArrowRight className="size-4" />
+                            </a>
+                        </div>
                         <button
                             type="button"
                             aria-label={
@@ -305,6 +364,12 @@ export default function Welcome({
                                 ['#produtos', 'Produtos'],
                                 ['#resultados', 'Resultados'],
                                 ['#solucoes', 'Serviços'],
+                                ...(portfolioItems.length > 0
+                                    ? [['#trabalhos', 'Trabalhos']]
+                                    : []),
+                                ...(testimonials.length > 0
+                                    ? [['#depoimentos', 'Depoimentos']]
+                                    : []),
                             ].map(([href, label]) => (
                                 <a
                                     key={href}
@@ -321,6 +386,23 @@ export default function Welcome({
                             >
                                 Conteúdo
                             </Link>
+                            {auth.user ? (
+                                <Link
+                                    href={auth.user.role === 'admin' ? '/dashboard' : '/settings/profile'}
+                                    className="flex items-center gap-2 border-b border-white/10 py-4"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    <UserRound className="size-4" /> Minha conta
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/login"
+                                    className="flex items-center gap-2 border-b border-white/10 py-4"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    <LogIn className="size-4" /> Entrar
+                                </Link>
+                            )}
                             <a
                                 href="#produtos"
                                 className="mt-5 flex items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3.5 text-slate-950"
@@ -384,7 +466,7 @@ export default function Welcome({
                             <div className="relative grid gap-4 sm:grid-cols-2">
                                 <div className="absolute -inset-5 rounded-[2.2rem] bg-gradient-to-br from-cyan-300/20 via-blue-600/5 to-transparent blur-2xl" />
                                 <div className="relative z-10 flex min-h-80 flex-col rounded-[1.4rem] border border-sky-300/20 bg-[#0b1625] p-6 shadow-2xl shadow-black/40">
-                                    <img src="/images/logo_os.png" alt="" className="size-14 rounded-2xl object-contain" />
+                                    <img src="/images/logo_os.png" alt="VetorOS" className="size-14 rounded-2xl object-contain" />
                                     <p className="mt-8 text-xs font-bold tracking-[0.15em] text-sky-300 uppercase">Assistências técnicas</p>
                                     <h2 className="mt-3 text-3xl font-black">VetorOS</h2>
                                     <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
@@ -396,7 +478,7 @@ export default function Welcome({
                                     </span>
                                 </div>
                                 <div className="relative z-10 flex min-h-80 flex-col rounded-[1.4rem] border border-violet-300/20 bg-[#11152a] p-6 shadow-2xl shadow-black/40 sm:translate-y-8">
-                                    <img src="/images/logo_pet.png" alt="" className="size-14 rounded-2xl bg-white object-contain p-1" />
+                                    <img src="/images/logo_pet.png" alt="VetorPet" className="size-14 rounded-2xl bg-white object-contain p-1" />
                                     <p className="mt-8 text-xs font-bold tracking-[0.15em] text-violet-300 uppercase">Vendas no mercado pet</p>
                                     <h2 className="mt-3 text-3xl font-black">VetorPet</h2>
                                     <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
@@ -586,13 +668,13 @@ export default function Welcome({
                                             </p>
                                         </div>
                                         <a
-                                            href={contactWhatsappUrl}
+                                            href="https://vetoros.com.br"
                                             target="_blank"
                                             rel="noreferrer"
                                             className="inline-flex shrink-0 items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950"
                                         >
-                                            Falar com a ABrasil{' '}
-                                            <MessageCircle className="size-4" />
+                                            Criar minha conta{' '}
+                                            <ArrowUpRight className="size-4" />
                                         </a>
                                     </div>
                                 </div>
@@ -684,12 +766,12 @@ export default function Welcome({
                                             <p className="mt-1 text-sm text-slate-400">Comece sem cartão de crédito.</p>
                                         </div>
                                         <a
-                                            href={contactWhatsappUrl}
+                                            href="https://vetorpet.com.br"
                                             target="_blank"
                                             rel="noreferrer"
                                             className="inline-flex shrink-0 items-center gap-2 rounded-full bg-violet-300 px-5 py-3 text-sm font-black text-slate-950"
                                         >
-                                            Falar com a ABrasil <MessageCircle className="size-4" />
+                                            Criar minha conta <ArrowUpRight className="size-4" />
                                         </a>
                                     </div>
                                 </div>
@@ -786,6 +868,131 @@ export default function Welcome({
                             </div>
                         </div>
                     </section>
+
+                    {portfolioItems.length > 0 && (
+                        <section
+                            id="trabalhos"
+                            className="scroll-mt-20 border-y border-slate-200 bg-slate-50 py-24 sm:py-32"
+                        >
+                            <div className="mx-auto max-w-[86rem] px-5 sm:px-8 lg:px-12">
+                                <SectionHeading
+                                    eyebrow="Prova de trabalho"
+                                    title="Sites que já colocamos no ar."
+                                    description="Projetos reais, entregues para empresas que precisavam de presença digital rápida e profissional."
+                                />
+                                <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                    {portfolioItems.map((item) => {
+                                        const content = (
+                                            <>
+                                                <img
+                                                    src={item.screenshot_url}
+                                                    alt={item.title}
+                                                    className="h-48 w-full object-cover object-top"
+                                                />
+                                                <div className="flex flex-1 flex-col p-6">
+                                                    <h3 className="text-lg font-black tracking-[-0.02em] text-slate-950">
+                                                        {item.title}
+                                                    </h3>
+                                                    <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">
+                                                        {item.description}
+                                                    </p>
+                                                    {item.site_url && (
+                                                        <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-blue-700">
+                                                            Visitar site
+                                                            <ArrowUpRight className="size-3.5" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </>
+                                        );
+
+                                        const cardClass =
+                                            'group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl';
+
+                                        return item.site_url ? (
+                                            <a
+                                                key={item.id}
+                                                href={item.site_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className={cardClass}
+                                            >
+                                                {content}
+                                            </a>
+                                        ) : (
+                                            <div
+                                                key={item.id}
+                                                className={cardClass}
+                                            >
+                                                {content}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {testimonials.length > 0 && (
+                        <section
+                            id="depoimentos"
+                            className="scroll-mt-20 py-24 sm:py-32"
+                        >
+                            <div className="mx-auto max-w-[86rem] px-5 sm:px-8 lg:px-12">
+                                <SectionHeading
+                                    eyebrow="Quem já usa"
+                                    title="Empresas que confiam na ABrasil."
+                                    description="Depoimentos de clientes que usam o VetorOS, o VetorPet ou contrataram um site com a gente."
+                                />
+                                <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                                    {testimonials.map((testimonial) => (
+                                        <figure
+                                            key={testimonial.id}
+                                            className="flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm"
+                                        >
+                                            <Quote className="size-7 text-blue-700/30" />
+                                            <blockquote className="mt-4 flex-1 text-sm leading-7 text-slate-700">
+                                                “{testimonial.quote}”
+                                            </blockquote>
+                                            <figcaption className="mt-6 flex items-center gap-3 border-t border-slate-100 pt-5">
+                                                {testimonial.photo_url ? (
+                                                    <img
+                                                        src={
+                                                            testimonial.photo_url
+                                                        }
+                                                        alt={
+                                                            testimonial.author_name
+                                                        }
+                                                        className="size-10 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <span className="grid size-10 place-items-center rounded-full bg-blue-50 text-sm font-black text-blue-700">
+                                                        {testimonial.author_name.charAt(
+                                                            0,
+                                                        )}
+                                                    </span>
+                                                )}
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-950">
+                                                        {
+                                                            testimonial.author_name
+                                                        }
+                                                    </p>
+                                                    {testimonial.author_role && (
+                                                        <p className="text-xs text-slate-500">
+                                                            {
+                                                                testimonial.author_role
+                                                            }
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </figcaption>
+                                        </figure>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                     {blogPosts.length > 0 && (
                         <section className="border-y border-slate-200 bg-white py-20 sm:py-24">

@@ -118,7 +118,7 @@ class LeadController extends Controller
         $withoutFollowUp = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereNull('next_follow_up_at')->count();
         $highPriority = (clone $query)
             ->whereNotIn('status', ['converted', 'lost'])
-            ->get()
+            ->get(['id', 'status', 'next_follow_up_at', 'whatsapp', 'email', 'contact_name', 'website', 'instagram', 'notes'])
             ->where('priority', 'high')
             ->count();
 
@@ -342,6 +342,65 @@ class LeadController extends Controller
         ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Status atualizado.']);
+
+        return back();
+    }
+
+    public function bulkUpdate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:leads,id'],
+            'status' => ['nullable', 'string', Rule::in(array_keys(Lead::STATUSES))],
+            'lost_reason' => ['nullable', 'required_if:status,lost', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
+            'user_id' => ['nullable', 'exists:users,id'],
+        ]);
+
+        $changesStatus = array_key_exists('status', $data) && $data['status'] !== null;
+        $changesOwner = $request->has('user_id');
+
+        if (! $changesStatus && ! $changesOwner) {
+            return back();
+        }
+
+        $leads = Lead::query()->whereIn('id', $data['ids'])->get();
+
+        foreach ($leads as $lead) {
+            $updates = [];
+            $previousStatus = $lead->status;
+
+            if ($changesStatus) {
+                $updates['status'] = $data['status'];
+                $updates['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? $lead->lost_reason) : null;
+
+                if ($previousStatus === 'new' && $data['status'] !== 'new' && $lead->last_contacted_at === null) {
+                    $updates['last_contacted_at'] = now();
+                }
+            }
+
+            if ($changesOwner) {
+                $updates['user_id'] = $data['user_id'] ?? null;
+            }
+
+            $lead->forceFill($updates)->save();
+
+            if ($changesStatus && $data['status'] !== $previousStatus) {
+                $lead->activities()->create([
+                    'user_id' => $request->user()->id,
+                    'type' => 'note',
+                    'status' => $lead->status,
+                    'contacted_at' => now(),
+                    'description' => sprintf(
+                        'Status alterado de %s para %s em atualização em lote%s.',
+                        Lead::STATUSES[$previousStatus] ?? $previousStatus,
+                        Lead::STATUSES[$lead->status] ?? $lead->status,
+                        $lead->lost_reason ? ' (motivo: '.(Lead::LOST_REASONS[$lead->lost_reason] ?? $lead->lost_reason).')' : ''
+                    ),
+                ]);
+            }
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $leads->count().' lead(s) atualizado(s).']);
 
         return back();
     }

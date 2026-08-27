@@ -1,8 +1,11 @@
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 export type Lead = {
     id: number;
@@ -80,6 +83,21 @@ export default function LeadForm({
     processing,
     errors,
 }: Props) {
+    const [showCaptureFields, setShowCaptureFields] = useState(
+        Boolean(
+            lead?.address ||
+            lead?.category ||
+            lead?.maps_url ||
+            lead?.site_status ||
+            lead?.captured_at ||
+            lead?.rating ||
+            lead?.reviews ||
+            lead?.has_website ||
+            lead?.can_improve ||
+            lead?.opportunity,
+        ),
+    );
+
     return (
         <>
             <div className="grid gap-5 md:grid-cols-2">
@@ -96,32 +114,21 @@ export default function LeadForm({
                     <InputError message={errors.company_name} />
                 </div>
 
-                <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="address">Endereço</Label>
-                    <Input
-                        id="address"
-                        name="address"
-                        defaultValue={lead?.address ?? ''}
-                        placeholder="Rua, número e bairro"
-                    />
-                    <InputError message={errors.address} />
-                </div>
-
                 <div className="grid gap-2">
                     <Label htmlFor="product">Destino (produto)</Label>
-                    <Input
+                    <select
                         id="product"
                         name="product"
                         required
                         defaultValue={lead?.product ?? 'vetoros'}
-                        placeholder="vetoros, vetorpet ou outro nome"
-                        list="product-suggestions"
-                    />
-                    <datalist id="product-suggestions">
-                        {Object.keys(products).map((value) => (
-                            <option key={value} value={value} />
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        {Object.entries(products).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
                         ))}
-                    </datalist>
+                    </select>
                     <InputError message={errors.product} />
                 </div>
 
@@ -145,17 +152,6 @@ export default function LeadForm({
                         placeholder="Assistência técnica, pet shop..."
                     />
                     <InputError message={errors.industry} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="category">Categoria no Google Maps</Label>
-                    <Input
-                        id="category"
-                        name="category"
-                        defaultValue={lead?.category ?? ''}
-                        placeholder="Assistência técnica"
-                    />
-                    <InputError message={errors.category} />
                 </div>
 
                 <div className="grid gap-2">
@@ -225,106 +221,6 @@ export default function LeadForm({
                         placeholder="https://..."
                     />
                     <InputError message={errors.website} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="maps_url">Link do Google Maps</Label>
-                    <Input
-                        id="maps_url"
-                        name="maps_url"
-                        defaultValue={lead?.maps_url ?? ''}
-                        placeholder="https://www.google.com/maps/..."
-                    />
-                    <InputError message={errors.maps_url} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="site_status">Situação do site</Label>
-                    <Input
-                        id="site_status"
-                        name="site_status"
-                        defaultValue={lead?.site_status ?? ''}
-                        placeholder="Com site - pode melhorar"
-                    />
-                    <InputError message={errors.site_status} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="captured_at">Capturado em</Label>
-                    <Input
-                        id="captured_at"
-                        type="datetime-local"
-                        name="captured_at"
-                        defaultValue={lead?.captured_at?.slice(0, 16) ?? ''}
-                    />
-                    <InputError message={errors.captured_at} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="rating">Avaliação</Label>
-                    <Input
-                        id="rating"
-                        type="number"
-                        name="rating"
-                        min="0"
-                        max="5"
-                        step="0.01"
-                        defaultValue={lead?.rating ?? ''}
-                        placeholder="4.7"
-                    />
-                    <InputError message={errors.rating} />
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="reviews">Quantidade de avaliações</Label>
-                    <Input
-                        id="reviews"
-                        type="number"
-                        name="reviews"
-                        min="0"
-                        defaultValue={lead?.reviews ?? ''}
-                        placeholder="132"
-                    />
-                    <InputError message={errors.reviews} />
-                </div>
-
-                <div className="grid gap-3 rounded-md border p-4 md:col-span-2 sm:grid-cols-2">
-                    <label className="flex items-center gap-2 text-sm font-medium">
-                        <input type="hidden" name="has_website" value="0" />
-                        <input
-                            type="checkbox"
-                            name="has_website"
-                            value="1"
-                            defaultChecked={lead?.has_website ?? false}
-                            className="size-4 rounded border-input"
-                        />
-                        Possui site
-                    </label>
-                    <label className="flex items-center gap-2 text-sm font-medium">
-                        <input type="hidden" name="can_improve" value="0" />
-                        <input
-                            type="checkbox"
-                            name="can_improve"
-                            value="1"
-                            defaultChecked={lead?.can_improve ?? false}
-                            className="size-4 rounded border-input"
-                        />
-                        Possui oportunidade de melhoria
-                    </label>
-                    <InputError message={errors.has_website} />
-                    <InputError message={errors.can_improve} />
-                </div>
-
-                <div className="grid gap-2 md:col-span-2">
-                    <Label htmlFor="opportunity">Oportunidade identificada</Label>
-                    <textarea
-                        id="opportunity"
-                        name="opportunity"
-                        defaultValue={lead?.opportunity ?? ''}
-                        placeholder="Descreva a oportunidade encontrada no estabelecimento"
-                        className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                    />
-                    <InputError message={errors.opportunity} />
                 </div>
 
                 <div className="grid gap-2">
@@ -429,6 +325,163 @@ export default function LeadForm({
                         className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                     />
                     <InputError message={errors.notes} />
+                </div>
+            </div>
+
+            <div className="rounded-md border">
+                <button
+                    type="button"
+                    aria-expanded={showCaptureFields}
+                    onClick={() => setShowCaptureFields((open) => !open)}
+                    className="flex w-full items-center justify-between gap-2 rounded-t-md bg-muted/30 px-4 py-3 text-left text-sm font-medium"
+                >
+                    <span>
+                        Dados de captura (Google Maps)
+                        <span className="ml-2 font-normal text-muted-foreground">
+                            Endereço, categoria, avaliações e link do Maps
+                        </span>
+                    </span>
+                    <ChevronDown
+                        className={cn(
+                            'size-4 shrink-0 transition-transform',
+                            showCaptureFields && 'rotate-180',
+                        )}
+                    />
+                </button>
+                {/* Os campos permanecem no DOM (apenas ocultos) quando recolhidos, para não perder valores já preenchidos ao salvar o formulário. */}
+                <div
+                    className={cn(
+                        'grid gap-5 p-4 md:grid-cols-2',
+                        !showCaptureFields && 'hidden',
+                    )}
+                >
+                    <div className="grid gap-2 md:col-span-2">
+                        <Label htmlFor="address">Endereço</Label>
+                        <Input
+                            id="address"
+                            name="address"
+                            defaultValue={lead?.address ?? ''}
+                            placeholder="Rua, número e bairro"
+                        />
+                        <InputError message={errors.address} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="category">
+                            Categoria no Google Maps
+                        </Label>
+                        <Input
+                            id="category"
+                            name="category"
+                            defaultValue={lead?.category ?? ''}
+                            placeholder="Assistência técnica"
+                        />
+                        <InputError message={errors.category} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="maps_url">Link do Google Maps</Label>
+                        <Input
+                            id="maps_url"
+                            name="maps_url"
+                            defaultValue={lead?.maps_url ?? ''}
+                            placeholder="https://www.google.com/maps/..."
+                        />
+                        <InputError message={errors.maps_url} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="site_status">Situação do site</Label>
+                        <Input
+                            id="site_status"
+                            name="site_status"
+                            defaultValue={lead?.site_status ?? ''}
+                            placeholder="Com site - pode melhorar"
+                        />
+                        <InputError message={errors.site_status} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="captured_at">Capturado em</Label>
+                        <Input
+                            id="captured_at"
+                            type="datetime-local"
+                            name="captured_at"
+                            defaultValue={lead?.captured_at?.slice(0, 16) ?? ''}
+                        />
+                        <InputError message={errors.captured_at} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="rating">Avaliação</Label>
+                        <Input
+                            id="rating"
+                            type="number"
+                            name="rating"
+                            min="0"
+                            max="5"
+                            step="0.01"
+                            defaultValue={lead?.rating ?? ''}
+                            placeholder="4.7"
+                        />
+                        <InputError message={errors.rating} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="reviews">
+                            Quantidade de avaliações
+                        </Label>
+                        <Input
+                            id="reviews"
+                            type="number"
+                            name="reviews"
+                            min="0"
+                            defaultValue={lead?.reviews ?? ''}
+                            placeholder="132"
+                        />
+                        <InputError message={errors.reviews} />
+                    </div>
+
+                    <div className="grid gap-3 rounded-md border p-4 sm:grid-cols-2 md:col-span-2">
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                            <input type="hidden" name="has_website" value="0" />
+                            <input
+                                type="checkbox"
+                                name="has_website"
+                                value="1"
+                                defaultChecked={lead?.has_website ?? false}
+                                className="size-4 rounded border-input"
+                            />
+                            Possui site
+                        </label>
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                            <input type="hidden" name="can_improve" value="0" />
+                            <input
+                                type="checkbox"
+                                name="can_improve"
+                                value="1"
+                                defaultChecked={lead?.can_improve ?? false}
+                                className="size-4 rounded border-input"
+                            />
+                            Possui oportunidade de melhoria
+                        </label>
+                        <InputError message={errors.has_website} />
+                        <InputError message={errors.can_improve} />
+                    </div>
+
+                    <div className="grid gap-2 md:col-span-2">
+                        <Label htmlFor="opportunity">
+                            Oportunidade identificada
+                        </Label>
+                        <textarea
+                            id="opportunity"
+                            name="opportunity"
+                            defaultValue={lead?.opportunity ?? ''}
+                            placeholder="Descreva a oportunidade encontrada no estabelecimento"
+                            className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                        />
+                        <InputError message={errors.opportunity} />
+                    </div>
                 </div>
             </div>
 

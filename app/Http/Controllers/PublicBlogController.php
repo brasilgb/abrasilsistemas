@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
+use App\Support\Seo;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -32,6 +33,13 @@ class PublicBlogController extends Controller
                 ->orderBy('name')->get(),
             'popularPosts' => BlogPost::query()->published()->orderByDesc('views')->limit(5)->get(['id', 'title', 'slug', 'views', 'published_at']),
             'filters' => $request->only(['category', 'search']),
+            'seo' => Seo::tags([
+                'title' => 'Blog sobre tecnologia e gestão | ABrasil Sistemas',
+                'description' => 'Informação prática para usar a tecnologia a favor da sua empresa.',
+                'canonical' => url('/blog'),
+                'ogTitle' => 'Blog | ABrasil Sistemas',
+                'ogDescription' => 'Informação prática para usar a tecnologia a favor da sua empresa.',
+            ]),
         ]);
     }
 
@@ -44,6 +52,15 @@ class PublicBlogController extends Controller
         return Inertia::render('blog/show', [
             'post' => $post,
             'relatedPosts' => BlogPost::query()->published()->whereKeyNot($post)->when($post->blog_category_id, fn ($query) => $query->where('blog_category_id', $post->blog_category_id))->latest('published_at')->limit(3)->get(['id', 'title', 'slug', 'excerpt', 'published_at']),
+            'seo' => Seo::tags([
+                'title' => $post->title.' | ABrasil Sistemas',
+                'description' => $post->excerpt,
+                'canonical' => url('/blog/'.$post->slug),
+                'ogType' => 'article',
+                'ogTitle' => $post->title,
+                'ogDescription' => $post->excerpt,
+                'ogImage' => $post->cover_image_url ?: url('/images/dashboard-vetoros.webp'),
+            ]),
         ]);
     }
 }

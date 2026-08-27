@@ -11,11 +11,10 @@ import {
     Search,
     Trash2,
 } from 'lucide-react';
-import { type DragEvent, useEffect, useMemo, useState } from 'react';
-import AppPagination, {
-    PaginationSummary,
-    type PaginationData,
-} from '@/components/app-pagination';
+import { useEffect, useMemo, useState } from 'react';
+import type { DragEvent } from 'react';
+import AppPagination, { PaginationSummary } from '@/components/app-pagination';
+import type { PaginationData } from '@/components/app-pagination';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +26,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -42,8 +42,8 @@ import {
     whatsappMessageTemplates,
 } from '@/lib/lead-whatsapp-messages';
 import { cn } from '@/lib/utils';
-import { create, destroy, edit, index } from '@/routes/leads';
 import type { Lead } from '@/pages/leads/form';
+import { create, destroy, edit, index } from '@/routes/leads';
 
 type Paginated<T> = PaginationData & {
     data: T[];
@@ -144,11 +144,12 @@ function TaskColumn({
                                     {lead.company_name}
                                 </Link>
                                 <p className="truncate text-xs text-muted-foreground">
-                                    {lead.contact_name || lead.whatsapp || '-'} ·{' '}
-                                    {formatDate(lead.next_follow_up_at)}
+                                    {lead.contact_name || lead.whatsapp || '-'}{' '}
+                                    · {formatDate(lead.next_follow_up_at)}
                                 </p>
                                 <p className="truncate text-xs text-muted-foreground">
-                                    Responsável: {lead.user?.name ?? 'Não definido'}
+                                    Responsável:{' '}
+                                    {lead.user?.name ?? 'Não definido'}
                                 </p>
                             </div>
                             <LeadActions
@@ -217,6 +218,19 @@ function statusClass(status: string) {
             converted: 'border-emerald-200 bg-emerald-50 text-emerald-700',
             lost: 'border-rose-200 bg-rose-50 text-rose-700',
         }[status] ?? 'border-muted bg-muted/40 text-muted-foreground'
+    );
+}
+
+function statusBarClass(status: string) {
+    return (
+        {
+            new: 'bg-sky-400',
+            contacted: 'bg-amber-400',
+            interested: 'bg-violet-400',
+            meeting: 'bg-indigo-400',
+            converted: 'bg-emerald-400',
+            lost: 'bg-rose-400',
+        }[status] ?? 'bg-muted-foreground/40'
     );
 }
 
@@ -312,7 +326,7 @@ function LeadKanbanCard({
                         {lead.company_name}
                     </h3>
                     <p className="truncate text-xs text-muted-foreground">
-                    {lead.contact_name ||
+                        {lead.contact_name ||
                             lead.whatsapp ||
                             lead.phone ||
                             '-'}
@@ -440,6 +454,166 @@ function LeadKanbanCard({
     );
 }
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none';
+
+type FilterFieldKey =
+    | 'search'
+    | 'product'
+    | 'industry'
+    | 'state'
+    | 'status'
+    | 'follow_up'
+    | 'owner';
+
+/**
+ * Renders the filter inputs shared by the Kanban, Tarefas and Leads tabs.
+ * `fields` controls which inputs appear (each tab only needs a subset),
+ * and `idPrefix` keeps element ids unique when a tab wants that.
+ */
+function LeadFilterFields({
+    idPrefix = '',
+    fields,
+    filters,
+    products,
+    statuses,
+    users,
+}: {
+    idPrefix?: string;
+    fields: FilterFieldKey[];
+    filters: Props['filters'];
+    products: Record<string, string>;
+    statuses: Record<string, string>;
+    users: { id: number; name: string }[];
+}) {
+    const id = (name: string) => `${idPrefix}${name}`;
+
+    return (
+        <>
+            {fields.includes('search') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('search')} className="text-xs">
+                        Busca
+                    </Label>
+                    <Input
+                        id={id('search')}
+                        name="search"
+                        defaultValue={filters.search ?? ''}
+                        placeholder="Empresa, contato, e-mail..."
+                    />
+                </div>
+            )}
+            {fields.includes('product') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('product')} className="text-xs">
+                        Produto
+                    </Label>
+                    <select
+                        id={id('product')}
+                        name="product"
+                        defaultValue={filters.product ?? ''}
+                        className={selectClass}
+                    >
+                        <option value="">Todos</option>
+                        {Object.entries(products).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+            {fields.includes('industry') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('industry')} className="text-xs">
+                        Ramo
+                    </Label>
+                    <Input
+                        id={id('industry')}
+                        name="industry"
+                        defaultValue={filters.industry ?? ''}
+                        placeholder="Pet shop..."
+                    />
+                </div>
+            )}
+            {fields.includes('state') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('state')} className="text-xs">
+                        UF
+                    </Label>
+                    <Input
+                        id={id('state')}
+                        name="state"
+                        maxLength={2}
+                        defaultValue={filters.state ?? ''}
+                        placeholder="RS"
+                        className="uppercase"
+                    />
+                </div>
+            )}
+            {fields.includes('status') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('status')} className="text-xs">
+                        Status
+                    </Label>
+                    <select
+                        id={id('status')}
+                        name="status"
+                        defaultValue={filters.status ?? ''}
+                        className={selectClass}
+                    >
+                        <option value="">Todos</option>
+                        {Object.entries(statuses).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+            {fields.includes('follow_up') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('follow_up')} className="text-xs">
+                        Follow-up
+                    </Label>
+                    <select
+                        id={id('follow_up')}
+                        name="follow_up"
+                        defaultValue={filters.follow_up ?? ''}
+                        className={selectClass}
+                    >
+                        <option value="">Todos</option>
+                        <option value="overdue">Atrasados</option>
+                        <option value="today">Hoje</option>
+                        <option value="upcoming">Próximos</option>
+                    </select>
+                </div>
+            )}
+            {fields.includes('owner') && (
+                <div className="grid gap-1">
+                    <Label htmlFor={id('owner')} className="text-xs">
+                        Responsável
+                    </Label>
+                    <select
+                        id={id('owner')}
+                        name="owner"
+                        defaultValue={filters.owner ?? ''}
+                        className={selectClass}
+                    >
+                        <option value="">Todos</option>
+                        <option value="mine">Meus leads</option>
+                        {users.map((user) => (
+                            <option key={user.id} value={user.id}>
+                                {user.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+        </>
+    );
+}
+
 export default function LeadsIndex({
     filters,
     kanbanLeads,
@@ -459,14 +633,79 @@ export default function LeadsIndex({
     const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
     const [leadAwaitingLostReason, setLeadAwaitingLostReason] =
         useState<Lead | null>(null);
-    const [selectedLostReason, setSelectedLostReason] =
-        useState('no_response');
+    const [selectedLostReason, setSelectedLostReason] = useState('no_response');
     const [whatsappMessages, setWhatsappMessages] = useState(
         whatsappMessageTemplates,
     );
     const [clearDialogOpen, setClearDialogOpen] = useState(false);
     const [clearConfirmText, setClearConfirmText] = useState('');
     const hasActiveFilters = Object.values(filters).some(Boolean);
+
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [bulkStatus, setBulkStatus] = useState('');
+    const [bulkLostReason, setBulkLostReason] = useState('no_response');
+    const [bulkOwner, setBulkOwner] = useState('');
+
+    // Clear the selection whenever a new page of leads arrives (pagination,
+    // filtering, or a bulk action refresh). Adjusting state during render
+    // like this avoids the extra render cycle a useEffect would cost here.
+    const [leadsDataForSelection, setLeadsDataForSelection] = useState(
+        leads.data,
+    );
+
+    if (leadsDataForSelection !== leads.data) {
+        setLeadsDataForSelection(leads.data);
+        setSelectedIds([]);
+    }
+
+    const allCurrentPageSelected =
+        leads.data.length > 0 &&
+        leads.data.every((lead) => selectedIds.includes(lead.id));
+
+    const toggleLeadSelected = (leadId: number, checked: boolean) => {
+        setSelectedIds((current) =>
+            checked
+                ? [...current, leadId]
+                : current.filter((id) => id !== leadId),
+        );
+    };
+
+    const toggleAllOnPage = (checked: boolean) => {
+        setSelectedIds(checked ? leads.data.map((lead) => lead.id) : []);
+    };
+
+    const applyBulkUpdate = () => {
+        if (selectedIds.length === 0 || (!bulkStatus && !bulkOwner)) {
+            return;
+        }
+
+        router.patch(
+            '/leads/bulk',
+            {
+                ids: selectedIds,
+                ...(bulkStatus
+                    ? {
+                          status: bulkStatus,
+                          lost_reason:
+                              bulkStatus === 'lost' ? bulkLostReason : null,
+                      }
+                    : {}),
+                ...(bulkOwner
+                    ? {
+                          user_id: bulkOwner === 'unassign' ? null : bulkOwner,
+                      }
+                    : {}),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSelectedIds([]);
+                    setBulkStatus('');
+                    setBulkOwner('');
+                },
+            },
+        );
+    };
 
     const leadsByStatus = useMemo(() => {
         return Object.keys(statuses).reduce<Record<string, Lead[]>>(
@@ -520,9 +759,7 @@ export default function LeadsIndex({
         }
 
         if (targetStatus === 'lost') {
-            setSelectedLostReason(
-                draggedLead.lost_reason ?? 'no_response',
-            );
+            setSelectedLostReason(draggedLead.lost_reason ?? 'no_response');
             setLeadAwaitingLostReason(draggedLead);
 
             return;
@@ -616,6 +853,7 @@ export default function LeadsIndex({
                 open={clearDialogOpen}
                 onOpenChange={(open) => {
                     setClearDialogOpen(open);
+
                     if (!open) {
                         setClearConfirmText('');
                     }
@@ -766,124 +1004,21 @@ export default function LeadsIndex({
                                 {...index.form()}
                                 className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-6xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.85fr_0.75fr_auto]"
                             >
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="kanban-search"
-                                        className="text-xs"
-                                    >
-                                        Busca
-                                    </Label>
-                                    <Input
-                                        id="kanban-search"
-                                        name="search"
-                                        defaultValue={filters.search ?? ''}
-                                        placeholder="Empresa, contato, e-mail..."
-                                    />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="kanban-product"
-                                        className="text-xs"
-                                    >
-                                        Produto
-                                    </Label>
-                                    <select
-                                        id="kanban-product"
-                                        name="product"
-                                        defaultValue={filters.product ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        {Object.entries(products).map(
-                                            ([value, label]) => (
-                                                <option
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="kanban-industry"
-                                        className="text-xs"
-                                    >
-                                        Ramo
-                                    </Label>
-                                    <Input
-                                        id="kanban-industry"
-                                        name="industry"
-                                        defaultValue={filters.industry ?? ''}
-                                        placeholder="Pet shop..."
-                                    />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="kanban-state"
-                                        className="text-xs"
-                                    >
-                                        UF
-                                    </Label>
-                                    <Input
-                                        id="kanban-state"
-                                        name="state"
-                                        maxLength={2}
-                                        defaultValue={filters.state ?? ''}
-                                        placeholder="RS"
-                                        className="uppercase"
-                                    />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="kanban-follow-up"
-                                        className="text-xs"
-                                    >
-                                        Follow-up
-                                    </Label>
-                                    <select
-                                        id="kanban-follow-up"
-                                        name="follow_up"
-                                        defaultValue={filters.follow_up ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="overdue">
-                                            Atrasados
-                                        </option>
-                                        <option value="today">Hoje</option>
-                                        <option value="upcoming">
-                                            Próximos
-                                        </option>
-                                    </select>
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="kanban-owner"
-                                        className="text-xs"
-                                    >
-                                        Responsável
-                                    </Label>
-                                    <select
-                                        id="kanban-owner"
-                                        name="owner"
-                                        defaultValue={filters.owner ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="mine">Meus leads</option>
-                                        {users.map((user) => (
-                                            <option
-                                                key={user.id}
-                                                value={user.id}
-                                            >
-                                                {user.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <LeadFilterFields
+                                    idPrefix="kanban-"
+                                    fields={[
+                                        'search',
+                                        'product',
+                                        'industry',
+                                        'state',
+                                        'follow_up',
+                                        'owner',
+                                    ]}
+                                    filters={filters}
+                                    products={products}
+                                    statuses={statuses}
+                                    users={users}
+                                />
                                 <div className="flex items-end">
                                     <Button
                                         className="w-full"
@@ -1084,6 +1219,65 @@ export default function LeadsIndex({
                                 </Card>
                             </Link>
                         </div>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">
+                                    Leads por status
+                                </CardTitle>
+                                <CardDescription>
+                                    Distribuição do funil filtrado atualmente.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {Object.entries(statuses).map(
+                                    ([status, label]) => {
+                                        const count =
+                                            metrics.by_status[status] ?? 0;
+                                        const percentage =
+                                            metrics.total > 0
+                                                ? Math.round(
+                                                      (count / metrics.total) *
+                                                          100,
+                                                  )
+                                                : 0;
+
+                                        return (
+                                            <div
+                                                key={status}
+                                                className="flex items-center gap-3"
+                                            >
+                                                <Badge
+                                                    variant="outline"
+                                                    className={cn(
+                                                        'w-28 shrink-0 justify-center',
+                                                        statusClass(status),
+                                                    )}
+                                                >
+                                                    {label}
+                                                </Badge>
+                                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                                    <div
+                                                        className={cn(
+                                                            'h-full rounded-full',
+                                                            statusBarClass(
+                                                                status,
+                                                            ),
+                                                        )}
+                                                        style={{
+                                                            width: `${percentage}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                <span className="w-16 shrink-0 text-right text-sm text-muted-foreground">
+                                                    {count} · {percentage}%
+                                                </span>
+                                            </div>
+                                        );
+                                    },
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 
@@ -1093,42 +1287,20 @@ export default function LeadsIndex({
                             {...index.form()}
                             className="grid gap-2 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-[1.4fr_1fr_1fr_auto]"
                         >
-                            <Input
-                                name="search"
-                                defaultValue={filters.search ?? ''}
-                                placeholder="Buscar empresa ou contato"
+                            <LeadFilterFields
+                                idPrefix="tasks-"
+                                fields={['search', 'product', 'owner']}
+                                filters={filters}
+                                products={products}
+                                statuses={statuses}
+                                users={users}
                             />
-                            <select
-                                name="product"
-                                defaultValue={filters.product ?? ''}
-                                className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Todos os produtos</option>
-                                {Object.entries(products).map(
-                                    ([value, label]) => (
-                                        <option key={value} value={value}>
-                                            {label}
-                                        </option>
-                                    ),
-                                )}
-                            </select>
-                            <select
-                                name="owner"
-                                defaultValue={filters.owner ?? ''}
-                                className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Todos os responsáveis</option>
-                                <option value="mine">Meus leads</option>
-                                {users.map((user) => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <Button variant="outline">
-                                <Search className="size-4" />
-                                Filtrar tarefas
-                            </Button>
+                            <div className="flex items-end">
+                                <Button className="w-full" variant="outline">
+                                    <Search className="size-4" />
+                                    Filtrar tarefas
+                                </Button>
+                            </div>
                         </Form>
                         <div className="grid gap-4 xl:grid-cols-3">
                             <TaskColumn
@@ -1166,138 +1338,21 @@ export default function LeadsIndex({
                                 {...index.form()}
                                 className="grid w-full gap-2 sm:grid-cols-2 lg:max-w-7xl lg:grid-cols-[1.3fr_0.85fr_0.9fr_0.5fr_0.8fr_0.85fr_0.75fr_auto]"
                             >
-                                <div className="grid gap-1">
-                                    <Label htmlFor="search" className="text-xs">
-                                        Busca
-                                    </Label>
-                                    <Input
-                                        id="search"
-                                        name="search"
-                                        defaultValue={filters.search ?? ''}
-                                        placeholder="Empresa, contato, e-mail..."
-                                    />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="product"
-                                        className="text-xs"
-                                    >
-                                        Produto
-                                    </Label>
-                                    <select
-                                        id="product"
-                                        name="product"
-                                        defaultValue={filters.product ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        {Object.entries(products).map(
-                                            ([value, label]) => (
-                                                <option
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="industry"
-                                        className="text-xs"
-                                    >
-                                        Ramo
-                                    </Label>
-                                    <Input
-                                        id="industry"
-                                        name="industry"
-                                        defaultValue={filters.industry ?? ''}
-                                        placeholder="Pet shop..."
-                                    />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label htmlFor="state" className="text-xs">
-                                        UF
-                                    </Label>
-                                    <Input
-                                        id="state"
-                                        name="state"
-                                        maxLength={2}
-                                        defaultValue={filters.state ?? ''}
-                                        placeholder="RS"
-                                        className="uppercase"
-                                    />
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label htmlFor="status" className="text-xs">
-                                        Status
-                                    </Label>
-                                    <select
-                                        id="status"
-                                        name="status"
-                                        defaultValue={filters.status ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        {Object.entries(statuses).map(
-                                            ([value, label]) => (
-                                                <option
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label
-                                        htmlFor="follow_up"
-                                        className="text-xs"
-                                    >
-                                        Follow-up
-                                    </Label>
-                                    <select
-                                        id="follow_up"
-                                        name="follow_up"
-                                        defaultValue={filters.follow_up ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="overdue">
-                                            Atrasados
-                                        </option>
-                                        <option value="today">Hoje</option>
-                                        <option value="upcoming">
-                                            Próximos
-                                        </option>
-                                    </select>
-                                </div>
-                                <div className="grid gap-1">
-                                    <Label htmlFor="owner" className="text-xs">
-                                        Responsável
-                                    </Label>
-                                    <select
-                                        id="owner"
-                                        name="owner"
-                                        defaultValue={filters.owner ?? ''}
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="mine">Meus leads</option>
-                                        {users.map((user) => (
-                                            <option
-                                                key={user.id}
-                                                value={user.id}
-                                            >
-                                                {user.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <LeadFilterFields
+                                    fields={[
+                                        'search',
+                                        'product',
+                                        'industry',
+                                        'state',
+                                        'status',
+                                        'follow_up',
+                                        'owner',
+                                    ]}
+                                    filters={filters}
+                                    products={products}
+                                    statuses={statuses}
+                                    users={users}
+                                />
                                 <div className="flex items-end">
                                     <Button
                                         className="w-full"
@@ -1351,11 +1406,107 @@ export default function LeadsIndex({
 
                         <PaginationSummary data={leads} />
 
+                        {selectedIds.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-3 text-sm">
+                                <span className="font-medium">
+                                    {selectedIds.length} selecionado(s)
+                                </span>
+                                <select
+                                    value={bulkStatus}
+                                    onChange={(event) =>
+                                        setBulkStatus(event.target.value)
+                                    }
+                                    className={cn(selectClass, 'w-auto')}
+                                >
+                                    <option value="">Alterar status</option>
+                                    {Object.entries(statuses).map(
+                                        ([value, label]) => (
+                                            <option key={value} value={value}>
+                                                {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                                {bulkStatus === 'lost' && (
+                                    <select
+                                        value={bulkLostReason}
+                                        onChange={(event) =>
+                                            setBulkLostReason(
+                                                event.target.value,
+                                            )
+                                        }
+                                        className={cn(selectClass, 'w-auto')}
+                                    >
+                                        {Object.entries(lostReasons).map(
+                                            ([value, label]) => (
+                                                <option
+                                                    key={value}
+                                                    value={value}
+                                                >
+                                                    {label}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                )}
+                                <select
+                                    value={bulkOwner}
+                                    onChange={(event) =>
+                                        setBulkOwner(event.target.value)
+                                    }
+                                    className={cn(selectClass, 'w-auto')}
+                                >
+                                    <option value="">
+                                        Reatribuir responsável
+                                    </option>
+                                    <option value="unassign">
+                                        Remover responsável
+                                    </option>
+                                    {users.map((user) => (
+                                        <option key={user.id} value={user.id}>
+                                            {user.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={!bulkStatus && !bulkOwner}
+                                    onClick={applyBulkUpdate}
+                                >
+                                    Aplicar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSelectedIds([])}
+                                >
+                                    Cancelar seleção
+                                </Button>
+                            </div>
+                        )}
+
                         <div className="overflow-hidden rounded-lg border">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead className="border-b bg-muted/50">
                                         <tr className="text-left text-xs font-medium text-muted-foreground">
+                                            <th className="w-10 px-3 py-2">
+                                                <Checkbox
+                                                    checked={
+                                                        allCurrentPageSelected
+                                                    }
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        toggleAllOnPage(
+                                                            checked === true,
+                                                        )
+                                                    }
+                                                    aria-label="Selecionar todos os leads desta página"
+                                                />
+                                            </th>
                                             <th className="px-3 py-2">
                                                 Empresa
                                             </th>
@@ -1390,7 +1541,7 @@ export default function LeadsIndex({
                                         {leads.data.length === 0 ? (
                                             <tr>
                                                 <td
-                                                    colSpan={10}
+                                                    colSpan={11}
                                                     className="h-24 px-3 text-center text-sm text-muted-foreground"
                                                 >
                                                     Nenhum lead encontrado.
@@ -1414,6 +1565,23 @@ export default function LeadsIndex({
                                                         key={lead.id}
                                                         className="align-middle"
                                                     >
+                                                        <td className="px-3 py-2">
+                                                            <Checkbox
+                                                                checked={selectedIds.includes(
+                                                                    lead.id,
+                                                                )}
+                                                                onCheckedChange={(
+                                                                    checked,
+                                                                ) =>
+                                                                    toggleLeadSelected(
+                                                                        lead.id,
+                                                                        checked ===
+                                                                            true,
+                                                                    )
+                                                                }
+                                                                aria-label={`Selecionar ${lead.company_name}`}
+                                                            />
+                                                        </td>
                                                         <td className="max-w-64 px-3 py-2">
                                                             <div className="truncate font-medium">
                                                                 {
@@ -1422,8 +1590,12 @@ export default function LeadsIndex({
                                                             </div>
                                                             {lead.rating && (
                                                                 <div className="text-xs text-amber-600">
-                                                                    ★ {lead.rating}
-                                                                    {lead.reviews !== null &&
+                                                                    ★{' '}
+                                                                    {
+                                                                        lead.rating
+                                                                    }
+                                                                    {lead.reviews !==
+                                                                        null &&
                                                                         ` · ${lead.reviews} avaliações`}
                                                                 </div>
                                                             )}
@@ -1484,9 +1656,13 @@ export default function LeadsIndex({
                                                             {lead.address && (
                                                                 <div
                                                                     className="max-w-52 truncate text-xs"
-                                                                    title={lead.address}
+                                                                    title={
+                                                                        lead.address
+                                                                    }
                                                                 >
-                                                                    {lead.address}
+                                                                    {
+                                                                        lead.address
+                                                                    }
                                                                 </div>
                                                             )}
                                                         </td>
@@ -1586,8 +1762,7 @@ export default function LeadsIndex({
                                                                                     lead.id,
                                                                                 ),
                                                                                 {
-                                                                                    preserveScroll:
-                                                                                        true,
+                                                                                    preserveScroll: true,
                                                                                 },
                                                                             );
                                                                         }

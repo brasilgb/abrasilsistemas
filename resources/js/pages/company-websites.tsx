@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     ArrowUpRight,
@@ -8,6 +8,7 @@ import {
     ChevronDown,
     Gauge,
     LayoutTemplate,
+    LogIn,
     Mail,
     MessageCircle,
     MonitorSmartphone,
@@ -15,12 +16,14 @@ import {
     ShieldCheck,
     Store,
     Target,
+    UserRound,
 } from 'lucide-react';
 import { useState } from 'react';
 import { PublicBrand } from '@/components/public-brand';
 import { PublicFooter } from '@/components/public-footer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { WhatsAppFloat } from '@/components/whatsapp-float';
+import type { User } from '@/types';
 
 const whatsappUrl =
     'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20quero%20um%20site%20profissional%20para%20minha%20empresa.';
@@ -71,6 +74,7 @@ const faqs = [
 ];
 
 export default function CompanyWebsites() {
+    const { auth } = usePage<{ auth: { user: User | null } }>().props;
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
     const structuredData = {
@@ -114,16 +118,34 @@ export default function CompanyWebsites() {
                             <a href="#processo" className="transition hover:text-white">Como funciona</a>
                             <Link href="/" className="transition hover:text-white">Produtos ABrasil</Link>
                         </nav>
-                        <a
-                            href={whatsappUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-2.5 text-xs font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:text-sm"
-                        >
-                            <MessageCircle className="size-4" />
-                            <span className="hidden sm:inline">Solicitar orçamento</span>
-                            <span className="sm:hidden">Orçamento</span>
-                        </a>
+                        <div className="flex items-center gap-4">
+                            {auth.user ? (
+                                <Link
+                                    href={auth.user.role === 'admin' ? '/dashboard' : '/settings/profile'}
+                                    className="hidden items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/5 sm:inline-flex"
+                                >
+                                    <UserRound className="size-4 shrink-0" />
+                                    Minha conta
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/login"
+                                    className="hidden items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white sm:inline-flex"
+                                >
+                                    <LogIn className="size-4" /> Entrar
+                                </Link>
+                            )}
+                            <a
+                                href={whatsappUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-2.5 text-xs font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:text-sm"
+                            >
+                                <MessageCircle className="size-4" />
+                                <span className="hidden sm:inline">Solicitar orçamento</span>
+                                <span className="sm:hidden">Orçamento</span>
+                            </a>
+                        </div>
                     </div>
                 </header>
 
@@ -260,7 +282,7 @@ export default function CompanyWebsites() {
                                         className="group flex flex-1 flex-col justify-between rounded-[1.75rem] border border-violet-300/20 bg-[#11152a] p-7 shadow-2xl shadow-black/40 transition hover:-translate-y-1"
                                     >
                                         <div>
-                                            <img src="/images/logo_pet.png" alt="" className="size-12 rounded-2xl bg-white object-contain p-1" />
+                                            <img src="/images/logo_pet.png" alt="VetorPet" className="size-12 rounded-2xl bg-white object-contain p-1" />
                                             <p className="mt-6 text-xs font-bold tracking-[0.14em] text-violet-300 uppercase">Produto ABrasil</p>
                                             <p className="mt-1 text-lg font-black">VetorPet — gestão comercial para o mercado pet</p>
                                         </div>
