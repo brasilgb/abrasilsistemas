@@ -8,6 +8,7 @@ use App\Models\BlogComment;
 use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Models\User;
+use App\Support\HtmlSanitizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -37,6 +38,7 @@ class BlogPostController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
+        $data['body'] = HtmlSanitizer::clean($data['body']);
         $post = BlogPost::create([
             ...$data,
             'user_id' => $request->user()->id,
@@ -61,6 +63,7 @@ class BlogPostController extends Controller
     public function update(Request $request, BlogPost $post): RedirectResponse
     {
         $data = $this->validated($request);
+        $data['body'] = HtmlSanitizer::clean($data['body']);
         $post->update([
             ...$data,
             'slug' => $this->uniqueSlug($data['title'], $post->id),

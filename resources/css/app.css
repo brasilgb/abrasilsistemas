@@ -187,6 +187,19 @@
     .article-content figcaption {
         @apply mt-3 text-center text-sm text-slate-500;
     }
+
+    .article-content img:not(figure img) {
+        @apply my-10 max-h-[620px] w-full rounded-2xl object-cover shadow-lg;
+    }
+
+    /* Rich text editor (admin) placeholder for the empty body field. */
+    .article-content p.is-editor-empty:first-child::before {
+        content: attr(data-placeholder);
+        float: left;
+        height: 0;
+        pointer-events: none;
+        @apply text-muted-foreground;
+    }
 }
 
 /* Tema escuro das páginas públicas.

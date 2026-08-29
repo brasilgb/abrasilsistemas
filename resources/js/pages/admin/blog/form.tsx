@@ -1,6 +1,9 @@
 import Heading from '@/components/heading';
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { bodyToHtml } from '@/lib/article-body';
+import { uploadImage } from '@/lib/upload-image';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ImagePlus, LoaderCircle, Upload, X } from 'lucide-react';
 import { type DragEvent, type KeyboardEvent, useRef, useState } from 'react';
@@ -26,14 +29,15 @@ export default function BlogForm({
     existingTags: string[];
     post: Post | null;
 }) {
-    const [uploading, setUploading] = useState<'cover' | 'body' | null>(null);
-    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [uploadingCover, setUploadingCover] = useState(false);
+    const [coverUploadError, setCoverUploadError] = useState<string | null>(
+        null,
+    );
     const [tagInput, setTagInput] = useState('');
-    const bodyRef = useRef<HTMLTextAreaElement>(null);
     const form = useForm({
         title: post?.title ?? '',
         excerpt: post?.excerpt ?? '',
-        body: post?.body ?? '',
+        body: post?.body ? bodyToHtml(post.body) : '',
         blog_category_id: post?.blog_category_id
             ? String(post.blog_category_id)
             : '',
@@ -64,66 +68,27 @@ export default function BlogForm({
         if (event.key === 'Enter' || event.key === ',') {
             event.preventDefault();
             addTag(tagInput);
-        } else if (event.key === 'Backspace' && !tagInput && form.data.tags.length > 0) {
+        } else if (
+            event.key === 'Backspace' &&
+            !tagInput &&
+            form.data.tags.length > 0
+        ) {
             removeTag(form.data.tags[form.data.tags.length - 1]);
         }
     };
-    const uploadImage = async (file: File, target: 'cover' | 'body') => {
-        if (!file.type.startsWith('image/')) {
-            setUploadError('Selecione uma imagem JPG, PNG ou WebP.');
-            return;
-        }
-
-        setUploading(target);
-        setUploadError(null);
-        const data = new FormData();
-        data.append('image', file);
-
+    const uploadCoverImage = async (file: File) => {
+        setUploadingCover(true);
+        setCoverUploadError(null);
         try {
-            const csrfToken = document
-                .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-                ?.getAttribute('content');
-            const response = await fetch('/admin/blog/images', {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
-                },
-                body: data,
-            });
-            const result = (await response.json()) as {
-                url?: string;
-                message?: string;
-                errors?: { image?: string[] };
-            };
-
-            if (!response.ok || !result.url) {
-                throw new Error(
-                    result.errors?.image?.[0] ??
-                        result.message ??
-                        'Não foi possível enviar a imagem.',
-                );
-            }
-
-            if (target === 'cover') {
-                form.setData('cover_image_url', result.url);
-            } else {
-                const textarea = bodyRef.current;
-                const imageMarkup = `\n\n![Imagem do artigo](${result.url})\n\n`;
-                const cursor = textarea?.selectionStart ?? form.data.body.length;
-                form.setData(
-                    'body',
-                    `${form.data.body.slice(0, cursor)}${imageMarkup}${form.data.body.slice(cursor)}`,
-                );
-            }
+            form.setData('cover_image_url', await uploadImage(file));
         } catch (error) {
-            setUploadError(
+            setCoverUploadError(
                 error instanceof Error
                     ? error.message
                     : 'Não foi possível enviar a imagem.',
             );
         } finally {
-            setUploading(null);
+            setUploadingCover(false);
         }
     };
     const submit = (e: React.FormEvent) => {
@@ -161,7 +126,6 @@ export default function BlogForm({
                             <label className="text-sm font-medium">
                                 Resumo
                                 <textarea
-                                    ref={bodyRef}
                                     className={field}
                                     value={form.data.excerpt}
                                     onChange={(e) =>
@@ -173,35 +137,20 @@ export default function BlogForm({
                                 />
                                 <Err text={form.errors.excerpt} />
                             </label>
-                            <label className="text-sm font-medium">
+                            <div className="text-sm font-medium">
                                 Conteúdo
-                                <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                                    Use ## para subtítulos, ### para seções e -
-                                    para itens de uma lista. Separe os
-                                    parágrafos com uma linha vazia.
-                                </span>
-                                <textarea
-                                    className={field}
-                                    value={form.data.body}
-                                    onChange={(e) =>
-                                        form.setData('body', e.target.value)
-                                    }
-                                    required
-                                    rows={16}
-                                    placeholder={
-                                        'Comece o artigo com uma introdução...\n\n## Primeiro tópico\n\nDesenvolva a ideia principal.\n\n- Dica prática\n- Outro ponto importante'
-                                    }
-                                />
-                                <ImageDropzone
-                                    label="Inserir imagem no artigo"
-                                    description="Arraste uma imagem para cá ou clique para selecionar. Ela será inserida na posição do cursor."
-                                    uploading={uploading === 'body'}
-                                    onFile={(file) =>
-                                        uploadImage(file, 'body')
-                                    }
-                                />
-                                <Err text={form.errors.body} />
-                            </label>
+                                <div className="mt-1">
+                                    <RichTextEditor
+                                        key={post?.id ?? 'new'}
+                                        value={form.data.body}
+                                        onChange={(html) =>
+                                            form.setData('body', html)
+                                        }
+                                        onUploadImage={uploadImage}
+                                        error={form.errors.body}
+                                    />
+                                </div>
+                            </div>
                             <div className="grid gap-5 md:grid-cols-2">
                                 <label className="text-sm font-medium">
                                     Categoria
@@ -247,11 +196,9 @@ export default function BlogForm({
                                     <ImageDropzone
                                         label="Enviar imagem de capa"
                                         description="Arraste ou selecione uma imagem de até 5 MB."
-                                        uploading={uploading === 'cover'}
+                                        uploading={uploadingCover}
                                         preview={form.data.cover_image_url}
-                                        onFile={(file) =>
-                                            uploadImage(file, 'cover')
-                                        }
+                                        onFile={uploadCoverImage}
                                     />
                                     <span className="mt-3 block text-xs font-normal text-muted-foreground">
                                         Ou informe uma URL externa
@@ -287,9 +234,12 @@ export default function BlogForm({
                             <div className="text-sm font-medium">
                                 Tags
                                 <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                                    Digite o nome e aperte Enter (ou vírgula) para adicionar.
+                                    Digite o nome e aperte Enter (ou vírgula)
+                                    para adicionar.
                                 </span>
-                                <div className={`${field} flex flex-wrap items-center gap-2`}>
+                                <div
+                                    className={`${field} flex flex-wrap items-center gap-2`}
+                                >
                                     {form.data.tags.map((tag) => (
                                         <span
                                             key={tag}
@@ -309,10 +259,16 @@ export default function BlogForm({
                                     <input
                                         list="existing-tags"
                                         value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
+                                        onChange={(e) =>
+                                            setTagInput(e.target.value)
+                                        }
                                         onKeyDown={onTagInputKeyDown}
                                         onBlur={() => addTag(tagInput)}
-                                        placeholder={form.data.tags.length ? '' : 'gestão, produtividade...'}
+                                        placeholder={
+                                            form.data.tags.length
+                                                ? ''
+                                                : 'gestão, produtividade...'
+                                        }
                                         className="min-w-32 flex-1 bg-transparent outline-none"
                                     />
                                     <datalist id="existing-tags">
@@ -323,9 +279,9 @@ export default function BlogForm({
                                 </div>
                                 <Err text={form.errors.tags} />
                             </div>
-                            {uploadError && (
+                            {coverUploadError && (
                                 <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                                    {uploadError}
+                                    {coverUploadError}
                                 </p>
                             )}
                             <label className="flex items-center gap-2 text-sm">
