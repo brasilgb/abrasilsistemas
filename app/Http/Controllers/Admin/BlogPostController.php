@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BlogCategory;
 use App\Models\BlogComment;
 use App\Models\BlogPost;
+use App\Models\BlogTag;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,13 +27,23 @@ class BlogPostController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('admin/blog/form', ['categories' => BlogCategory::orderBy('name')->get(), 'post' => null]);
+        return Inertia::render('admin/blog/form', [
+            'categories' => BlogCategory::orderBy('name')->get(),
+            'existingTags' => BlogTag::orderBy('name')->pluck('name'),
+            'post' => null,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-        BlogPost::create([...$data, 'user_id' => $request->user()->id, 'slug' => $this->uniqueSlug($data['title']), 'published_at' => $data['status'] === 'published' ? ($data['published_at'] ?: now()) : null]);
+        $post = BlogPost::create([
+            ...$data,
+            'user_id' => $request->user()->id,
+            'slug' => $this->uniqueSlug($data['title']),
+            'published_at' => $data['status'] === 'published' ? ($data['published_at'] ?: now()) : null,
+        ]);
+        $post->tags()->sync($this->tagIds($data['tags'] ?? []));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Artigo criado.']);
 
         return to_route('admin.blog.posts.index');
@@ -40,13 +51,22 @@ class BlogPostController extends Controller
 
     public function edit(BlogPost $post): Response
     {
-        return Inertia::render('admin/blog/form', ['categories' => BlogCategory::orderBy('name')->get(), 'post' => $post]);
+        return Inertia::render('admin/blog/form', [
+            'categories' => BlogCategory::orderBy('name')->get(),
+            'existingTags' => BlogTag::orderBy('name')->pluck('name'),
+            'post' => $post->load('tags:id,name'),
+        ]);
     }
 
     public function update(Request $request, BlogPost $post): RedirectResponse
     {
         $data = $this->validated($request);
-        $post->update([...$data, 'slug' => $this->uniqueSlug($data['title'], $post->id), 'published_at' => $data['status'] === 'published' ? ($data['published_at'] ?: $post->published_at ?: now()) : null]);
+        $post->update([
+            ...$data,
+            'slug' => $this->uniqueSlug($data['title'], $post->id),
+            'published_at' => $data['status'] === 'published' ? ($data['published_at'] ?: $post->published_at ?: now()) : null,
+        ]);
+        $post->tags()->sync($this->tagIds($data['tags'] ?? []));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Artigo atualizado.']);
 
         return to_route('admin.blog.posts.index');
@@ -67,7 +87,28 @@ class BlogPostController extends Controller
             'title' => ['required', 'string', 'max:180'], 'excerpt' => ['required', 'string', 'max:500'], 'body' => ['required', 'string'],
             'blog_category_id' => ['nullable', 'integer', 'exists:blog_categories,id'], 'cover_image_url' => ['nullable', 'url', 'max:2048'],
             'status' => ['required', Rule::in(['draft', 'published'])], 'published_at' => ['nullable', 'date'], 'featured' => ['boolean'],
+            'tags' => ['sometimes', 'array'], 'tags.*' => ['string', 'max:50'],
         ]);
+    }
+
+    /**
+     * Find or create a BlogTag for each name and return their ids, ready for sync().
+     *
+     * @param  list<string>  $names
+     * @return list<int>
+     */
+    private function tagIds(array $names): array
+    {
+        return collect($names)
+            ->map(fn (string $name) => trim($name))
+            ->filter()
+            ->unique(fn (string $name) => Str::lower($name))
+            ->map(fn (string $name) => BlogTag::query()->firstOrCreate(
+                ['slug' => Str::slug($name)],
+                ['name' => $name],
+            )->id)
+            ->values()
+            ->all();
     }
 
     private function uniqueSlug(string $title, ?int $except = null): string

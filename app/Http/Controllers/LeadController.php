@@ -629,36 +629,6 @@ class LeadController extends Controller
      */
     private function duplicateLeadExists(array $data, ?Lead $except = null): bool
     {
-        $email = isset($data['email']) ? strtolower(trim((string) $data['email'])) : null;
-        $whatsapp = isset($data['whatsapp']) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
-        $company = trim((string) ($data['company_name'] ?? ''));
-        $city = trim((string) ($data['city'] ?? ''));
-        $state = strtoupper(trim((string) ($data['state'] ?? '')));
-        $hasCompanyLocation = $company !== '' && $city !== '' && $state !== '';
-
-        if (! $email && ! $whatsapp && ! $hasCompanyLocation) {
-            return false;
-        }
-
-        return Lead::query()
-            ->when($except, fn ($query) => $query->whereKeyNot($except->getKey()))
-            ->where(function ($query) use ($email, $whatsapp, $company, $city, $state, $hasCompanyLocation) {
-                if ($email) {
-                    $query->orWhereRaw('LOWER(email) = ?', [$email]);
-                }
-
-                if ($whatsapp) {
-                    $query->orWhere('whatsapp', $whatsapp);
-                }
-
-                if ($hasCompanyLocation) {
-                    $query->orWhere(function ($query) use ($company, $city, $state) {
-                        $query->whereRaw('LOWER(company_name) = ?', [strtolower($company)])
-                            ->whereRaw('LOWER(city) = ?', [strtolower($city)])
-                            ->where('state', $state);
-                    });
-                }
-            })
-            ->exists();
+        return Lead::isDuplicate($data, $except);
     }
 }

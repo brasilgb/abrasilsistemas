@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import {
     ArrowRight,
     ArrowUpRight,
@@ -8,7 +8,6 @@ import {
     ChevronDown,
     Gauge,
     LayoutTemplate,
-    LogIn,
     Mail,
     MessageCircle,
     MonitorSmartphone,
@@ -16,17 +15,14 @@ import {
     ShieldCheck,
     Store,
     Target,
-    UserRound,
 } from 'lucide-react';
 import { useState } from 'react';
-import { PublicBrand } from '@/components/public-brand';
+import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
+import { SecondaryPageHeader } from '@/components/secondary-page-header';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { WhatsAppFloat } from '@/components/whatsapp-float';
-import type { User } from '@/types';
-
-const whatsappUrl =
-    'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20quero%20um%20site%20profissional%20para%20minha%20empresa.';
+import { buildWhatsappUrl, useContact } from '@/lib/contact';
 
 const benefits = [
     { icon: Target, title: 'Pensado para vender', description: 'Conteúdo e chamadas para transformar visitantes em novos contatos.' },
@@ -74,7 +70,8 @@ const faqs = [
 ];
 
 export default function CompanyWebsites() {
-    const { auth } = usePage<{ auth: { user: User | null } }>().props;
+    const contact = useContact();
+    const whatsappUrl = buildWhatsappUrl(contact.whatsapp, 'Olá, quero um site profissional para minha empresa.');
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
     const structuredData = {
@@ -109,45 +106,13 @@ export default function CompanyWebsites() {
             </Head>
 
             <div className="min-h-screen bg-white text-slate-900 selection:bg-blue-100 selection:text-blue-950">
-                <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#08111f]/90 text-white backdrop-blur-xl">
-                    <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
-                        <PublicBrand inverse />
-                        <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-300 md:flex">
-                            <a href="#beneficios" className="transition hover:text-white">Benefícios</a>
-                            <a href="#solucoes" className="transition hover:text-white">Tipos de site</a>
-                            <a href="#processo" className="transition hover:text-white">Como funciona</a>
-                            <Link href="/" className="transition hover:text-white">Produtos ABrasil</Link>
-                        </nav>
-                        <div className="flex items-center gap-4">
-                            {auth.user ? (
-                                <Link
-                                    href={auth.user.role === 'admin' ? '/dashboard' : '/settings/profile'}
-                                    className="hidden items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/5 sm:inline-flex"
-                                >
-                                    <UserRound className="size-4 shrink-0" />
-                                    Minha conta
-                                </Link>
-                            ) : (
-                                <Link
-                                    href="/login"
-                                    className="hidden items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white sm:inline-flex"
-                                >
-                                    <LogIn className="size-4" /> Entrar
-                                </Link>
-                            )}
-                            <a
-                                href={whatsappUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-2 rounded-full bg-cyan-300 px-4 py-2.5 text-xs font-extrabold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-200 sm:text-sm"
-                            >
-                                <MessageCircle className="size-4" />
-                                <span className="hidden sm:inline">Solicitar orçamento</span>
-                                <span className="sm:hidden">Orçamento</span>
-                            </a>
-                        </div>
-                    </div>
-                </header>
+                <SecondaryPageHeader
+                    extraLinks={[
+                        { href: '#beneficios', label: 'Benefícios' },
+                        { href: '#solucoes', label: 'Tipos' },
+                        { href: '#processo', label: 'Processo' },
+                    ]}
+                />
 
                 <main>
                     <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
@@ -306,7 +271,7 @@ export default function CompanyWebsites() {
                         <div className="mx-auto max-w-7xl rounded-3xl bg-blue-700 px-7 py-14 text-center text-white shadow-2xl shadow-blue-700/15 sm:px-12 sm:py-20">
                             <h2 className="mx-auto max-w-3xl text-4xl font-bold tracking-[-0.04em] text-balance sm:text-6xl">Sua empresa merece um site à altura do que entrega.</h2>
                             <p className="mx-auto mt-5 max-w-2xl text-lg text-blue-100">Conte sobre seu negócio e receba uma proposta para transformar sua presença digital.</p>
-                            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3.5 text-sm font-bold text-blue-800"><MessageCircle className="size-4" />Pedir orçamento</a><a href="mailto:contato@absistemas.com.br?subject=Orçamento para desenvolvimento de site" className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-6 py-3.5 text-sm font-bold"><Mail className="size-4" />Enviar e-mail</a></div>
+                            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3.5 text-sm font-bold text-blue-800"><MessageCircle className="size-4" />Pedir orçamento</a><a href={`mailto:${contact.email}?subject=Orçamento para desenvolvimento de site`} className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/30 px-6 py-3.5 text-sm font-bold"><Mail className="size-4" />Enviar e-mail</a></div>
                         </div>
                     </section>
 
@@ -341,6 +306,7 @@ export default function CompanyWebsites() {
 
                 <PublicFooter />
                 <WhatsAppFloat />
+                <CookieConsent />
             </div>
         </>
     );

@@ -1,9 +1,13 @@
 import { MessageCircle } from 'lucide-react';
+import { buildWhatsappUrl, useContact } from '@/lib/contact';
 
 export function WhatsAppFloat() {
+    const contact = useContact();
+    const whatsappUrl = buildWhatsappUrl(contact.whatsapp, 'Olá, quero falar com a ABrasil Sistemas');
+
     return (
         <a
-            href="https://wa.me/5551998931325?text=Ol%C3%A1%2C%20quero%20falar%20com%20a%20ABrasil%20Sistemas"
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Falar com a ABrasil Sistemas pelo WhatsApp"

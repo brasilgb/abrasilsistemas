@@ -16,6 +16,7 @@ type Post = {
     featured: boolean;
     published_at: string;
     category?: { name: string; slug: string };
+    tags?: { id: number; name: string; slug: string }[];
     author: { name: string };
 };
 
@@ -26,24 +27,25 @@ type Props = {
         links: { url: string | null; label: string; active: boolean }[];
     };
     categories: { id: number; name: string; slug: string; posts_count: number }[];
+    tags: { id: number; name: string; slug: string; posts_count: number }[];
     popularPosts: Post[];
-    filters: { category?: string; search?: string };
+    filters: { category?: string; tag?: string; search?: string };
 };
 
 const date = (value: string) =>
     new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(value));
 
-export default function BlogIndex({ posts, categories, popularPosts, filters }: Props) {
+export default function BlogIndex({ posts, categories, tags, popularPosts, filters }: Props) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
     const [search, setSearch] = useState(filters.search ?? '');
-    const featured = posts.current_page === 1 && !filters.search && !filters.category
+    const featured = posts.current_page === 1 && !filters.search && !filters.category && !filters.tag
         ? (posts.data.find((post) => post.featured) ?? posts.data[0])
         : null;
     const articles = featured ? posts.data.filter((post) => post.id !== featured.id) : posts.data;
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        router.get('/blog', { search, category: filters.category }, { preserveState: true });
+        router.get('/blog', { search, category: filters.category, tag: filters.tag }, { preserveState: true });
     };
 
     return (
@@ -97,11 +99,11 @@ export default function BlogIndex({ posts, categories, popularPosts, filters }: 
                     </section>
                 )}
 
-                <div className={`grid gap-12 ${categories.length || popularPosts.length ? 'lg:grid-cols-[1fr_280px]' : ''} ${featured ? 'mt-16' : ''}`}>
+                <div className={`grid gap-12 ${categories.length || tags.length || popularPosts.length ? 'lg:grid-cols-[1fr_280px]' : ''} ${featured ? 'mt-16' : ''}`}>
                     <section>
                         <div className="flex items-end justify-between gap-4">
                             <div><p className="text-sm font-bold text-blue-700">Últimas publicações</p><h2 className="mt-1 text-3xl font-bold text-slate-950">Explore nossos artigos</h2></div>
-                            {(filters.search || filters.category) && <Link href="/blog" className="text-sm font-bold text-blue-700">Limpar filtros</Link>}
+                            {(filters.search || filters.category || filters.tag) && <Link href="/blog" className="text-sm font-bold text-blue-700">Limpar filtros</Link>}
                         </div>
                         {articles.length ? (
                             <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -112,6 +114,19 @@ export default function BlogIndex({ posts, categories, popularPosts, filters }: 
                                             <div className="flex flex-wrap gap-3 text-xs font-semibold text-slate-500">{post.category && <span className="text-blue-700">{post.category.name}</span>}<span>{date(post.published_at)}</span></div>
                                             <h3 className="mt-3 text-xl font-bold leading-7 text-slate-950 group-hover:text-blue-700"><Link href={`/blog/${post.slug}`}>{post.title}</Link></h3>
                                             <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{post.excerpt}</p>
+                                            {post.tags && post.tags.length > 0 && (
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    {post.tags.map((tag) => (
+                                                        <Link
+                                                            key={tag.id}
+                                                            href={`/blog?tag=${tag.slug}`}
+                                                            className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+                                                        >
+                                                            #{tag.name}
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <Link href={`/blog/${post.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-blue-700">Ler artigo <ArrowRight className="size-4" /></Link>
                                         </div>
                                     </article>
@@ -123,9 +138,25 @@ export default function BlogIndex({ posts, categories, popularPosts, filters }: 
                         </div>
                     </section>
 
-                    {(categories.length > 0 || popularPosts.length > 0) && (
+                    {(categories.length > 0 || tags.length > 0 || popularPosts.length > 0) && (
                         <aside className="space-y-9">
                             {categories.length > 0 && <section><h2 className="font-bold text-slate-950">Categorias</h2><div className="mt-4 space-y-1"><Link href="/blog" className={`flex justify-between rounded-lg px-3 py-2.5 text-sm ${!filters.category ? 'bg-blue-50 font-bold text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><span>Todos os artigos</span></Link>{categories.map((category) => <Link key={category.id} href={`/blog?category=${category.slug}`} className={`flex justify-between rounded-lg px-3 py-2.5 text-sm ${filters.category === category.slug ? 'bg-blue-50 font-bold text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}><span>{category.name}</span><span className="text-slate-400">{category.posts_count}</span></Link>)}</div></section>}
+                            {tags.length > 0 && (
+                                <section>
+                                    <h2 className="font-bold text-slate-950">Tags</h2>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        {tags.map((tag) => (
+                                            <Link
+                                                key={tag.id}
+                                                href={`/blog?tag=${tag.slug}`}
+                                                className={`rounded-full px-3 py-1.5 text-sm ${filters.tag === tag.slug ? 'bg-blue-700 font-bold text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                            >
+                                                #{tag.name}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
                             {popularPosts.length > 0 && <section><h2 className="font-bold text-slate-950">Mais lidos</h2><div className="mt-4 divide-y divide-slate-200">{popularPosts.map((post) => <Link key={post.id} href={`/blog/${post.slug}`} className="block py-4 first:pt-0"><span className="text-sm font-semibold leading-5 text-slate-800 hover:text-blue-700">{post.title}</span><span className="mt-2 flex items-center gap-1 text-xs text-slate-400"><Eye className="size-3" />{post.views} visualizações</span></Link>)}</div></section>}
                         </aside>
                     )}

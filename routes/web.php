@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PortfolioItemController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\TestimonialImageController;
 use App\Http\Controllers\BlogCommentController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EbookMercadoPagoWebhookController;
 use App\Http\Controllers\LeadActivityController;
@@ -38,6 +39,67 @@ Route::get('/', function () {
         ]),
     ]);
 })->name('home');
+Route::get('produtos', function () {
+    return Inertia::render('produtos', [
+        'seo' => Seo::tags([
+            'title' => 'Produtos ABrasil — VetorOS, VetorPet e sistemas sob medida',
+            'description' => 'Conheça o VetorOS, o VetorPet e os projetos sob medida da ABrasil: o problema real de cada operação e como cada solução resolve.',
+            'canonical' => url('/produtos'),
+            'ogTitle' => 'Produtos ABrasil — VetorOS, VetorPet e sistemas sob medida',
+            'ogDescription' => 'O problema real de cada operação e a solução da ABrasil para ela: VetorOS, VetorPet e desenvolvimento sob medida.',
+        ]),
+    ]);
+})->name('produtos');
+Route::get('servicos', function () {
+    return Inertia::render('servicos', [
+        'seo' => Seo::tags([
+            'title' => 'Serviços — Sites, sistemas, apps e integrações | ABrasil Sistemas',
+            'description' => 'Criação de sites, landing pages, sistemas sob medida, aplicativos, integrações e automação de processos.',
+            'canonical' => url('/servicos'),
+        ]),
+    ]);
+})->name('servicos');
+Route::get('sobre', function () {
+    return Inertia::render('sobre', [
+        'seo' => Seo::tags([
+            'title' => 'Sobre a ABrasil Sistemas',
+            'description' => 'A ABrasil Sistemas desenvolve soluções digitais pensando na rotina real das empresas: sites, sistemas, aplicativos e produtos próprios.',
+            'canonical' => url('/sobre'),
+        ]),
+    ]);
+})->name('sobre');
+Route::get('contato', [ContactController::class, 'create'])->name('contato');
+Route::post('contato', [ContactController::class, 'store'])->middleware('throttle:5,1')->name('contato.store');
+Route::get('politica-de-privacidade', function () {
+    return Inertia::render('legal/privacidade', [
+        'seo' => Seo::tags([
+            'title' => 'Política de Privacidade | ABrasil Sistemas',
+            'description' => 'Como a ABrasil Sistemas coleta, usa e protege dados pessoais no site e nos formulários de contato.',
+            'canonical' => url('/politica-de-privacidade'),
+            'robots' => 'noindex, follow',
+        ]),
+    ]);
+})->name('legal.privacidade');
+Route::get('termos-de-uso', function () {
+    return Inertia::render('legal/termos', [
+        'seo' => Seo::tags([
+            'title' => 'Termos de Uso | ABrasil Sistemas',
+            'description' => 'Termos de uso do site da ABrasil Sistemas.',
+            'canonical' => url('/termos-de-uso'),
+            'robots' => 'noindex, follow',
+        ]),
+    ]);
+})->name('legal.termos');
+Route::get('politica-de-cookies', function () {
+    return Inertia::render('legal/cookies', [
+        'seo' => Seo::tags([
+            'title' => 'Política de Cookies | ABrasil Sistemas',
+            'description' => 'Como a ABrasil Sistemas usa cookies no site.',
+            'canonical' => url('/politica-de-cookies'),
+            'robots' => 'noindex, follow',
+        ]),
+    ]);
+})->name('legal.cookies');
 Route::get('desenvolvimento-de-sites-para-empresas', function () {
     return Inertia::render('company-websites', [
         'seo' => Seo::tags([

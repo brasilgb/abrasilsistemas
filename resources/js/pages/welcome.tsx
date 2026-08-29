@@ -6,27 +6,34 @@ import {
     Check,
     CheckCircle2,
     ChevronDown,
+    ChevronLeft,
     ChevronRight,
     ClipboardCheck,
     Code2,
+    LayoutTemplate,
     LogIn,
     Menu,
     MessageCircle,
     MonitorSmartphone,
+    Plug,
     Quote,
+    Smartphone,
     Sparkles,
     UserRound,
+    Workflow,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CookieConsent } from '@/components/cookie-consent';
+import { NavProductsMenu } from '@/components/nav-products-menu';
+import { NavServicesMenu } from '@/components/nav-services-menu';
 import { PublicBrand } from '@/components/public-brand';
 import { PublicFooter } from '@/components/public-footer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { WhatsAppFloat } from '@/components/whatsapp-float';
+import { buildWhatsappUrl, useContact } from '@/lib/contact';
+import { vetorOsFeatures as productFeatures, vetorPetFeatures } from '@/data/product-features';
 import type { User } from '@/types';
-
-const contactWhatsappUrl =
-    'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20uma%20solu%C3%A7%C3%A3o%20da%20ABrasil.';
 
 const outcomes = [
     {
@@ -52,33 +59,174 @@ const outcomes = [
     },
 ] as const;
 
-const productFeatures = [
-    'Ordens de serviço e orçamentos',
-    'Clientes e equipamentos',
-    'Estoque, vendas e financeiro',
-    'Aplicativos para equipe e clientes',
-] as const;
+function buildHeroSlides(whatsappNumber: string) {
+    const contactWhatsappUrl = buildWhatsappUrl(whatsappNumber, 'Olá, preciso de ajuda com uma solução da ABrasil.');
 
-const otherSolutions = [
+    return [
+    {
+        id: 'sob-medida',
+        name: 'Sob medida',
+        eyebrow: 'Projetos sob medida · Sites e sistemas',
+        tagline: 'Sites e sistemas',
+        titleLead: 'Do briefing',
+        titleHighlight: 'ao ar em semanas.',
+        description:
+            'Sites institucionais, landing pages e sistemas sob medida para quem precisa de retorno rápido — sem esperar meses para ver o projeto no ar.',
+        logo: undefined,
+        icon: Code2,
+        logoClass: 'bg-amber-400/15 text-amber-300',
+        features: [
+            'Sites institucionais e landing pages',
+            'Sistemas e integrações sob medida',
+            'Entrega em semanas, não meses',
+            'Suporte direto com quem constrói',
+        ],
+        primaryCta: {
+            label: 'Falar sobre um projeto',
+            href: contactWhatsappUrl,
+        },
+        secondaryCta: {
+            label: 'Ver serviços sob medida',
+            href: '/produtos#sob-medida',
+        },
+        footNote: {
+            text: 'Também temos produtos prontos para usar.',
+            linkLabel: 'Ver VetorOS e VetorPet',
+            href: '/produtos#vetoros',
+        },
+        footerLabel: 'Serviço ABrasil',
+        badgeLabel: 'Entrega ágil',
+        badgeValue: 'Briefing → No ar',
+        pillClass: 'border-amber-300/25 bg-amber-300/10 text-amber-200',
+        headlineAccent: 'text-amber-300',
+        primaryBtnClass:
+            'bg-amber-400 text-slate-950 shadow-[0_18px_60px_rgba(251,191,36,.18)] hover:bg-amber-300',
+        gradientClass:
+            'bg-gradient-to-br from-amber-300/20 via-blue-600/5 to-transparent',
+        cardBorder: 'border-amber-300/20',
+        cardBg: 'bg-[#1a1408]',
+        tagColor: 'text-amber-300',
+        checkColor: 'text-amber-300',
+        badgeBg: 'bg-amber-300',
+        dotColor: 'bg-amber-300',
+    },
+    {
+        id: 'vetoros',
+        name: 'VetorOS',
+        eyebrow: 'Produto ABrasil · Assistências técnicas',
+        tagline: 'Assistências técnicas',
+        titleLead: 'Uma tela.',
+        titleHighlight: 'A operação inteira.',
+        description:
+            'Ordens de serviço, clientes, estoque, vendas e financeiro em uma única operação, pensada para o dia a dia da assistência técnica.',
+        logo: '/images/logo_os.png',
+        icon: undefined,
+        logoClass: 'rounded-2xl object-contain',
+        features: productFeatures,
+        primaryCta: {
+            label: 'Criar minha conta grátis',
+            href: 'https://vetoros.com.br',
+        },
+        secondaryCta: { label: 'Ver detalhes do VetorOS', href: '/produtos#vetoros' },
+        footNote: {
+            text: 'Também criamos sistemas sob medida e sites profissionais.',
+            linkLabel: 'Saiba mais',
+            href: '/produtos#sob-medida',
+        },
+        footerLabel: 'Produto ABrasil',
+        badgeLabel: 'Tudo conectado',
+        badgeValue: 'Atendimento → Financeiro',
+        pillClass: 'border-sky-300/25 bg-sky-300/10 text-sky-200',
+        headlineAccent: 'text-sky-300',
+        primaryBtnClass:
+            'bg-sky-400 text-slate-950 shadow-[0_18px_60px_rgba(56,189,248,.18)] hover:bg-sky-300',
+        gradientClass:
+            'bg-gradient-to-br from-cyan-300/20 via-blue-600/5 to-transparent',
+        cardBorder: 'border-sky-300/20',
+        cardBg: 'bg-[#0b1625]',
+        tagColor: 'text-sky-300',
+        checkColor: 'text-sky-300',
+        badgeBg: 'bg-cyan-300',
+        dotColor: 'bg-sky-300',
+    },
+    {
+        id: 'vetorpet',
+        name: 'VetorPet',
+        eyebrow: 'Produto ABrasil · Mercado pet',
+        tagline: 'Vendas no mercado pet',
+        titleLead: 'Da visita.',
+        titleHighlight: 'Ao pedido.',
+        description:
+            'Carteira de clientes, catálogo, pedidos e equipe comercial no painel web e aplicativo Android, feito para quem vende no mercado pet.',
+        logo: '/images/logo_pet.png',
+        icon: undefined,
+        logoClass: 'rounded-2xl bg-white object-contain p-1',
+        features: vetorPetFeatures,
+        primaryCta: {
+            label: 'Criar minha conta grátis',
+            href: 'https://vetorpet.com.br',
+        },
+        secondaryCta: { label: 'Ver detalhes do VetorPet', href: '/produtos#vetorpet' },
+        footNote: {
+            text: 'Também criamos sistemas sob medida e sites profissionais.',
+            linkLabel: 'Saiba mais',
+            href: '/produtos#sob-medida',
+        },
+        footerLabel: 'Produto ABrasil',
+        badgeLabel: 'Tudo conectado',
+        badgeValue: 'Visita → Pedido',
+        pillClass: 'border-violet-300/25 bg-violet-300/10 text-violet-200',
+        headlineAccent: 'text-violet-300',
+        primaryBtnClass:
+            'bg-violet-400 text-slate-950 shadow-[0_18px_60px_rgba(167,139,250,.18)] hover:bg-violet-300',
+        gradientClass:
+            'bg-gradient-to-br from-violet-300/20 via-blue-600/5 to-transparent',
+        cardBorder: 'border-violet-300/20',
+        cardBg: 'bg-[#11152a]',
+        tagColor: 'text-violet-300',
+        checkColor: 'text-violet-300',
+        badgeBg: 'bg-violet-300',
+        dotColor: 'bg-violet-300',
+    },
+    ];
+}
+
+const homeServices = [
     {
         icon: MonitorSmartphone,
-        eyebrow: 'Presença digital',
-        title: 'Sites que trabalham pela empresa',
-        description:
-            'Sites institucionais e landing pages com estratégia, velocidade e foco em gerar oportunidades.',
-        href: '/desenvolvimento-de-sites-para-empresas',
-        action: 'Conhecer o serviço',
-        accent: 'cyan',
+        title: 'Criação de Sites',
+        description: 'Institucionais e rápidos, prontos para gerar contatos.',
+        href: '/servicos#sites',
+    },
+    {
+        icon: LayoutTemplate,
+        title: 'Landing Pages',
+        description: 'Foco total em apresentar uma campanha ou serviço.',
+        href: '/servicos#landing-pages',
     },
     {
         icon: Code2,
-        eyebrow: 'Projetos especiais',
-        title: 'Software sob medida',
-        description:
-            'Aplicativos, integrações e sistemas para processos que uma ferramenta pronta não resolve.',
-        href: 'mailto:contato@absistemas.com.br?subject=Projeto de software sob medida',
-        action: 'Enviar uma solicitação',
-        accent: 'amber',
+        title: 'Sistemas Sob Medida',
+        description: 'Para processos que uma ferramenta pronta não resolve.',
+        href: '/servicos#sistemas',
+    },
+    {
+        icon: Smartphone,
+        title: 'Aplicativos',
+        description: 'Integrados a sistemas web, APIs e equipes externas.',
+        href: '/servicos#aplicativos',
+    },
+    {
+        icon: Plug,
+        title: 'Integrações e APIs',
+        description: 'Conexão entre sistemas, bancos de dados e serviços.',
+        href: '/servicos#integracoes',
+    },
+    {
+        icon: Workflow,
+        title: 'Automação de Processos',
+        description: 'Fluxos automáticos dentro de um projeto de software.',
+        href: '/servicos#automacao',
     },
 ] as const;
 
@@ -189,8 +337,21 @@ export default function Welcome({
     portfolioItems: PortfolioItemSummary[];
 }) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
+    const contact = useContact();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+    const [activeSlide, setActiveSlide] = useState(0);
+    const heroSlides = buildHeroSlides(contact.whatsapp);
+    const slide = heroSlides[activeSlide];
+    const SlideIcon = slide.icon;
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setActiveSlide((current) => (current + 1) % heroSlides.length);
+        }, 7000);
+
+        return () => clearInterval(timer);
+    }, [activeSlide]);
 
     const structuredData = {
         '@context': 'https://schema.org',
@@ -200,7 +361,7 @@ export default function Welcome({
                 name: 'ABrasil Sistemas',
                 url: 'https://abrasilsistemas.com.br',
                 logo: 'https://abrasilsistemas.com.br/images/logo_ab.png',
-                email: 'contato@absistemas.com.br',
+                email: 'contato@abrasilsistemas.com.br',
                 telephone: '+55-51-99893-1325',
                 description:
                     'Empresa brasileira de tecnologia responsável pelo VetorOS e VetorPet, além do desenvolvimento de sistemas sob medida e sites profissionais.',
@@ -270,26 +431,16 @@ export default function Welcome({
                     <div className="mx-auto flex h-20 max-w-[86rem] items-center justify-between px-5 sm:px-8 lg:px-12">
                         <PublicBrand inverse />
                         <nav
-                            className="hidden items-center gap-8 text-sm font-semibold text-slate-300 lg:flex"
+                            className="hidden items-center gap-6 text-sm font-semibold text-slate-300 lg:flex"
                             aria-label="Navegação principal"
                         >
-                            <a
-                                href="#produtos"
-                                className="transition hover:text-white"
-                            >
-                                Produtos
-                            </a>
+                            <NavProductsMenu />
+                            <NavServicesMenu />
                             <a
                                 href="#resultados"
                                 className="transition hover:text-white"
                             >
                                 Resultados
-                            </a>
-                            <a
-                                href="#solucoes"
-                                className="transition hover:text-white"
-                            >
-                                Serviços
                             </a>
                             {portfolioItems.length > 0 && (
                                 <a
@@ -308,13 +459,25 @@ export default function Welcome({
                                 </a>
                             )}
                             <Link
+                                href="/sobre"
+                                className="transition hover:text-white"
+                            >
+                                Sobre
+                            </Link>
+                            <Link
                                 href="/blog"
                                 className="transition hover:text-white"
                             >
-                                Conteúdo
+                                Blog
+                            </Link>
+                            <Link
+                                href="/contato"
+                                className="transition hover:text-white"
+                            >
+                                Contato
                             </Link>
                         </nav>
-                        <div className="hidden items-center gap-4 sm:flex">
+                        <div className="hidden items-center gap-3 sm:flex">
                             {auth.user ? (
                                 <Link
                                     href={auth.user.role === 'admin' ? '/dashboard' : '/settings/profile'}
@@ -360,10 +523,10 @@ export default function Welcome({
                             className="border-t border-white/10 bg-[#08111f] px-5 py-5 text-sm font-bold lg:hidden"
                             aria-label="Navegação móvel"
                         >
+                            <NavProductsMenu mobile onNavigate={() => setMobileMenuOpen(false)} />
+                            <NavServicesMenu mobile onNavigate={() => setMobileMenuOpen(false)} />
                             {[
-                                ['#produtos', 'Produtos'],
                                 ['#resultados', 'Resultados'],
-                                ['#solucoes', 'Serviços'],
                                 ...(portfolioItems.length > 0
                                     ? [['#trabalhos', 'Trabalhos']]
                                     : []),
@@ -381,10 +544,25 @@ export default function Welcome({
                                 </a>
                             ))}
                             <Link
+                                href="/sobre"
+                                className="block border-b border-white/10 py-4"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Sobre
+                            </Link>
+                            <Link
                                 href="/blog"
                                 className="block border-b border-white/10 py-4"
+                                onClick={() => setMobileMenuOpen(false)}
                             >
-                                Conteúdo
+                                Blog
+                            </Link>
+                            <Link
+                                href="/contato"
+                                className="block border-b border-white/10 py-4"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Contato
                             </Link>
                             {auth.user ? (
                                 <Link
@@ -421,82 +599,140 @@ export default function Welcome({
                         <div className="absolute top-10 right-[-12rem] -z-10 size-[38rem] rounded-full bg-sky-500/20 blur-[120px]" />
                         <div className="absolute bottom-[-18rem] left-[25%] -z-10 size-[32rem] rounded-full bg-sky-400/10 blur-[100px]" />
 
-                        <div className="mx-auto grid max-w-[86rem] items-center gap-16 px-5 pb-20 sm:px-8 sm:pb-28 lg:grid-cols-[0.92fr_1.08fr] lg:px-12">
-                            <div>
-                                <p className="inline-flex items-center gap-2 rounded-full border border-sky-300/25 bg-sky-300/10 px-4 py-2 text-xs font-extrabold tracking-[0.12em] text-sky-200 uppercase">
-                                    <Sparkles className="size-3.5" />
-                                    Produtos próprios e projetos para empresas
-                                </p>
-                                <h1 className="mt-7 max-w-3xl text-[clamp(3.5rem,7vw,6.6rem)] leading-[0.88] font-black tracking-[-0.075em] text-balance">
-                                    Tecnologia para
-                                    <span className="mt-2 block text-sky-300">
-                                        fazer seu negócio avançar.
-                                    </span>
-                                </h1>
-                                <p className="mt-8 max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
-                                    A ABrasil é a empresa por trás do VetorOS e
-                                    do VetorPet. Também desenvolvemos sistemas
-                                    sob medida e sites profissionais para
-                                    transformar ideias e processos em
-                                    resultados.
-                                </p>
-                                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                                    <a
-                                        href="#produtos"
-                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-sky-400 px-7 text-sm font-extrabold text-slate-950 shadow-[0_18px_60px_rgba(56,189,248,.18)] transition hover:-translate-y-1 hover:bg-sky-300"
-                                    >
-                                        Conhecer nossos produtos
-                                        <ArrowRight className="size-4" />
-                                    </a>
-                                    <a
-                                        href="#solucoes"
-                                        className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white/15 px-7 text-sm font-bold text-white transition hover:bg-white/5"
-                                    >
-                                        Desenvolvimento e sites
-                                        <ArrowRight className="size-4" />
-                                    </a>
+                        <div
+                            className="mx-auto max-w-[86rem] px-5 pb-16 sm:px-8 sm:pb-20 lg:px-12"
+                            role="region"
+                            aria-roledescription="carrossel"
+                            aria-label="Produtos ABrasil"
+                        >
+                            <div key={slide.id} className="grid items-center gap-16 lg:grid-cols-[0.92fr_1.08fr]">
+                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    <p className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-extrabold tracking-[0.12em] uppercase ${slide.pillClass}`}>
+                                        <Sparkles className="size-3.5" />
+                                        {slide.eyebrow}
+                                    </p>
+                                    <h1 className="mt-7 max-w-3xl text-[clamp(3.5rem,7vw,6.6rem)] leading-[0.88] font-black tracking-[-0.075em] text-balance">
+                                        {slide.titleLead}
+                                        <span className={`mt-2 block ${slide.headlineAccent}`}>
+                                            {slide.titleHighlight}
+                                        </span>
+                                    </h1>
+                                    <p className="mt-8 max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
+                                        {slide.description}
+                                    </p>
+                                    <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                                        <a
+                                            href={slide.primaryCta.href}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className={`inline-flex h-14 items-center justify-center gap-3 rounded-full px-7 text-sm font-extrabold transition hover:-translate-y-1 ${slide.primaryBtnClass}`}
+                                        >
+                                            {slide.primaryCta.label}
+                                            <ArrowUpRight className="size-4" />
+                                        </a>
+                                        <a
+                                            href={slide.secondaryCta.href}
+                                            className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white/15 px-7 text-sm font-bold text-white transition hover:bg-white/5"
+                                        >
+                                            {slide.secondaryCta.label}
+                                            <ArrowRight className="size-4" />
+                                        </a>
+                                    </div>
+                                    <p className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                        <Check className="size-4 text-cyan-300" />
+                                        {slide.footNote.text}
+                                        <a
+                                            href={slide.footNote.href}
+                                            className="font-bold text-slate-300 underline underline-offset-2 transition hover:text-white"
+                                        >
+                                            {slide.footNote.linkLabel}
+                                        </a>
+                                    </p>
                                 </div>
-                                <p className="mt-5 flex items-center gap-2 text-xs text-slate-500">
-                                    <Check className="size-4 text-cyan-300" />{' '}
-                                    Produtos digitais, projetos personalizados
-                                    e atendimento próximo.
-                                </p>
+
+                                <div className="relative animate-in fade-in duration-500">
+                                    <div className={`absolute -inset-5 rounded-[2.2rem] blur-2xl ${slide.gradientClass}`} />
+                                    <div className={`relative z-10 flex min-h-[26rem] flex-col rounded-[1.75rem] border p-8 shadow-2xl shadow-black/40 sm:p-10 ${slide.cardBorder} ${slide.cardBg}`}>
+                                        <div className="flex items-center gap-4">
+                                            {slide.logo ? (
+                                                <img
+                                                    src={slide.logo}
+                                                    alt={slide.name}
+                                                    className={`size-16 shrink-0 ${slide.logoClass}`}
+                                                />
+                                            ) : (
+                                                SlideIcon && (
+                                                    <span className={`grid size-16 shrink-0 place-items-center rounded-2xl ${slide.logoClass}`}>
+                                                        <SlideIcon className="size-7" />
+                                                    </span>
+                                                )
+                                            )}
+                                            <div>
+                                                <p className={`text-xs font-bold tracking-[0.15em] uppercase ${slide.tagColor}`}>
+                                                    {slide.tagline}
+                                                </p>
+                                                <h2 className="mt-1 text-3xl font-black">{slide.name}</h2>
+                                            </div>
+                                        </div>
+                                        <ul className="mt-8 grid flex-1 content-start gap-4 sm:grid-cols-2">
+                                            {slide.features.map((feature) => (
+                                                <li key={feature} className="flex items-start gap-2 text-sm leading-6 text-slate-300">
+                                                    <CheckCircle2 className={`mt-0.5 size-4 shrink-0 ${slide.checkColor}`} />
+                                                    {feature}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <span className="mt-8 flex items-center justify-between border-t border-white/10 pt-6 text-sm font-black text-white">
+                                            {slide.footerLabel}
+                                            <CheckCircle2 className={`size-4 ${slide.checkColor}`} />
+                                        </span>
+                                    </div>
+                                    <div className={`absolute -right-3 -bottom-5 z-20 rounded-2xl px-4 py-3 text-slate-950 shadow-xl sm:-right-7 ${slide.badgeBg}`}>
+                                        <p className="text-[10px] font-bold uppercase">
+                                            {slide.badgeLabel}
+                                        </p>
+                                        <p className="mt-0.5 text-sm font-black">
+                                            {slide.badgeValue}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="relative grid gap-4 sm:grid-cols-2">
-                                <div className="absolute -inset-5 rounded-[2.2rem] bg-gradient-to-br from-cyan-300/20 via-blue-600/5 to-transparent blur-2xl" />
-                                <div className="relative z-10 flex min-h-80 flex-col rounded-[1.4rem] border border-sky-300/20 bg-[#0b1625] p-6 shadow-2xl shadow-black/40">
-                                    <img src="/images/logo_os.png" alt="VetorOS" className="size-14 rounded-2xl object-contain" />
-                                    <p className="mt-8 text-xs font-bold tracking-[0.15em] text-sky-300 uppercase">Assistências técnicas</p>
-                                    <h2 className="mt-3 text-3xl font-black">VetorOS</h2>
-                                    <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
-                                        Ordens de serviço, clientes, estoque, vendas e financeiro em uma única operação.
-                                    </p>
-                                    <span className="mt-6 flex items-center justify-between border-t border-white/10 pt-5 text-sm font-black text-white">
-                                        Produto ABrasil
-                                        <CheckCircle2 className="size-4 text-sky-300" />
-                                    </span>
+                            <div className="mt-14 flex items-center justify-center gap-5 sm:mt-16">
+                                <button
+                                    type="button"
+                                    aria-label="Produto anterior"
+                                    onClick={() =>
+                                        setActiveSlide((current) => (current - 1 + heroSlides.length) % heroSlides.length)
+                                    }
+                                    className="grid size-10 shrink-0 place-items-center rounded-full border border-white/15 text-white transition hover:bg-white/10"
+                                >
+                                    <ChevronLeft className="size-4" />
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    {heroSlides.map((item, index) => (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            aria-label={`Ver ${item.name}`}
+                                            aria-current={index === activeSlide}
+                                            onClick={() => setActiveSlide(index)}
+                                            className={`h-2 rounded-full transition-all ${
+                                                index === activeSlide
+                                                    ? `w-8 ${item.dotColor}`
+                                                    : 'w-2 bg-white/20 hover:bg-white/40'
+                                            }`}
+                                        />
+                                    ))}
                                 </div>
-                                <div className="relative z-10 flex min-h-80 flex-col rounded-[1.4rem] border border-violet-300/20 bg-[#11152a] p-6 shadow-2xl shadow-black/40 sm:translate-y-8">
-                                    <img src="/images/logo_pet.png" alt="VetorPet" className="size-14 rounded-2xl bg-white object-contain p-1" />
-                                    <p className="mt-8 text-xs font-bold tracking-[0.15em] text-violet-300 uppercase">Vendas no mercado pet</p>
-                                    <h2 className="mt-3 text-3xl font-black">VetorPet</h2>
-                                    <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
-                                        Clientes, catálogo, visitas, pedidos e vendedores no painel web e aplicativo Android.
-                                    </p>
-                                    <span className="mt-6 flex items-center justify-between border-t border-white/10 pt-5 text-sm font-black text-white">
-                                        Produto ABrasil
-                                        <CheckCircle2 className="size-4 text-violet-300" />
-                                    </span>
-                                </div>
-                                <div className="absolute -right-3 -bottom-5 z-20 rounded-2xl border border-cyan-300/20 bg-cyan-300 px-4 py-3 text-slate-950 shadow-xl sm:-right-7">
-                                    <p className="text-[10px] font-bold uppercase">
-                                        Tudo conectado
-                                    </p>
-                                    <p className="mt-0.5 text-sm font-black">
-                                        Atendimento → Financeiro
-                                    </p>
-                                </div>
+                                <button
+                                    type="button"
+                                    aria-label="Próximo produto"
+                                    onClick={() => setActiveSlide((current) => (current + 1) % heroSlides.length)}
+                                    className="grid size-10 shrink-0 place-items-center rounded-full border border-white/15 text-white transition hover:bg-white/10"
+                                >
+                                    <ChevronRight className="size-4" />
+                                </button>
                             </div>
                         </div>
 
@@ -559,226 +795,6 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    <section
-                        id="vetoros"
-                        className="scroll-mt-20 bg-[#dffbff] py-24 sm:py-32"
-                    >
-                        <div className="mx-auto grid max-w-[86rem] items-center gap-16 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
-                            <div className="vetoros-copy">
-                                <p className="text-xs font-extrabold tracking-[0.18em] text-blue-800 uppercase">
-                                    VetorOS
-                                </p>
-                                <h2 className="mt-5 text-5xl leading-[0.98] font-black tracking-[-0.06em] text-balance text-slate-950 sm:text-7xl">
-                                    Uma tela.
-                                    <span className="block text-blue-700">
-                                        A operação inteira.
-                                    </span>
-                                </h2>
-                                <p className="mt-7 max-w-xl text-lg leading-8 text-slate-700">
-                                    Pare de procurar informação em cadernos,
-                                    conversas e planilhas. O VetorOS conecta
-                                    atendimento, bancada, estoque, vendas e
-                                    gestão.
-                                </p>
-                                <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-                                    {productFeatures.map((feature) => (
-                                        <li
-                                            key={feature}
-                                            className="flex items-start gap-3 text-sm font-bold text-slate-800"
-                                        >
-                                            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-blue-700 text-white">
-                                                <Check
-                                                    className="size-3"
-                                                    strokeWidth={3}
-                                                />
-                                            </span>
-                                            {feature}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <a
-                                    href={contactWhatsappUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-10 inline-flex items-center gap-2 text-sm font-black text-blue-800"
-                                >
-                                    Falar sobre esta solução{' '}
-                                    <MessageCircle className="size-4" />
-                                </a>
-                            </div>
-                            <div className="relative">
-                                <div className="absolute top-4 right-4 -bottom-4 left-4 rounded-[2rem] bg-blue-700" />
-                                <div className="relative rounded-[2rem] bg-slate-950 p-7 text-white shadow-2xl sm:p-10">
-                                    <p className="text-xs font-bold tracking-[0.14em] text-cyan-300 uppercase">
-                                        Antes x Depois
-                                    </p>
-                                    <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                                        <div className="rounded-2xl border border-red-300/15 bg-red-300/5 p-6">
-                                            <p className="text-sm font-black text-red-200">
-                                                Sem uma gestão central
-                                            </p>
-                                            <ul className="mt-5 space-y-4 text-sm leading-6 text-slate-400">
-                                                {[
-                                                    'Informação espalhada',
-                                                    'Cliente cobrando retorno',
-                                                    'Estoque sem precisão',
-                                                    'Decisões no escuro',
-                                                ].map((item) => (
-                                                    <li
-                                                        key={item}
-                                                        className="flex gap-2"
-                                                    >
-                                                        <X className="mt-1 size-4 shrink-0 text-red-300" />
-                                                        {item}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                        <div className="rounded-2xl border border-cyan-300/25 bg-cyan-300/10 p-6">
-                                            <p className="text-sm font-black text-cyan-200">
-                                                Com o VetorOS
-                                            </p>
-                                            <ul className="mt-5 space-y-4 text-sm leading-6 text-slate-200">
-                                                {[
-                                                    'Histórico em um só lugar',
-                                                    'Status claro de cada OS',
-                                                    'Movimentações registradas',
-                                                    'Indicadores para decidir',
-                                                ].map((item) => (
-                                                    <li
-                                                        key={item}
-                                                        className="flex gap-2"
-                                                    >
-                                                        <Check className="mt-1 size-4 shrink-0 text-cyan-300" />
-                                                        {item}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                    <div className="mt-6 flex flex-col items-start justify-between gap-5 border-t border-white/10 pt-6 sm:flex-row sm:items-center">
-                                        <div>
-                                            <p className="font-black">
-                                                Veja na prática, com a sua
-                                                realidade.
-                                            </p>
-                                            <p className="mt-1 text-sm text-slate-400">
-                                                Crie sua conta e conheça os
-                                                recursos na sua própria rotina.
-                                            </p>
-                                        </div>
-                                        <a
-                                            href="https://vetoros.com.br"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950"
-                                        >
-                                            Criar minha conta{' '}
-                                            <ArrowUpRight className="size-4" />
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section
-                        id="vetorpet"
-                        className="scroll-mt-20 bg-violet-50 py-24 sm:py-32"
-                    >
-                        <div className="mx-auto grid max-w-[86rem] items-center gap-16 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
-                            <div>
-                                <p className="text-xs font-extrabold tracking-[0.18em] text-violet-700 uppercase">
-                                    VetorPet
-                                </p>
-                                <h2 className="mt-5 text-5xl leading-[0.98] font-black tracking-[-0.06em] text-balance text-slate-950 sm:text-7xl">
-                                    Da visita.
-                                    <span className="block text-violet-700">
-                                        Ao pedido.
-                                    </span>
-                                </h2>
-                                <p className="mt-7 max-w-xl text-lg leading-8 text-slate-700">
-                                    O VetorPet conecta carteira de clientes,
-                                    catálogo, agenda, pedidos e gestão de equipe
-                                    para quem vende suprimentos no mercado pet.
-                                </p>
-                                <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-                                    {[
-                                        'Painel web e aplicativo Android',
-                                        'Carteira de clientes e regiões',
-                                        'Catálogo e pedidos em campo',
-                                        'Visitas, comissões e resultados',
-                                    ].map((feature) => (
-                                        <li
-                                            key={feature}
-                                            className="flex items-start gap-3 text-sm font-bold text-slate-800"
-                                        >
-                                            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-violet-700 text-white">
-                                                <Check className="size-3" strokeWidth={3} />
-                                            </span>
-                                            {feature}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <a
-                                    href={contactWhatsappUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-10 inline-flex items-center gap-2 text-sm font-black text-violet-800"
-                                >
-                                    Falar sobre esta solução{' '}
-                                    <MessageCircle className="size-4" />
-                                </a>
-                            </div>
-
-                            <div className="relative">
-                                <div className="absolute top-4 right-4 -bottom-4 left-4 rounded-[2rem] bg-violet-700" />
-                                <div className="relative rounded-[2rem] bg-slate-950 p-7 text-white shadow-2xl sm:p-10">
-                                    <div className="flex items-center gap-4">
-                                        <img
-                                            src="/images/logo_pet.png"
-                                            alt="VetorPet"
-                                            className="size-14 rounded-2xl bg-white object-contain p-1"
-                                        />
-                                        <div>
-                                            <p className="text-xs font-bold tracking-[0.14em] text-violet-300 uppercase">
-                                                Gestão comercial especializada
-                                            </p>
-                                            <p className="mt-1 text-2xl font-black">
-                                                Venda em campo com controle
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                                        {[
-                                            ['Para o vendedor', 'Consulte clientes e produtos, registre visitas e monte pedidos pelo celular.'],
-                                            ['Para o gestor', 'Organize equipe e regiões e acompanhe pedidos, comissões e resultados no painel.'],
-                                        ].map(([title, description]) => (
-                                            <div key={title} className="rounded-2xl border border-violet-300/20 bg-violet-300/10 p-6">
-                                                <p className="font-black text-violet-200">{title}</p>
-                                                <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-6 flex flex-col items-start justify-between gap-5 border-t border-white/10 pt-6 sm:flex-row sm:items-center">
-                                        <div>
-                                            <p className="font-black">Teste com a sua operação.</p>
-                                            <p className="mt-1 text-sm text-slate-400">Comece sem cartão de crédito.</p>
-                                        </div>
-                                        <a
-                                            href="https://vetorpet.com.br"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-violet-300 px-5 py-3 text-sm font-black text-slate-950"
-                                        >
-                                            Criar minha conta <ArrowUpRight className="size-4" />
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
                     <section className="bg-[#08111f] py-24 text-white sm:py-32">
                         <div className="mx-auto max-w-[86rem] px-5 sm:px-8 lg:px-12">
                             <SectionHeading
@@ -813,54 +829,42 @@ export default function Welcome({
                         className="scroll-mt-20 py-24 sm:py-32"
                     >
                         <div className="mx-auto max-w-[86rem] px-5 sm:px-8 lg:px-12">
-                            <SectionHeading
-                                eyebrow="Ecossistema ABrasil"
-                                title="Serviços para outros desafios digitais."
-                                description="Soluções especializadas para vender, comunicar e transformar processos — sempre com tecnologia a serviço da operação."
-                            />
-                            <div className="mt-14 grid gap-5 lg:grid-cols-2">
-                                {otherSolutions.map((solution) => {
-                                    const Icon = solution.icon;
-                                    const external =
-                                        solution.href.startsWith('http');
-                                    const color =
-                                        solution.accent === 'violet'
-                                            ? 'bg-violet-100 text-violet-700'
-                                            : solution.accent === 'amber'
-                                              ? 'bg-amber-100 text-amber-800'
-                                              : 'bg-cyan-100 text-cyan-800';
+                            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                                <SectionHeading
+                                    eyebrow="Ecossistema ABrasil"
+                                    title="Serviços para outros desafios digitais."
+                                    description="Soluções especializadas para vender, comunicar e transformar processos — sempre com tecnologia a serviço da operação."
+                                />
+                                <Link
+                                    href="/servicos"
+                                    className="inline-flex shrink-0 items-center gap-2 text-sm font-black text-blue-700"
+                                >
+                                    Ver todos os serviços
+                                    <ArrowRight className="size-4" />
+                                </Link>
+                            </div>
+                            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                {homeServices.map((service) => {
+                                    const Icon = service.icon;
 
                                     return (
                                         <a
-                                            key={solution.title}
-                                            href={solution.href}
-                                            target={
-                                                external ? '_blank' : undefined
-                                            }
-                                            rel={
-                                                external
-                                                    ? 'noreferrer'
-                                                    : undefined
-                                            }
-                                            className="group flex min-h-[25rem] flex-col rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl sm:p-9"
+                                            key={service.title}
+                                            href={service.href}
+                                            className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg"
                                         >
-                                            <span
-                                                className={`grid size-12 place-items-center rounded-2xl ${color}`}
-                                            >
+                                            <span className="grid size-11 place-items-center rounded-xl bg-cyan-100 text-cyan-800">
                                                 <Icon className="size-5" />
                                             </span>
-                                            <p className="mt-9 text-xs font-extrabold tracking-[0.15em] text-slate-400 uppercase">
-                                                {solution.eyebrow}
-                                            </p>
-                                            <h3 className="mt-3 text-3xl leading-tight font-black tracking-[-0.045em] text-slate-950">
-                                                {solution.title}
+                                            <h3 className="mt-5 text-lg font-black text-slate-950">
+                                                {service.title}
                                             </h3>
-                                            <p className="mt-4 flex-1 leading-7 text-slate-600">
-                                                {solution.description}
+                                            <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">
+                                                {service.description}
                                             </p>
-                                            <span className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5 text-sm font-black text-slate-950">
-                                                {solution.action}
-                                                <ArrowUpRight className="size-4 transition group-hover:translate-x-1 group-hover:-translate-y-1" />
+                                            <span className="mt-5 flex items-center gap-1 text-xs font-black text-slate-950">
+                                                Saiba mais
+                                                <ArrowUpRight className="size-3.5 transition group-hover:translate-x-1 group-hover:-translate-y-1" />
                                             </span>
                                         </a>
                                     );
@@ -1112,6 +1116,7 @@ export default function Welcome({
 
                 <PublicFooter />
                 <WhatsAppFloat />
+                <CookieConsent />
             </div>
         </>
     );

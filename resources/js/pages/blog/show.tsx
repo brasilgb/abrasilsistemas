@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, Eye, MessageCircle, UserRound } from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import BlogPublicLayout from '@/components/blog-public-layout';
+import { buildWhatsappUrl, useContact } from '@/lib/contact';
 import type { User } from '@/types';
 
 type Comment = { id: number; body: string; created_at: string; user: { name: string } };
@@ -16,6 +17,7 @@ type Post = {
     views: number;
     author: { name: string };
     category?: { name: string; slug: string };
+    tags?: { id: number; name: string; slug: string }[];
     comments: Comment[];
 };
 type Props = {
@@ -81,6 +83,8 @@ function ArticleBody({ content }: { content: string }) {
 
 export default function BlogShow({ post, relatedPosts }: Props) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
+    const contact = useContact();
+    const whatsappUrl = buildWhatsappUrl(contact.whatsapp, 'Olá, li um artigo no blog e gostaria de conversar.');
     const [body, setBody] = useState('');
     const [sending, setSending] = useState(false);
 
@@ -137,13 +141,27 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                     <div className="mx-auto max-w-4xl px-5 sm:px-8">
                         {post.cover_image_url && <img src={post.cover_image_url} alt="" className="mt-10 max-h-[520px] w-full rounded-2xl object-cover shadow-lg sm:mt-14" />}
                         <ArticleBody content={post.body} />
+                        {post.tags && post.tags.length > 0 && (
+                            <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-8">
+                                <span className="text-sm font-bold text-slate-500">Tags:</span>
+                                {post.tags.map((tag) => (
+                                    <Link
+                                        key={tag.id}
+                                        href={`/blog?tag=${tag.slug}`}
+                                        className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-200"
+                                    >
+                                        #{tag.name}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </article>
 
                 <section className="mx-auto max-w-4xl px-5 sm:px-8">
                     <div className="mt-16 rounded-2xl bg-blue-700 p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9">
                         <div><h2 className="text-2xl font-bold">Quer aplicar tecnologia na sua empresa?</h2><p className="mt-2 text-sm leading-6 text-blue-100">Converse com a ABrasil Sistemas e descubra o melhor caminho.</p></div>
-                        <a href="https://wa.me/5551998931325?text=Ol%C3%A1%2C%20li%20um%20artigo%20no%20blog%20e%20gostaria%20de%20conversar." target="_blank" rel="noreferrer" className="mt-5 inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-blue-800 sm:mt-0"><MessageCircle className="size-4" /> Falar conosco</a>
+                        <a href={whatsappUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-blue-800 sm:mt-0"><MessageCircle className="size-4" /> Falar conosco</a>
                     </div>
                 </section>
 

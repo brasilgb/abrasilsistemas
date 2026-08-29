@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -50,5 +51,11 @@ class BlogPost extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(BlogComment::class);
+    }
+
+    /** @return BelongsToMany<BlogTag, $this> */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(BlogTag::class);
     }
 }

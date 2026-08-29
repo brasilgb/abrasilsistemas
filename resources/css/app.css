@@ -189,38 +189,42 @@
     }
 }
 
-/* Tema escuro das páginas públicas. */
-.dark .ab-public-site:not(.ab-marketing-home) {
+/* Tema escuro das páginas públicas.
+   .ab-marketing-home (home) e .ab-static-light (produtos, serviços, sobre,
+   contato, páginas legais, sites) ficam de fora: essas páginas usam fundos
+   claros coloridos (âmbar, violeta, ciano) que essas regras não cobrem, e
+   forçar o texto para claro nelas deixava o texto quase invisível. */
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) {
     background: #020617 !important;
     color: #e2e8f0 !important;
 }
 
-.dark .ab-public-site:not(.ab-marketing-home) header,
-.dark .ab-public-site:not(.ab-marketing-home) [class~='bg-white'] {
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) header,
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class~='bg-white'] {
     background-color: #0f172a !important;
 }
 
-.dark .ab-public-site:not(.ab-marketing-home) [class~='bg-slate-50'] {
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class~='bg-slate-50'] {
     background-color: #111c30 !important;
 }
 
-.dark .ab-public-site:not(.ab-marketing-home) [class*='text-slate-9'],
-.dark .ab-public-site:not(.ab-marketing-home) [class*='text-slate-7'],
-.dark .ab-public-site:not(.ab-marketing-home) [class*='text-slate-6'] {
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='text-slate-9'],
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='text-slate-7'],
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='text-slate-6'] {
     color: #e2e8f0 !important;
 }
 
-.dark .ab-public-site:not(.ab-marketing-home) [class*='text-slate-5'] {
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='text-slate-5'] {
     color: #94a3b8 !important;
 }
 
-.dark .ab-public-site:not(.ab-marketing-home) [class*='border-slate-2'],
-.dark .ab-public-site:not(.ab-marketing-home) [class*='border-slate-1'],
-.dark .ab-public-site:not(.ab-marketing-home) [class*='border-slate-3'] {
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='border-slate-2'],
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='border-slate-1'],
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='border-slate-3'] {
     border-color: #334155 !important;
 }
 
-.dark .ab-public-site:not(.ab-marketing-home) [class*='from-blue-50'],
-.dark .ab-public-site:not(.ab-marketing-home) [class*='from-white'] {
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='from-blue-50'],
+.dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='from-white'] {
     background-image: linear-gradient(to bottom, #111c30, #020617) !important;
 }

@@ -2,8 +2,8 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ImagePlus, LoaderCircle, Upload } from 'lucide-react';
-import { type DragEvent, useRef, useState } from 'react';
+import { ImagePlus, LoaderCircle, Upload, X } from 'lucide-react';
+import { type DragEvent, type KeyboardEvent, useRef, useState } from 'react';
 type Category = { id: number; name: string };
 type Post = {
     id: number;
@@ -15,16 +15,20 @@ type Post = {
     status: 'draft' | 'published';
     published_at?: string;
     featured: boolean;
+    tags?: { id: number; name: string }[];
 };
 export default function BlogForm({
     categories,
+    existingTags,
     post,
 }: {
     categories: Category[];
+    existingTags: string[];
     post: Post | null;
 }) {
     const [uploading, setUploading] = useState<'cover' | 'body' | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [tagInput, setTagInput] = useState('');
     const bodyRef = useRef<HTMLTextAreaElement>(null);
     const form = useForm({
         title: post?.title ?? '',
@@ -37,7 +41,33 @@ export default function BlogForm({
         status: post?.status ?? 'draft',
         published_at: post?.published_at?.slice(0, 16) ?? '',
         featured: post?.featured ?? false,
+        tags: post?.tags?.map((tag) => tag.name) ?? ([] as string[]),
     });
+    const addTag = (raw: string) => {
+        const name = raw.trim();
+        if (!name) return;
+        const alreadyAdded = form.data.tags.some(
+            (tag) => tag.toLowerCase() === name.toLowerCase(),
+        );
+        if (!alreadyAdded) {
+            form.setData('tags', [...form.data.tags, name]);
+        }
+        setTagInput('');
+    };
+    const removeTag = (name: string) => {
+        form.setData(
+            'tags',
+            form.data.tags.filter((tag) => tag !== name),
+        );
+    };
+    const onTagInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            addTag(tagInput);
+        } else if (event.key === 'Backspace' && !tagInput && form.data.tags.length > 0) {
+            removeTag(form.data.tags[form.data.tags.length - 1]);
+        }
+    };
     const uploadImage = async (file: File, target: 'cover' | 'body') => {
         if (!file.type.startsWith('image/')) {
             setUploadError('Selecione uma imagem JPG, PNG ou WebP.');
@@ -253,6 +283,45 @@ export default function BlogForm({
                                         }
                                     />
                                 </label>
+                            </div>
+                            <div className="text-sm font-medium">
+                                Tags
+                                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                                    Digite o nome e aperte Enter (ou vírgula) para adicionar.
+                                </span>
+                                <div className={`${field} flex flex-wrap items-center gap-2`}>
+                                    {form.data.tags.map((tag) => (
+                                        <span
+                                            key={tag}
+                                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-primary"
+                                        >
+                                            {tag}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeTag(tag)}
+                                                className="rounded-full p-0.5 hover:bg-primary/20"
+                                                aria-label={`Remover tag ${tag}`}
+                                            >
+                                                <X className="size-3" />
+                                            </button>
+                                        </span>
+                                    ))}
+                                    <input
+                                        list="existing-tags"
+                                        value={tagInput}
+                                        onChange={(e) => setTagInput(e.target.value)}
+                                        onKeyDown={onTagInputKeyDown}
+                                        onBlur={() => addTag(tagInput)}
+                                        placeholder={form.data.tags.length ? '' : 'gestão, produtividade...'}
+                                        className="min-w-32 flex-1 bg-transparent outline-none"
+                                    />
+                                    <datalist id="existing-tags">
+                                        {existingTags.map((name) => (
+                                            <option key={name} value={name} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                                <Err text={form.errors.tags} />
                             </div>
                             {uploadError && (
                                 <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">

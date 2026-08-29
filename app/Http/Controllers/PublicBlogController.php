@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
+use App\Models\BlogTag;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,8 +16,9 @@ class PublicBlogController extends Controller
     {
         $posts = BlogPost::query()
             ->published()
-            ->with(['category:id,name,slug', 'author:id,name'])
+            ->with(['category:id,name,slug', 'author:id,name', 'tags:id,name,slug'])
             ->when($request->string('category')->isNotEmpty(), fn ($query) => $query->whereHas('category', fn ($category) => $category->where('slug', $request->string('category'))))
+            ->when($request->string('tag')->isNotEmpty(), fn ($query) => $query->whereHas('tags', fn ($tag) => $tag->where('slug', $request->string('tag'))))
             ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where(function ($query) use ($request) {
                 $search = '%'.$request->string('search')->trim().'%';
                 $query->where('title', 'like', $search)->orWhere('excerpt', 'like', $search);
@@ -31,8 +33,12 @@ class PublicBlogController extends Controller
                 ->whereHas('posts', fn ($query) => $query->where('status', 'published')->where('published_at', '<=', now()))
                 ->withCount(['posts' => fn ($query) => $query->where('status', 'published')->where('published_at', '<=', now())])
                 ->orderBy('name')->get(),
+            'tags' => BlogTag::query()
+                ->whereHas('posts', fn ($query) => $query->where('status', 'published')->where('published_at', '<=', now()))
+                ->withCount(['posts' => fn ($query) => $query->where('status', 'published')->where('published_at', '<=', now())])
+                ->orderBy('name')->get(),
             'popularPosts' => BlogPost::query()->published()->orderByDesc('views')->limit(5)->get(['id', 'title', 'slug', 'views', 'published_at']),
-            'filters' => $request->only(['category', 'search']),
+            'filters' => $request->only(['category', 'tag', 'search']),
             'seo' => Seo::tags([
                 'title' => 'Blog sobre tecnologia e gestão | ABrasil Sistemas',
                 'description' => 'Informação prática para usar a tecnologia a favor da sua empresa.',
@@ -47,7 +53,7 @@ class PublicBlogController extends Controller
     {
         abort_unless($post->status === 'published' && $post->published_at?->isPast(), 404);
         $post->increment('views');
-        $post->load(['category:id,name,slug', 'author:id,name', 'comments' => fn ($query) => $query->where('status', 'approved')->with('user:id,name')->oldest()]);
+        $post->load(['category:id,name,slug', 'author:id,name', 'tags:id,name,slug', 'comments' => fn ($query) => $query->where('status', 'approved')->with('user:id,name')->oldest()]);
 
         return Inertia::render('blog/show', [
             'post' => $post,

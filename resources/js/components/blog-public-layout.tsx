@@ -1,13 +1,11 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, BookOpen, LogIn, MessageCircle, UserRound } from 'lucide-react';
+import { ArrowLeft, BookOpen, LogIn, UserRound } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
+import { CookieConsent } from '@/components/cookie-consent';
 import { PublicBrand } from '@/components/public-brand';
 import { PublicFooter } from '@/components/public-footer';
 import { WhatsAppFloat } from '@/components/whatsapp-float';
 import type { User } from '@/types';
-
-const whatsappUrl =
-    'https://wa.me/5551998931325?text=Ol%C3%A1%2C%20conheci%20a%20ABrasil%20Sistemas%20pelo%20blog.';
 
 export default function BlogPublicLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
@@ -21,14 +19,12 @@ export default function BlogPublicLayout({ children }: PropsWithChildren) {
                         <Link href="/blog" className="hidden items-center gap-2 text-cyan-300 sm:inline-flex">
                             <BookOpen className="size-4" /> Blog
                         </Link>
-                        <a
-                            href={whatsappUrl}
-                            target="_blank"
-                            rel="noreferrer"
+                        <Link
+                            href="/contato"
                             className="hidden items-center gap-2 text-slate-300 transition hover:text-white md:inline-flex"
                         >
-                            <MessageCircle className="size-4" /> Fale conosco
-                        </a>
+                            Contato
+                        </Link>
                         {auth.user ? (
                             <div className="flex items-center">
                                 <Link
@@ -82,6 +78,7 @@ export default function BlogPublicLayout({ children }: PropsWithChildren) {
             {children}
             <PublicFooter />
             <WhatsAppFloat />
+            <CookieConsent />
         </div>
     );
 }

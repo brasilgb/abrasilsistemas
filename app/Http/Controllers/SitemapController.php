@@ -11,7 +11,11 @@ class SitemapController extends Controller
     {
         $urls = [
             ['loc' => url('/'), 'changefreq' => 'weekly', 'priority' => '1.0'],
+            ['loc' => url('/produtos'), 'changefreq' => 'monthly', 'priority' => '0.9'],
+            ['loc' => url('/servicos'), 'changefreq' => 'monthly', 'priority' => '0.9'],
             ['loc' => url('/desenvolvimento-de-sites-para-empresas'), 'changefreq' => 'monthly', 'priority' => '0.9'],
+            ['loc' => url('/sobre'), 'changefreq' => 'monthly', 'priority' => '0.6'],
+            ['loc' => url('/contato'), 'changefreq' => 'monthly', 'priority' => '0.6'],
             ['loc' => url('/blog'), 'changefreq' => 'weekly', 'priority' => '0.7'],
         ];
 

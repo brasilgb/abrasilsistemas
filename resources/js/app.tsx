@@ -14,7 +14,13 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome' ||
                 name === 'company-websites' ||
-                name.startsWith('blog/'):
+                name === 'produtos' ||
+                name === 'servicos' ||
+                name === 'sobre' ||
+                name === 'contato' ||
+                name.startsWith('blog/') ||
+                name.startsWith('legal/') ||
+                name.startsWith('errors/'):
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
