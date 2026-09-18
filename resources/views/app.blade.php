@@ -38,8 +38,6 @@
         <link rel="icon" type="image/png" sizes="512x512" href="/images/favicon/android-chrome-512x512.png">
         <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon/apple-touch-icon.png">
 
-        @fonts
-
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         @php $seo = $page['props']['seo'] ?? []; @endphp

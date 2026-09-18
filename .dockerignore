@@ -3,3 +3,4 @@ node_modules/
 .git/
 storage/logs/*
 .env
+bootstrap/cache/*.php
