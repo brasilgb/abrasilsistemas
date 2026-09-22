@@ -190,6 +190,16 @@ class Lead extends Model
      */
     public static function isDuplicate(array $data, ?self $except = null): bool
     {
+        return self::findDuplicate($data, $except) !== null;
+    }
+
+    /**
+     * Find the existing lead matching the shared deduplication rules.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function findDuplicate(array $data, ?self $except = null): ?self
+    {
         $email = isset($data['email']) ? strtolower(trim((string) $data['email'])) : null;
         $whatsapp = isset($data['whatsapp']) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
         $company = trim((string) ($data['company_name'] ?? ''));
@@ -198,7 +208,7 @@ class Lead extends Model
         $hasCompanyLocation = $company !== '' && $city !== '' && $state !== '';
 
         if (! $email && ! $whatsapp && ! $hasCompanyLocation) {
-            return false;
+            return null;
         }
 
         return self::query()
@@ -220,6 +230,6 @@ class Lead extends Model
                     });
                 }
             })
-            ->exists();
+            ->first();
     }
 }

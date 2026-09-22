@@ -29,14 +29,28 @@ class ContactController extends Controller
     public function store(PublicContactRequest $request): RedirectResponse
     {
         $data = $request->safe()->except('website_hp');
+        $duplicate = Lead::findDuplicate($data);
 
-        if (Lead::isDuplicate($data)) {
-            $lead = new Lead([...$data, 'status' => 'new', 'source' => 'site']);
-        } else {
+        if ($duplicate === null) {
             $lead = Lead::query()->create([
                 ...$data,
                 'status' => 'new',
                 'source' => 'site',
+            ]);
+        } else {
+            $lead = $duplicate;
+            $lead->forceFill([
+                'last_contacted_at' => now(),
+                'notes' => trim(implode(PHP_EOL.PHP_EOL, array_filter([
+                    $lead->notes,
+                    '[Novo contato pelo site em '.now()->format('d/m/Y H:i').']'.PHP_EOL.$data['notes'],
+                ]))),
+            ])->save();
+
+            $lead->activities()->create([
+                'type' => 'note',
+                'contacted_at' => now(),
+                'description' => 'Novo contato recebido pelo formulário do site: '.$data['notes'],
             ]);
         }
 
@@ -58,7 +72,7 @@ class ContactController extends Controller
     private function notifyTeam(Lead $lead): void
     {
         try {
-            Mail::to(config('contact.email'))->send(new ContactFormReceived($lead));
+            Mail::to(config('contact.email'))->queue(new ContactFormReceived($lead));
         } catch (\Throwable $e) {
             Log::error('Falha ao enviar e-mail de notificação de contato.', [
                 'lead_id' => $lead->id,

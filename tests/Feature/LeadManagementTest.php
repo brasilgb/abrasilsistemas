@@ -4,6 +4,7 @@ use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('authenticated users can view leads', function () {
@@ -453,4 +454,68 @@ test('commercial filters apply to metrics tasks and kanban totals', function () 
         ->has('kanbanLeads', 1)
         ->has('taskLeads.without_follow_up', 1)
         ->where('taskLeads.without_follow_up.0.company_name', 'Pet Shop Filtrado'));
+});
+
+test('public contact submissions append activity to duplicate leads', function () {
+    Queue::fake();
+
+    $lead = Lead::query()->create([
+        'company_name' => 'Empresa do Site',
+        'product' => 'site',
+        'email' => 'contato@empresa.test',
+        'status' => 'contacted',
+        'notes' => 'Primeiro contato.',
+    ]);
+
+    $this->post(route('contato.store'), [
+        'contact_name' => 'Maria',
+        'company_name' => 'Empresa do Site',
+        'email' => 'CONTATO@EMPRESA.TEST',
+        'product' => 'site',
+        'notes' => 'Solicitou uma nova apresentação comercial.',
+    ])->assertRedirect();
+
+    expect(Lead::query()->count())->toBe(1);
+    expect(LeadActivity::query()->where('lead_id', $lead->id)->count())->toBe(1);
+    expect($lead->fresh()->notes)->toContain('Solicitou uma nova apresentação comercial.');
+    expect($lead->fresh()->last_contacted_at)->not->toBeNull();
+});
+
+test('dashboard priority leads include the commercial fields used by scoring', function () {
+    $user = User::factory()->create();
+
+    Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Lead Prioritário',
+        'product' => 'site',
+        'status' => 'meeting',
+        'whatsapp' => '51999999999',
+        'email' => 'prioritario@example.test',
+        'contact_name' => 'Maria',
+        'notes' => 'Solicitou proposta.',
+    ]);
+
+    $this->actingAs($user)->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('priorityLeads.0.priority', 'high')
+            ->where('metrics.high_priority', 1));
+});
+
+test('lead activity can clear an existing follow up', function () {
+    $user = User::factory()->create();
+    $lead = Lead::query()->create([
+        'user_id' => $user->id,
+        'company_name' => 'Lead sem follow-up',
+        'product' => 'site',
+        'status' => 'contacted',
+        'next_follow_up_at' => today()->addDay(),
+    ]);
+
+    $this->actingAs($user)->post(route('leads.activities.store', $lead), [
+        'type' => 'note',
+        'description' => 'Follow-up cancelado.',
+        'next_follow_up_at' => null,
+    ])->assertRedirect();
+
+    expect($lead->fresh()->next_follow_up_at)->toBeNull();
 });

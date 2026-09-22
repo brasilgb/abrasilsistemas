@@ -31,7 +31,7 @@ class LeadActivityController extends Controller
             $leadUpdates['last_contacted_at'] = $activity->contacted_at;
         }
 
-        if ($activity->next_follow_up_at !== null) {
+        if (array_key_exists('next_follow_up_at', $data)) {
             $leadUpdates['next_follow_up_at'] = $activity->next_follow_up_at;
         }
 

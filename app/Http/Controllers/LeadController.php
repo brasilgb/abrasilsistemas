@@ -25,9 +25,9 @@ class LeadController extends Controller
 
         $baseQuery = $this->applyCommonFilters(Lead::query()->with('user:id,name'), $filters, $request);
 
-        $taskQuery = (clone $baseQuery)->whereNotIn('status', ['converted', 'lost']);
-
         $this->applyFollowUpFilter($baseQuery, $filters['follow_up'] ?? null);
+
+        $taskQuery = (clone $baseQuery)->whereNotIn('status', ['converted', 'lost']);
 
         $leads = (clone $baseQuery)
             ->latest()

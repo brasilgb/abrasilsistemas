@@ -50,7 +50,7 @@ class DashboardController extends Controller
                 ->get(['id', 'company_name', 'contact_name', 'product', 'status', 'next_follow_up_at', 'created_at']),
             'priorityLeads' => Lead::query()
                 ->whereNotIn('status', ['converted', 'lost'])
-                ->get(['id', 'company_name', 'contact_name', 'product', 'status', 'next_follow_up_at', 'created_at'])
+                ->get(['id', 'company_name', 'contact_name', 'product', 'status', 'next_follow_up_at', 'whatsapp', 'email', 'website', 'instagram', 'notes', 'created_at'])
                 ->sortByDesc('lead_score')
                 ->take(8)
                 ->values(),
