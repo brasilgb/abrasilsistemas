@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Setting;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -10,7 +11,10 @@ class EnsureValidProspectToken
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $expected = (string) config('services.ab_prospect.token');
+        $expected = (string) Setting::valueFor(
+            Setting::PROSPECT_API_TOKEN,
+            config('services.ab_prospect.token'),
+        );
         $provided = (string) $request->bearerToken();
 
         if ($expected === '' || ! hash_equals($expected, $provided)) {

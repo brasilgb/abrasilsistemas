@@ -26,4 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('settings/leads', [LeadSettingsController::class, 'edit'])
         ->middleware('admin')
         ->name('lead-settings.edit');
+    Route::put('settings/leads', [LeadSettingsController::class, 'update'])
+        ->middleware('admin')
+        ->name('lead-settings.update');
 });

@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { Copy, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
@@ -38,10 +38,13 @@ export default function LeadSettings({
     const [saved, setSaved] = useState(false);
     const [tokenCopied, setTokenCopied] = useState(false);
     const [endpointCopied, setEndpointCopied] = useState(false);
+    const tokenForm = useForm({
+        prospect_api_token: prospectApiToken ?? '',
+    });
 
     function copyToken() {
-        if (!prospectApiToken) return;
-        navigator.clipboard.writeText(prospectApiToken);
+        if (!tokenForm.data.prospect_api_token) return;
+        navigator.clipboard.writeText(tokenForm.data.prospect_api_token);
         setTokenCopied(true);
         window.setTimeout(() => setTokenCopied(false), 2500);
     }
@@ -217,8 +220,13 @@ export default function LeadSettings({
                         <div className="flex gap-2">
                             <Input
                                 id="prospect_api_token"
-                                readOnly
-                                value={prospectApiToken ?? ''}
+                                value={tokenForm.data.prospect_api_token}
+                                onChange={(event) =>
+                                    tokenForm.setData(
+                                        'prospect_api_token',
+                                        event.target.value,
+                                    )
+                                }
                                 onFocus={(event) => event.target.select()}
                                 className="font-mono"
                             />
@@ -226,10 +234,30 @@ export default function LeadSettings({
                                 type="button"
                                 variant="outline"
                                 onClick={copyToken}
-                                disabled={!prospectApiToken}
+                                disabled={!tokenForm.data.prospect_api_token}
                             >
                                 <Copy />
                                 {tokenCopied ? 'Copiado' : 'Copiar'}
+                            </Button>
+                        </div>
+                        {tokenForm.errors.prospect_api_token && (
+                            <p className="text-sm text-destructive">
+                                {tokenForm.errors.prospect_api_token}
+                            </p>
+                        )}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <Button
+                                type="button"
+                                onClick={() =>
+                                    tokenForm.put('/settings/leads', {
+                                        preserveScroll: true,
+                                    })
+                                }
+                                disabled={tokenForm.processing}
+                            >
+                                {tokenForm.processing
+                                    ? 'Salvando...'
+                                    : 'Salvar token'}
                             </Button>
                         </div>
                         <div className="text-xs text-muted-foreground">
