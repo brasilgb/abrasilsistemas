@@ -14,6 +14,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EbookMercadoPagoWebhookController;
 use App\Http\Controllers\LeadActivityController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\LeadWhatsappController;
 use App\Http\Controllers\PublicBlogController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\UserController;
@@ -146,6 +147,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('leads/{lead}/status', [LeadController::class, 'status'])->name('leads.status');
         Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
+        Route::post('leads/{lead}/whatsapp', [LeadWhatsappController::class, 'store'])->middleware('throttle:10,1')->name('leads.whatsapp.store');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
 
         Route::post('testimonials/images', TestimonialImageController::class)->name('testimonials.images.store');

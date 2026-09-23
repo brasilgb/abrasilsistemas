@@ -7,6 +7,7 @@ use App\Http\Requests\Leads\LeadRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
+use App\Services\LeadWhatsappService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -261,6 +262,8 @@ class LeadController extends Controller
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
+            // Destino já normalizado do envio manual (null quando o Lead não tem WhatsApp válido).
+            'whatsappDestination' => LeadWhatsappService::normalizeNumber($lead->whatsapp),
         ]);
     }
 

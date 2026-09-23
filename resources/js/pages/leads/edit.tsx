@@ -11,6 +11,7 @@ import {
 import LeadController from '@/actions/App/Http/Controllers/LeadController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import SendLeadWhatsappDialog from '@/components/send-lead-whatsapp-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +36,7 @@ type Props = {
     products: Record<string, string>;
     statuses: Record<string, string>;
     users: { id: number; name: string }[];
+    whatsappDestination: string | null;
 };
 
 function formatDateTime(value: string | null) {
@@ -70,6 +72,7 @@ export default function EditLead({
     products,
     statuses,
     users,
+    whatsappDestination,
 }: Props) {
     return (
         <>
@@ -352,14 +355,22 @@ export default function EditLead({
                         </Card>
 
                         <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <History className="size-5" />
-                                    Histórico
-                                </CardTitle>
-                                <CardDescription>
-                                    Contatos e anotações registrados neste lead.
-                                </CardDescription>
+                            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="space-y-1.5">
+                                    <CardTitle className="flex items-center gap-2">
+                                        <History className="size-5" />
+                                        Histórico
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Contatos e anotações registrados neste
+                                        lead.
+                                    </CardDescription>
+                                </div>
+                                <SendLeadWhatsappDialog
+                                    leadId={lead.id}
+                                    leadName={lead.company_name}
+                                    destination={whatsappDestination}
+                                />
                             </CardHeader>
                             <CardContent>
                                 {lead.activities &&
