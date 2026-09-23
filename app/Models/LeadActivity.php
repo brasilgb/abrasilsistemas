@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'contacted_at',
     'next_follow_up_at',
     'description',
+    'provider_message_id',
+    'message_status',
 ])]
 class LeadActivity extends Model
 {
