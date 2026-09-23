@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import WhatsappMessageStatus from '@/components/whatsapp-message-status';
 import { store as storeLeadActivity } from '@/routes/leads/activities';
 import { index } from '@/routes/leads';
 import LeadForm, { type Lead } from '@/pages/leads/form';
@@ -392,6 +393,15 @@ export default function EditLead({
                                                 <p className="mt-3 text-sm leading-6 whitespace-pre-line">
                                                     {activity.description}
                                                 </p>
+
+                                                {activity.type === 'whatsapp' && (
+                                                    <WhatsappMessageStatus
+                                                        status={
+                                                            activity.message_status
+                                                        }
+                                                        className="mt-2 text-xs"
+                                                    />
+                                                )}
 
                                                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                                                     {activity.status && (

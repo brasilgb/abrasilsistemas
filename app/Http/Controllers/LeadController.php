@@ -246,12 +246,17 @@ class LeadController extends Controller
 
     public function edit(Lead $lead): Response
     {
+        $lead->load([
+            'activities' => fn ($query) => $query->with('user:id,name')->latest(),
+            'user:id,name',
+        ]);
+
+        // O ID da mensagem no provedor (WAHA) é de uso interno; o histórico só precisa do message_status.
+        $lead->activities->each->makeHidden('provider_message_id');
+
         return Inertia::render('leads/edit', [
             'activityTypes' => LeadActivity::TYPES,
-            'lead' => $lead->load([
-                'activities' => fn ($query) => $query->with('user:id,name')->latest(),
-                'user:id,name',
-            ]),
+            'lead' => $lead,
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
             'statuses' => Lead::STATUSES,
