@@ -15,6 +15,7 @@ RUN npm ci
 COPY . .
 COPY --from=wayfinder /app/resources/js/actions ./resources/js/actions
 COPY --from=wayfinder /app/resources/js/routes ./resources/js/routes
+COPY --from=wayfinder /app/resources/js/wayfinder ./resources/js/wayfinder
 ENV SKIP_WAYFINDER_GENERATE=1
 RUN npm run build
 

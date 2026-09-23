@@ -9,6 +9,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -24,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'prospect.token' => EnsureValidProspectToken::class,
         ]);
+        $middleware->prependToPriorityList(
+            before: SubstituteBindings::class,
+            prepend: EnsureValidProspectToken::class,
+        );
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
         $middleware->validateCsrfTokens(except: ['webhooks/mercadopago/ebooks/*']);
 
@@ -43,7 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return \Inertia\Inertia::render('errors/404')
+            return Inertia::render('errors/404')
                 ->toResponse($request)
                 ->setStatusCode(404);
         });

@@ -24,6 +24,11 @@ test('the WhatsApp log API rejects requests without a valid token', function () 
         ->assertUnauthorized();
 });
 
+test('the WhatsApp log API checks the token before resolving the lead', function () {
+    $this->postJson('/api/prospects/999999/whatsapp/log', whatsappLogPayload())
+        ->assertUnauthorized();
+});
+
 test('the WhatsApp log API rejects an invalid payload', function () {
     $lead = Lead::query()->create(['company_name' => 'Lead com payload inválido']);
 
