@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\CompanyWhatsappConnection;
+use App\Services\LeadWhatsappService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -180,6 +182,35 @@ class Lead extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(LeadActivity::class);
+    }
+
+    /**
+     * Lead cujo WhatsApp corresponde ao número recebido (só dígitos), com a mesma equivalência
+     * usada no WhatsApp da empresa: com ou sem 55 e com ou sem o nono dígito. Com mais de um
+     * lead no mesmo número, fica o contatado mais recentemente.
+     */
+    public static function findByWhatsappNumber(string $number): ?self
+    {
+        $digits = preg_replace('/\D+/', '', $number) ?? '';
+
+        if (strlen($digits) < 8) {
+            return null;
+        }
+
+        // Os 8 últimos dígitos existem em todas as variações do número, mesmo gravado com máscara
+        // (a importação do n8n não normaliza). O LIKE só pré-filtra; a comparação é feita abaixo.
+        $pattern = '%'.implode('%', str_split(substr($digits, -8)));
+        $target = LeadWhatsappService::normalizeNumber($digits) ?? $digits;
+
+        return self::query()
+            ->where('whatsapp', 'like', $pattern)
+            ->orderByDesc('last_contacted_at')
+            ->orderByDesc('id')
+            ->get()
+            ->first(fn (self $lead) => CompanyWhatsappConnection::sameNumber(
+                LeadWhatsappService::normalizeNumber($lead->whatsapp) ?? $lead->whatsapp,
+                $target,
+            ));
     }
 
     /**

@@ -1,3 +1,225 @@
+# Execução de `correio.md`: recebimento de mensagens WhatsApp (`POST /api/whatsapp/inbound`)
+
+Data: 2026-09-24.
+
+## Resumo
+
+**Implementado e testado. Não houve deploy nem commit, nenhuma migration foi criada e o banco de produção não foi acessado.** O novo endpoint `POST /api/whatsapp/inbound` recebe do n8n uma mensagem de texto já extraída do evento `message.any`. Ele localiza o lead pelo telefone do remetente, usando a equivalência de nono dígito que o projeto já tinha, e grava uma `LeadActivity` com `type = whatsapp`, `direction = inbound` e `message_status = null`. Nenhum lead é criado. Mensagens repetidas não geram duplicata.
+
+n8n, WAHA, sessão `vetoros1-1`, docker-compose, frontend, `LeadWhatsappService`, o endpoint de log do envio e o de ACK **não foram alterados**.
+
+## 1. Auditoria encontrada
+
+| Ponto | Onde | O que encontrei |
+|---|---|---|
+| Rotas API do WhatsApp | `routes/api.php` | `POST prospects/{lead}/whatsapp/log` (throttle 30/min) e `PATCH whatsapp/messages/{providerMessageId}/status` (throttle 120/min), ambas com o middleware `prospect.token` |
+| Autenticação do n8n | `app/Http/Middleware/EnsureValidProspectToken.php` (alias `prospect.token` em `bootstrap/app.php`) | `Authorization: Bearer <token>`, comparado com `hash_equals` ao token da tabela `settings` (`prospect_api_token`) ou, sem registro, ao `services.ab_prospect.token`. Token vazio → 401 |
+| Lead | `app/Models/Lead.php`, migration `create_leads_table` | Contatos: `phone`, `whatsapp`, `email`, `instagram`, `website`. Índice em `whatsapp`. Soft delete |
+| Como os telefones são gravados | `LeadRequest`, `PublicContactRequest`, importação CSV (`LeadController`) | Só dígitos, **sem** padronizar o 55 (podem ter 10/11 dígitos ou 12/13 com 55) |
+| | `Api/ProspectImportController` (importação do n8n) | Grava `whatsapp` **como veio**, sem normalizar (pode ter máscara). Sem WhatsApp, usa o `phone` |
+| Regra de negócio do WhatsApp do lead | `LeadWhatsappService::send`, `Lead::findDuplicate` | Só o campo `whatsapp` identifica o WhatsApp do lead. O envio nunca usa `phone` |
+| Normalização existente | `LeadWhatsappService::normalizeNumber` | Só dígitos. Com 10/11 dígitos, prefixa 55. Com 12/13 começando com 55, mantém. Senão, `null` |
+| Equivalência do nono dígito existente | `CompanyWhatsappConnection::normalizeJid` e `::sameNumber` | `normalizeJid` tira o sufixo `@…` e deixa só dígitos. `sameNumber` compara ignorando o nono dígito de números com 13 dígitos (`5551998931325` ≡ `555198931325`). **Reutilizados sem alteração** |
+| LeadActivity | `app/Models/LeadActivity.php` | Constantes `DIRECTION_INBOUND/OUTBOUND` e `isInbound()`. Colunas `provider_message_id` (nullable, **sem UNIQUE**, índice `(lead_id, provider_message_id)`) e `message_status` |
+| `WhatsappActivityController` / `LogWhatsappActivityRequest` | Endpoint de log do envio | Já aceita `direction=inbound`, mas exige que o n8n saiba o `lead_id`. A idempotência verifica só dentro do lead |
+| `WhatsappMessageStatusController` | ACK | Ignora ACK de atividade `inbound` (200, `ignored: true`). Para "não encontrada", responde 404 |
+| Testes | `tests/Feature/Whatsapp*ApiTest.php`, `LeadWhatsappSendTest`, `LeadHistoryWhatsappStatusTest`, `CompanyWhatsapp*Test` | Pest, SQLite em memória, token via `config('services.ab_prospect.token')` |
+| Cache/lock | `.env.example` (`CACHE_STORE=database`), migration `0001_01_01_000001_create_cache_table` | A tabela `cache_locks` existe, então `Cache::lock` funciona em produção |
+
+## 2. Arquitetura adotada
+
+Segue o padrão dos endpoints do n8n: um FormRequest em `Requests/Api`, um controller em `Controllers/Api` e a rota em `routes/api.php` com `throttle` e `prospect.token`. Não criei service novo. A busca do lead ficou em `Lead::findByWhatsappNumber()`, ao lado de `findDuplicate()`, e reutiliza as funções de normalização e equivalência que já existiam.
+
+Fluxo do `WhatsappInboundController@store`:
+
+1. O FormRequest valida o payload e normaliza `from` para dígitos.
+2. Se o WhatsApp da empresa tem sessão configurada no painel e ela é diferente de `session`, a mensagem é ignorada (`session_mismatch`). O WAHA é compartilhado com outras sessões. Sem sessão configurada, a mensagem é aceita, como no envio.
+3. Um lock por `provider_message_id` (`Cache::lock`, 10 s, espera de até 5 s) serializa o processamento da mesma mensagem.
+4. Se já existe uma atividade `whatsapp` com o mesmo `provider_message_id`, o endpoint devolve sucesso idempotente.
+5. Localiza o lead. Se não encontrar, responde `lead_not_found` sem gravar nada.
+6. Cria a atividade inbound e atualiza `leads.last_contacted_at`, como o endpoint de log já fazia.
+
+Preparado para expansão: quando houver mídia, entram campos novos no FormRequest (ex.: `type`, `media_url`). O controller e a busca do lead não mudam. Nada de mídia foi implementado.
+
+## 3. Rota criada
+
+```
+POST /api/whatsapp/inbound   → Api\WhatsappInboundController@store
+middleware: throttle:120,1, prospect.token
+name: api.whatsapp.inbound
+```
+
+Payload:
+
+```json
+{
+  "session": "vetoros1-1",
+  "provider_message_id": "3EB00B502BEA742D043912",
+  "from": "555195179173",
+  "push_name": "Anderson Brasil",
+  "message": "Teste inbound 01"
+}
+```
+
+Validação (`StoreWhatsappInboundRequest`):
+
+| Campo | Regra |
+|---|---|
+| `session` | obrigatório, string, mesmo padrão de sessão do painel (`CompanyWhatsappSettings::SESSION_PATTERN`) |
+| `provider_message_id` | obrigatório, string, até 255 |
+| `from` | obrigatório, string, até 64. Aceita telefone (com ou sem máscara/`+`) ou JID `@c.us` / `@s.whatsapp.net`. **JID `@lid` é recusado (422)**. Depois de normalizado, precisa ter de 10 a 15 dígitos |
+| `push_name` | opcional, string, até 255 (validado, não persistido: não há coluna para ele) |
+| `message` | obrigatório, string, até 5000 (mesmo limite do endpoint de log) |
+
+Respostas:
+
+| Situação | HTTP | Corpo |
+|---|---|---|
+| Registrada | 201 | `{"success": true, "message": "Mensagem recebida registrada.", "activity_id": …, "lead_id": …}` |
+| Já registrada (mesmo `provider_message_id`) | 200 | `{"success": true, "message": "Mensagem recebida já estava registrada.", "activity_id": …, "lead_id": …, "idempotent": true}` |
+| Nenhum lead com o número | 200 | `{"success": false, "reason": "lead_not_found", "message": "…"}` |
+| Sessão diferente da configurada | 200 | `{"success": false, "reason": "session_mismatch", "message": "…"}` |
+| Mesma mensagem ainda em processamento (lock) | 409 | `{"success": false, "reason": "processing", "message": "…"}` |
+| Sem token / token inválido | 401 | `{"message": "Token inválido."}` |
+| Payload inválido | 422 | erros de validação do Laravel |
+
+**Por que 200 para `lead_not_found`.** Mensagem de número desconhecido é tráfego normal: qualquer pessoa pode mandar mensagem para a empresa. Não é falha de integração. Com 4xx, o nó HTTP do n8n marca a execução como erro e as tentativas de repetição nunca teriam sucesso. É o mesmo critério que o `WhatsappMessageStatusController` já usa para ACK ignorado: 2xx com um indicador no corpo. O `success: false` com `reason` deixa o resultado explícito para o n8n. O 404 do ACK continua reservado para o caso anômalo de mensagem enviada que não existe.
+
+## 4. Autenticação utilizada
+
+O mesmo middleware `prospect.token` (`EnsureValidProspectToken`) das outras rotas chamadas pelo n8n: `Authorization: Bearer <token de integração>`. O token pode ser o do painel (Configurações → Leads) ou o de `services.ab_prospect.token`. Nenhum token novo foi criado ou exposto. O endpoint não é público.
+
+## 5. Regra usada para localizar o lead
+
+- Só o campo **`leads.whatsapp`**, que é a regra do projeto: o envio e a deduplicação usam esse campo. `phone`, `email` etc. não entram. A importação do n8n já copia o `phone` para `whatsapp` quando o WhatsApp vem vazio.
+- Leads com soft delete ficam de fora (escopo padrão do model).
+- Equivalência: `CompanyWhatsappConnection::sameNumber()` sobre os dois números passados por `LeadWhatsappService::normalizeNumber()`. Assim são equivalentes: com ou sem 55, com ou sem o nono dígito, com ou sem máscara.
+- Pré-filtro SQL: `whatsapp LIKE '%d%d%d%d%d%d%d%d'` com os 8 últimos dígitos do remetente. Esses dígitos existem em todas as variações do número, inclusive com máscara, e funcionam em MySQL e SQLite. A comparação que decide é a do PHP.
+- Se mais de um lead tiver o número, fica o de `last_contacted_at` mais recente (depois, o maior `id`).
+- O LID nunca é usado como telefone: `@lid` é recusado na validação. Se o n8n mandar só os dígitos do LID, eles não correspondem a nenhum lead e o resultado é `lead_not_found` (há teste para isso).
+
+## 6. Normalização aplicada
+
+`from` → `CompanyWhatsappConnection::normalizeJid()`: tira o sufixo `@…` e deixa só dígitos. Exemplo: `555195179173@s.whatsapp.net` → `555195179173`. Para comparar, `LeadWhatsappService::normalizeNumber()` padroniza o 55 dos dois lados e `sameNumber()` ignora o nono dígito. **Nenhuma regra nova de telefone foi escrita.** Números fora do padrão brasileiro são comparados só pelos dígitos.
+
+## 7. Estratégia de idempotência
+
+1. **Verificação antes de inserir**, global: qualquer atividade `whatsapp` com o mesmo `provider_message_id`, de qualquer lead e em qualquer direção. Isso também protege caso o n8n repasse por engano uma mensagem `fromMe` (o `message.any` inclui as enviadas): o id dela já está registrado como outbound, então a resposta é idempotente e nada muda.
+2. **Lock de aplicação** por `provider_message_id` (`Cache::lock`). É necessário porque o WAHA dispara `message` **e** `message.any` para a mesma mensagem, e os dois eventos vão para o mesmo webhook. Os dois POSTs podem chegar juntos.
+3. **UNIQUE no banco: não criado.** Motivos:
+   - `provider_message_id` também é gravado pelo endpoint de log, cuja idempotência é só por lead. Não há garantia de que a produção esteja sem duplicatas. A leitura do banco de produção não foi feita.
+   - Um UNIQUE global mudaria o comportamento do fluxo outbound: um INSERT duplicado viraria erro 500 em vez de ser tratado. Isso contraria a exigência de não mexer no outbound.
+
+   Recomendação para uma etapa futura: rodar a consulta de duplicatas do item 13. Se ela vier vazia, avaliar um UNIQUE `(type, provider_message_id)`. `NULL` não conflita no MySQL. Antes, o log do envio precisa tratar `QueryException` de chave duplicada.
+
+## 8. Arquivos criados
+
+| Arquivo | Conteúdo |
+|---|---|
+| `app/Http/Controllers/Api/WhatsappInboundController.php` | Endpoint: sessão, lock, idempotência, busca do lead, criação da atividade inbound |
+| `app/Http/Requests/Api/StoreWhatsappInboundRequest.php` | Validação e `senderNumber()` (remetente só com dígitos) |
+| `tests/Feature/WhatsappInboundApiTest.php` | 34 testes (com datasets) |
+
+## 9. Arquivos alterados
+
+| Arquivo | Alteração |
+|---|---|
+| `app/Models/Lead.php` | Novo `Lead::findByWhatsappNumber()` (+31 linhas). Nada existente foi mudado |
+| `routes/api.php` | Rota `POST whatsapp/inbound` (+5 linhas) |
+
+Não foram alterados: `WhatsappActivityController`, `LogWhatsappActivityRequest`, `WhatsappMessageStatusController`, `LeadActivity`, `LeadWhatsappService`, `CompanyWhatsappConnection`, migrations, frontend. O `correio.md` já estava modificado antes desta execução.
+
+## 10. Testes executados e resultados
+
+Ambiente: cópia do working tree na scratchpad, `composer install` em container descartável da imagem `infra-abrasil-abrasilsistema`, `.env` de teste gerado a partir do `.env.example` com `key:generate`, e testes em `docker run --rm --network none` com o SQLite em memória do `phpunit.xml`. Nenhum PHP rodou no container de produção. Nenhum banco real foi acessado.
+
+```text
+WhatsappInboundApiTest                                       34 passed (121 assertions)
+WhatsApp + Leads + Import (9 arquivos, inclui o novo)       211 passed (937 assertions)
+Suíte completa                                  253 passed, 1 failed (1077 assertions)
+Pint --test (5 arquivos novos/alterados)                                        PASS
+route:list --path=api/whatsapp               POST api/whatsapp/inbound presente
+```
+
+A única falha já existia e não tem relação com esta tarefa: `BlogTest > administrator can upload blog images` (`imagejpeg function is not defined`, GD da imagem sem JPEG). É a mesma falha registrada nas etapas anteriores.
+
+Cobertura pedida no correio:
+
+| Requisito | Teste |
+|---|---|
+| Autenticação obrigatória | `requires the integration token` (sem token e com token errado → 401, nada gravado) |
+| Payload inválido | `rejects an invalid payload` (10 casos: sem session, session inválida, sem provider_message_id, sem from, **from `@lid`**, from com letras, from curto, sem message, message array, push_name array) |
+| Inbound válido, `direction = inbound`, `message_status = null`, `user_id = null`, `provider_message_id` e texto persistidos | `records a received text message on the matching lead` (também confere `type`, `status`, `contacted_at`, `last_contacted_at` e que o status comercial do lead não muda) |
+| Telefone normalizado | `normalizes the sender before looking up the lead` (máscara com `+`, JID `@s.whatsapp.net`, JID `@c.us`) |
+| Lead encontrado pelo telefone / nono dígito | `matches Brazilian numbers with or without the ninth digit and country code`: inclui o caso validado `5551998931325` ≡ `555198931325` nos dois sentidos, lead sem 55 e lead gravado com máscara |
+| Lead não encontrado | `does not create a lead or an activity for an unknown sender`, `does not match a different number with the same ending` (outro DDD), `does not look up the lead by the LID or other contact fields`, `ignores soft deleted leads` |
+| `provider_message_id` duplicado | `does not duplicate a message with the same provider_message_id` e `does not turn an already logged outbound message into an inbound one` |
+| Outbound continua funcionando | `the outbound log and ACK keep working alongside the inbound API`, mais os 60+ testes existentes de log, ACK e envio, todos passando |
+| ACK de inbound ignorado | `an ACK for a message received by the inbound API is ignored` (SERVER, DEVICE, READ) |
+| Extras | `accepts push_name as optional`, `picks the most recently contacted lead when a number is shared`, `only accepts the configured company session` |
+
+## 11. Riscos
+
+1. **Sem UNIQUE no banco.** O lock cobre as chamadas concorrentes que passam pelo Laravel, mas não é uma garantia estrutural (ver item 7).
+2. **Pré-filtro com `LIKE '%…'` não usa índice.** Faz varredura em `leads`. No volume atual de um CRM é desprezível. Se a tabela crescer muito, o caminho é normalizar `leads.whatsapp` na gravação, a começar pela importação do n8n, que hoje não normaliza.
+3. **Número compartilhado por mais de um lead.** A mensagem vai para o lead contatado mais recentemente. Os outros não a recebem.
+4. **Só o campo `whatsapp` identifica o lead.** Um lead com o número só em `phone` não é encontrado (`lead_not_found`). Foi decisão consciente, seguindo a regra do envio.
+5. **`push_name` não é gravado**, porque não há coluna para ele e não criei migration. Pode virar coluna ou entrar na descrição em uma etapa futura, se fizer sentido.
+6. **Filtro de sessão só vale com o WhatsApp da empresa configurado no painel.** Sem configuração, qualquer `session` é aceita.
+7. **Mensagem inbound atualiza `last_contacted_at`**, igual ao endpoint de log atual. Se o Kanban ou algum relatório tratar esse campo como "a empresa contatou o lead", o significado passa a incluir "o lead respondeu".
+8. **Achado da etapa anterior ainda vale:** hoje o workflow "WAHA - Mensagens Recebidas → CRM" só tem o nó Webhook. Até o n8n chamar este endpoint (fora do escopo desta tarefa), nada inbound chega ao CRM.
+
+## 12. Migration
+
+**Não foi necessária.** Todas as colunas usadas (`direction`, `provider_message_id`, `message_status`) já existem. A migration `2026_09_24_120000_add_direction_to_lead_activities_table` é da etapa anterior (commit `9920809`). Se ela ainda não foi aplicada em produção, precisa rodar antes deste deploy (passo 2 abaixo).
+
+## 13. Comandos para o deploy posterior (NÃO executados)
+
+```bash
+cd /opt/infra-abrasil
+
+# 0) (Só leitura) Conferir se a migration de direction já está aplicada
+docker compose exec abrasilsistema php artisan migrate:status | grep add_direction
+
+# 0b) (Só leitura, recomendado) Medir duplicatas de provider_message_id antes de pensar em UNIQUE
+docker compose exec abrasilsistema php artisan tinker --execute='dump(DB::table("lead_activities")->whereNotNull("provider_message_id")->select("provider_message_id", DB::raw("count(*) as total"))->groupBy("provider_message_id")->having("total", ">", 1)->get());'
+
+# 1) Rebuild das imagens (os containers atuais continuam no ar)
+docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+
+# 2) SOMENTE se o passo 0 mostrar a migration de direction como "Pending":
+docker compose run --rm --no-deps abrasilsistema php artisan migrate --force
+
+# 3) Deploy
+docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+
+# 4) Validação pós-deploy
+docker compose ps abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+docker compose exec abrasilsistema php artisan route:list --path=api/whatsapp
+#    Sem token deve responder 401:
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Host: abrasilsistema.localhost' -H 'Accept: application/json' http://127.0.0.1/api/whatsapp/inbound
+#    Com o token do próprio container (não é impresso) e um número inexistente,
+#    deve mostrar 200 {"success":false,"reason":"lead_not_found",...} sem gravar nada:
+docker compose exec abrasilsistema php artisan tinker --execute='$t = App\Models\Setting::valueFor(App\Models\Setting::PROSPECT_API_TOKEN, config("services.ab_prospect.token")); $r = app()->handle(Illuminate\Http\Request::create("/api/whatsapp/inbound", "POST", [], [], [], ["HTTP_AUTHORIZATION" => "Bearer ".$t, "HTTP_ACCEPT" => "application/json", "CONTENT_TYPE" => "application/json"], json_encode(["session" => "vetoros1-1", "provider_message_id" => "DEPLOY-CHECK-".time(), "from" => "551100000000", "message" => "teste deploy"]))); dump($r->getStatusCode(), $r->getContent());'
+```
+
+Rollback: voltar a imagem anterior e rodar `docker compose up -d` nos 3 serviços. Não há migration nesta etapa.
+
+### Próximo passo no n8n (não feito, só referência)
+
+No workflow "WAHA - Mensagens Recebidas → CRM", depois do Webhook:
+
+1. Filtrar `payload.fromMe = false` e mensagens de texto (`payload._data.message.conversation` ou `payload._data.message.extendedTextMessage.text`).
+2. HTTP Request `POST https://<crm>/api/whatsapp/inbound`, com credencial Header Auth `Authorization: Bearer <token de integração>` (a mesma dos workflows de envio e ACK), e o corpo:
+   - `session` = `{{$json.body.session}}`
+   - `provider_message_id` = `{{$json.body.payload._data.key.id}}`
+   - `from` = `remoteJidAlt` quando `addressingMode = lid`; senão, `remoteJid` (o endpoint aceita o JID com `@s.whatsapp.net`)
+   - `push_name` = `{{$json.body.payload._data.pushName}}`
+   - `message` = texto extraído no passo 1
+3. Tratar `success: false` (`lead_not_found` / `session_mismatch`) como fim normal, não como erro.
+
+---
+
 # Execução de `correio.md`: direção das mensagens WhatsApp (inbound/outbound)
 
 Data: 2026-09-24.
