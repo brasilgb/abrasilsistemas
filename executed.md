@@ -1,130 +1,187 @@
-# Execução de `correio.md`: mensagens WhatsApp não lidas
+# Execução de `correio.md`: CRM-WA-05, Conversa WhatsApp no lead
 
 Data: 2026-09-24.
 
 ## Resumo
 
-**Implementado, testado e commitado (`22aca11`). Não houve deploy. A migration não rodou em produção e o banco real não foi acessado.** A tabela `lead_activities` ganhou a coluna `read_at`. Toda mensagem WhatsApp `inbound` nasce com `read_at = null`, ou seja, não lida. A listagem de leads (tabela, kanban e filas de tarefas) mostra um selo verde discreto com a quantidade de mensagens recebidas não lidas. Abrir o lead, na tela que exibe o histórico, marca como lidas as pendentes daquele lead. Na mesma visita, cada mensagem que acabou de ser lida aparece com o selo "Nova".
+A tela de edição do lead ganhou o card **"Conversa WhatsApp"**, na coluna direita, acima do Histórico. O card traz:
 
-O fluxo WAHA → n8n → `POST /api/whatsapp/inbound` → `LeadActivity` **não foi alterado**. Também ficaram intactos o workflow n8n, o WAHA, o envio outbound, o ACK/`message_status`, o endpoint de log e o `WhatsappInboundController`.
+- as bolhas das mensagens;
+- o ACK das mensagens enviadas;
+- o selo "Nova";
+- o campo de envio embutido;
+- polling de 10 s.
 
-## 1. Auditoria
+Tudo usa a infraestrutura existente.
 
-| Ponto | Onde | O que encontrei |
+- **Sem migration.** n8n, WAHA, a sessão `vetoros1-1`, o docker-compose, `routes/api.php`, os controllers de API e o `LeadWhatsappService` não foram alterados.
+- **O banco de produção não foi acessado.** Nenhum deploy foi feito.
+- **Situação: concluído.** Todos os testes relacionados passam, e `types` e `lint` dos arquivos alterados estão verdes. A única falha da suíte completa já existia e não tem relação com esta tarefa (ver "Resultados").
+
+## Arquivos criados
+
+- `app/Http/Controllers/LeadWhatsappConversationController.php` (`index`, `markRead`)
+- `app/Http/Requests/Leads/MarkLeadWhatsappReadRequest.php` (`up_to_id`: obrigatório, inteiro, ≥ 1)
+- `resources/js/components/lead-whatsapp-conversation.tsx`
+- `tests/Feature/LeadWhatsappConversationTest.php`
+
+## Arquivos alterados
+
+- `routes/web.php`: 2 rotas no grupo `auth` + `verified` + `admin`.
+- `app/Models/LeadActivity.php`: scope `conversation()` (`type=whatsapp` e `direction` em inbound/outbound).
+- `resources/js/pages/leads/edit.tsx`:
+  - inclui o card da conversa;
+  - remove o botão e o modal de envio do cabeçalho do Histórico;
+  - reordena os imports para o arquivo passar no lint.
+
+## Arquivo removido
+
+- `resources/js/components/send-lead-whatsapp-dialog.tsx`: o modal duplicado de envio. O componente ficou sem uso depois que o envio passou para dentro da conversa.
+
+## Rotas adicionadas
+
+| Método | URI | Nome | Ação |
+|---|---|---|---|
+| GET | `/leads/{lead}/whatsapp/messages` | `leads.whatsapp.messages` | `LeadWhatsappConversationController@index` (throttle 60/min) |
+| POST | `/leads/{lead}/whatsapp/read` | `leads.whatsapp.read` | `LeadWhatsappConversationController@markRead` (throttle 60/min) |
+
+As rotas tipadas do Wayfinder (`@/routes/leads/whatsapp`) são geradas no build. Não são editadas à mão.
+
+## Comportamento implementado
+
+### Backend
+
+- **GET `/messages`:**
+  - usa `$lead->activities()->conversation()`, ou seja, só mensagens do lead da rota, com `type=whatsapp` e `direction` válida. O WhatsApp manual sem `direction` fica de fora;
+  - pega as últimas 100 por `created_at DESC, id DESC` e devolve em ordem `created_at ASC, id ASC`;
+  - expõe somente `id`, `direction`, `description`, `created_at`, `message_status` e `read_at`;
+  - não tem efeito colateral: não altera `read_at` nem nenhum outro campo.
+- **POST `/read` `{ up_to_id }`:**
+  - roda `$lead->unreadWhatsappMessages()->where('id', '<=', up_to_id)->update(['read_at' => now()])`;
+  - marca só inbound não lidas do lead da rota;
+  - é idempotente: uma segunda chamada devolve `marked: 0` e preserva o `read_at` já gravado;
+  - nunca toca em `message_status`;
+  - responde `{ marked: n }`.
+- **Envio:** reutiliza `leads.whatsapp.store` sem alteração. Não há backend novo de envio.
+- **Sem mudanças:** `LeadController::edit` continua marcando como lidas as inbound pendentes ao abrir o lead. A idempotência do `/log` e do inbound e as regras de ACK também seguem iguais.
+
+### Frontend (`lead-whatsapp-conversation.tsx`)
+
+**Exibição**
+
+- Inbound fica à esquerda (bolha com borda) e outbound à direita (bolha verde).
+- Cada mensagem mostra o horário.
+- `WhatsappMessageStatus` (ACK) aparece só nas outbound.
+- O selo **"Nova"** marca inbound que chegaram não lidas durante a visita:
+  - o componente guarda esses ids num `Set` local, para o selo não sumir depois que o `read_at` for preenchido;
+  - o `Set` começa com as inbound que vieram não lidas na prop `lead.activities`, ou seja, as que a abertura da página acabou de marcar como lidas.
+
+**Rolagem**
+
+- A área da conversa tem rolagem própria (`max-h-96`).
+- A rolagem automática para o fim acontece só quando o usuário já estava a até 80 px do fim, na primeira carga ou logo depois de um envio.
+
+**Envio**
+
+- O envio usa o `Form` do Inertia apontando para `leads.whatsapp.store`, com `preserveScroll`, `preserveState` e `only: ['lead']`, para o Histórico continuar sincronizado.
+- O botão fica desabilitado durante o envio ou com o campo vazio.
+- No sucesso, o campo é limpo e a conversa é atualizada. Não há mensagem otimista.
+- Os erros `message` e `whatsapp` aparecem no próprio card.
+- Sem `whatsappDestination`, o campo e o botão ficam desabilitados com a explicação "Cadastre um WhatsApp válido para enviar mensagens".
+
+**Polling**
+
+- Usa `fetch`, no padrão de `company-whatsapp-connection.tsx`.
+- `setInterval` de 10 s, executado só com `document.visibilityState === 'visible'`.
+- `refresh` imediato ao voltar para a aba (`visibilitychange`).
+- O interval e o listener são limpos no unmount.
+- **Um fetch por vez:** um pedido feito durante um fetch vira um novo ciclo logo em seguida. Assim, o refresh pós-envio nunca se perde.
+- A lista é mesclada por `id` e reordenada por `created_at`/`id`, sem duplicação. A janela do servidor também atualiza o `message_status` das outbound já exibidas.
+- Se a resposta trouxer inbound com `read_at === null` e a aba estiver visível, o componente envia `POST /read` com `up_to_id` igual ao maior id inbound exibido. O GET nunca marca nada como lido.
+
+### Histórico
+
+- O WhatsApp manual de "Registrar contato", sem `direction`, continua só no Histórico.
+- O cabeçalho do Histórico não tem mais botão de envio: o envio fica apenas dentro da conversa.
+
+## Testes criados (`tests/Feature/LeadWhatsappConversationTest.php`: 22 testes, contando os datasets)
+
+| # | Requisito | Teste |
 |---|---|---|
-| Criação de inbound | `Api/WhatsappInboundController::record` e `Api/WhatsappActivityController` (com `direction=inbound`) | Os dois fazem `activities()->create([...])` com `type=whatsapp`, `direction=inbound` e `message_status=null`. Uma coluna nullable com default nulo já faz o inbound nascer não lido, **sem mexer nesses controllers** |
-| `LeadActivity` | `app/Models/LeadActivity.php` | Tem `direction` e `message_status` (ACK do WAHA). Não havia nenhum campo de leitura interna. `message_status = READ` quer dizer que o *cliente* leu, e o correio veda usar esse campo |
-| Listagem | `LeadController::index` | Um `baseQuery` é clonado para a paginação (15), o kanban (até 500), as 3 filas de tarefas (50 cada) e as métricas (`count`, `groupBy`, `get([...])`) |
-| Detalhe | `LeadController::edit` → `leads/edit.tsx` | A página carrega **todas** as atividades e mostra o histórico sempre, sem aba nem lazy load. Os links para o lead não usam `prefetch` |
-| Acesso | `routes/web.php` | Todas as rotas de leads ficam em `auth` + `verified` + `admin` (`EnsureUserIsAdmin` → 403). Não há policy por lead nem filtro por responsável |
-| Multitenancy | `Lead::booted`, `Account` | `account_id` é resquício de migrations não versionadas. O próprio código diz que o app tem **uma única conta**, e não existe escopo por tenant nas consultas. Não há isolamento a preservar além da regra de admin |
-| Idempotência | `WhatsappInboundController` | Lock por `provider_message_id` mais busca global da atividade. Uma reentrega devolve a atividade existente sem gravar nada, então não "desmarca" uma leitura |
+| 1 | Autenticação | `the conversation endpoints require authentication` |
+| 2 | Autorização admin | `the conversation endpoints require an admin user` (reader → 403 nos dois endpoints) |
+| 3 | Só WhatsApp com direction | `the conversation only returns WhatsApp messages with a direction` (exclui o manual sem direction, nota e ligação com direction) |
+| 4 | Isolamento entre leads | `the conversation only returns messages of the route lead` |
+| 5 | Ordenação | `the conversation is ordered by created_at and id ascending` (desempate no mesmo segundo) |
+| 6 | Limite de 100 | `the conversation returns only the latest 100 messages in ascending order` (105 mensagens → as 100 últimas) |
+| 7 | Sem `provider_message_id` | `the conversation exposes only the message fields and never the provider message id` |
+| 8 | GET sem efeito colateral | `reading the conversation has no side effects` (atributos das atividades e do lead idênticos) |
+| 9 | markRead só nas inbound corretas | `markRead only marks unread inbound messages of the lead up to the given id` |
+| 10 | Não altera outbound | `markRead does not touch outbound messages` |
+| 11 | Não altera outros leads | `markRead does not touch messages of other leads` |
+| 12 | Não altera `message_status` | `markRead never changes the message status` |
+| 13 | Idempotência | `markRead is idempotent` (`marked: 0` e `read_at` original preservado) |
+| 14 | Validação de `up_to_id` | `markRead validates up_to_id` (ausente, texto, decimal, zero, negativo) |
+| 15 | ACK posterior no GET | `a later ACK update is reflected in the conversation` (via `PATCH /api/whatsapp/messages/{id}/status`) |
+| 16 | `/log` repetido aparece uma vez | `an activity logged twice through /log with the same message id appears only once` |
+| 17 | Regressão da leitura ao abrir o lead | `opening the lead still marks its pending inbound messages as read` |
+| 18 | Regressão do envio | `sending through the existing route still relies on n8n to register the message` |
 
-## 2. Decisão de modelagem
+Nenhum teste existente foi alterado ou removido.
 
-**Coluna `lead_activities.read_at` (timestamp, nullable).**
+## Resultados
 
-- `null` em inbound = não lida. Preenchida = lida pela equipe no CRM, com o momento da leitura.
-- É independente de `message_status`, que segue reservado aos ACKs de entrega.
-- A leitura é **da equipe**, não de cada usuário. Todos os admins veem todos os leads e ninguém é dono da caixa de entrada. Uma tabela pivô usuário × mensagem seria complexidade sem uso hoje. Se um dia a leitura precisar ser por usuário, a migração é aditiva.
-- Nas outras atividades (outbound, notas, legado) a coluna fica nula e nunca é consultada, porque o escopo sempre filtra `type=whatsapp` e `direction=inbound`.
-- Por que não calcular pelo `last_viewed_at` do lead: um único carimbo no lead não diz *quais* mensagens são novas (sem o selo "Nova"), quebra quando o `created_at` e o momento da visita caem no mesmo segundo, e mistura estado de leitura com o cadastro do lead.
+Ambiente dos testes:
 
-Código:
+- cópia do working tree na scratchpad;
+- `vendor` e `node_modules` de uma execução anterior (mesmos `composer.lock` e `package-lock.json`);
+- containers descartáveis com `docker run --rm --network none`:
+  - PHP na imagem da aplicação `infra-abrasil-abrasilsistema`, com SQLite em memória do `phpunit.xml` e `APP_KEY` de teste;
+  - Node em `node:22-bookworm-slim`.
 
-- `LeadActivity::unreadInbound()` (scope `#[Scope]`): `type=whatsapp`, `direction=inbound`, `read_at IS NULL`. É a única definição de "não lida".
-- `Lead::unreadWhatsappMessages()` (HasMany): `activities()->unreadInbound()`.
-- Listagem: `withCount('unreadWhatsappMessages')` em cada consulta **exibida** (paginação, kanban e as 3 filas). O resultado é uma subconsulta correlacionada na mesma query, sem N+1. Ficou fora do `baseQuery` de propósito: lá a subconsulta entraria no `groupBy` das métricas e quebraria o `ONLY_FULL_GROUP_BY` do MySQL.
-- Marcação: em `LeadController::edit`, depois de carregar o histórico, um único `UPDATE ... SET read_at = now()` restrito ao lead aberto e às inbound pendentes. O histórico já carregado mantém `read_at = null` nessas mensagens, e a página mostra "Nova" nelas.
-- Por que marcar no GET do `edit`: essa tela *é* a visualização do histórico. Ela renderiza todas as atividades no carregamento e não tem prefetch. Um POST disparado pelo front só adicionaria uma rota, um request e uma janela de falha, sem ganho real.
+Nenhum comando rodou no container de produção, e não havia rede para alcançar o MySQL.
 
-## 3. Migration
+**PHP**
 
-`database/migrations/2026_09_24_130000_add_read_at_to_lead_activities_table.php`
+- `php artisan test --filter=LeadWhatsapp` (Conversation, Send e Unread): **71 passed (317 assertions)**.
+- `php artisan test` (suíte completa): **285 passed, 1 failed**.
+  - A falha é `BlogTest > administrator can upload blog images` (`imagejpeg function is not defined`): a imagem não tem GD com JPEG.
+  - A falha já existia antes desta tarefa e não tem relação com ela.
+- `vendor/bin/pint --test` nos 5 arquivos PHP criados ou alterados: **PASS**.
 
-- `read_at` timestamp nullable, depois de `message_status`.
-- Índice `lead_activities_lead_unread_index (lead_id, direction, read_at)` para a contagem por lead.
-- **Backfill**: as inbound que já existem recebem `read_at = created_at`. São mensagens anteriores ao controle, e sem isso o primeiro acesso depois do deploy mostraria alertas antigos. Outbound, notas e legado sem direção continuam nulos.
-- `down()` remove o índice e a coluna.
-- Conferido em SQLite: rollback da migration, inserção de inbound, outbound e nota, `migrate` (só a inbound recebeu `read_at = 2026-09-01 10:00:00`) e rollback de novo, sem erro.
-- Depende da migration `2026_09_24_120000_add_direction_to_lead_activities_table` (coluna `direction`).
+**Types**
 
-## 4. Arquivos alterados
+- O `package.json` não tem o script `types`. O equivalente é `npm run types:check` (`tsc --noEmit`), que passou: **OK, 0 erros**.
+- Antes, `php artisan wayfinder:generate --with-form` gerou as rotas tipadas.
 
-| Arquivo | Alteração |
-|---|---|
-| `database/migrations/2026_09_24_130000_add_read_at_to_lead_activities_table.php` | **Novo.** Coluna, índice e backfill |
-| `app/Models/LeadActivity.php` | `read_at` no `Fillable` e no cast `datetime`. Scope `unreadInbound()` |
-| `app/Models/Lead.php` | Relação `unreadWhatsappMessages()` |
-| `app/Http/Controllers/LeadController.php` | `withCount('unreadWhatsappMessages')` nas 5 consultas exibidas do `index`. Marcação de leitura no `edit` |
-| `resources/js/components/whatsapp-message-status.tsx` | Novo componente `WhatsappUnreadBadge`: selo verde com ícone e quantidade (`99+` acima de 99), `title`/`aria-label` "N mensagens WhatsApp não lidas", e nada quando zero |
-| `resources/js/pages/leads/form.tsx` | Tipos: `Lead.unread_whatsapp_messages_count` e `LeadActivity.read_at` |
-| `resources/js/pages/leads/index.tsx` | Selo ao lado do nome do lead na tabela, no card do kanban e nas filas de tarefas |
-| `resources/js/pages/leads/edit.tsx` | Selo "Nova" nas mensagens recebidas que estavam não lidas até esta visita |
-| `tests/Feature/LeadWhatsappUnreadTest.php` | **Novo.** 10 testes |
+**Lint**
 
-Não foram tocados: `WhatsappInboundController`, `StoreWhatsappInboundRequest`, `WhatsappActivityController`, `WhatsappMessageStatusController`, `LeadWhatsappService`, rotas, n8n, WAHA e docker-compose.
+- `eslint` nos arquivos da tarefa (`lead-whatsapp-conversation.tsx` e `edit.tsx`): **0 problemas**. O `edit.tsx` tinha 4 erros de ordem de imports na HEAD, que foram corrigidos.
+- `lead-whatsapp-conversation.tsx` também passou no Prettier.
+- O `eslint .` global continua com **67 erros e 1 warning**, todos preexistentes, em cerca de 18 arquivos fora do escopo:
+  - por exemplo, `admin/*`, `blog/*`, `welcome.tsx`, `settings/leads.tsx`, `leads/create.tsx`, `cookie-consent.tsx`;
+  - são erros de `import/order`, `no-unused-expressions`, `set-state-in-effect` e `no-unused-vars`;
+  - antes da tarefa eram 74, porque o `edit.tsx` entrava na conta.
+- `npm run lint` (`eslint . --fix`) foi executado **só na cópia**. As correções automáticas nos arquivos fora do escopo **não** foram aplicadas ao repositório.
 
-## 5. Testes criados (`tests/Feature/LeadWhatsappUnreadTest.php`)
+## Limitações que permaneceram
 
-| Teste | Cobre |
-|---|---|
-| inbound recebido pela API nasce não lido | `POST /api/whatsapp/inbound` → `read_at` nulo, `message_status` nulo, contagem 1 |
-| inbound registrado pelo endpoint de log nasce não lido | `POST /api/prospects/{lead}/whatsapp/log` com `direction=inbound` |
-| outbound, legado e não-WhatsApp não contam | Contagem 0 na listagem |
-| listagem mostra a quantidade por lead | 2 não lidas + 1 já lida + outbound → 2. Outro lead → 0. Conferido em `leads.data`, `kanbanLeads` e `taskLeads` |
-| sem N+1 | Número de queries em `lead_activities` igual com 1 e com 6 leads |
-| abrir o lead marca como lido | Pendente → lida. Já lida mantém o `read_at` original. Outbound fica com `read_at` nulo e `message_status` intacto. A visita recebe `read_at` nulo (para o "Nova"), a seguinte já recebe preenchido. Listagem → 0 |
-| isolamento entre leads | Abrir o lead A não marca as mensagens do lead B |
-| regras de acesso | Usuário `reader` recebe 403 no `edit` e nada é marcado |
-| idempotência | Reentrega do mesmo `provider_message_id` → `idempotent: true`, sem duplicar. Depois da leitura, a reentrega não volta a mensagem para não lida |
-| nova mensagem depois da leitura | O lead volta a ter 1 não lida (só a nova) |
+1. **Envio pelo card marca como lidas as inbound pendentes do lead.** O `Form` recarrega `lead` (`only: ['lead']`) para manter o Histórico em sincronia, e esse reload passa pelo `LeadController::edit`. Uma inbound que chegue entre dois pollings e logo antes de um envio fica marcada como lida sem receber o selo "Nova". O comportamento é o mesmo que o modal já tinha. Para mudar isso, seria preciso alterar o `edit`, o que está fora do escopo.
+2. **A conversa mostra só o que o CRM registra.** Mensagens enviadas direto pelo celular (fromMe) e mídia ou áudio não aparecem, porque o inbound aceita só texto. Mudar isso exigiria alterar n8n e WAHA.
+3. **Janela de 100 mensagens.** Não há paginação para mensagens mais antigas. Elas continuam visíveis no Histórico.
+4. **Sem tempo real.** A atualização é por polling de 10 s. Não há infraestrutura de WebSocket.
+5. **Não há testes de componente no front.** O projeto não tem essa infraestrutura. A validação do front ficou em `types`, `lint` e na validação manual abaixo.
 
-## 6. Resultado das verificações
+## Validação manual sugerida (homologação/local)
 
-Ambiente: cópia do working tree na scratchpad, `vendor`/`node_modules` reaproveitados de uma execução anterior (mesmos `composer.lock` e `package-lock.json`), testes em `docker run --rm --network none` com a imagem `infra-abrasil-abrasilsistema` e o SQLite em memória do `phpunit.xml`. Nenhum PHP rodou no container de produção.
-
-- `php artisan test tests/Feature/LeadWhatsappUnreadTest.php`: **10 passed (87 assertions)**.
-- `php artisan test` (suíte completa): **263 passed, 1 failed**. A falha é `BlogTest > administrator can upload…` (`imagejpeg function is not defined`): a extensão GD com JPEG não existe na imagem e o teste não tem relação com esta mudança. Todos os testes de WhatsApp (inbound, log, ACK, envio, histórico) passam.
-- Pint (`--test`) nos arquivos PHP alterados: OK.
-- PHPStan: nenhum erro novo, exceto `HasMany::unreadInbound()` "undefined method". O projeto não usa Larastan, que resolve scopes, e o mesmo tipo de aviso já existe em outras partes do código (a base tem ~40 erros anteriores).
-- `tsc --noEmit`: OK. Prettier nos arquivos alterados: OK nas minhas alterações (`edit.tsx` já tinha trechos fora do padrão antes, e não os reformatei). ESLint: só erros de ordem de import que já existiam em `create.tsx`/`edit.tsx`, fora das linhas alteradas.
-- `php artisan wayfinder:generate --with-form` seguido de `SKIP_WAYFINDER_GENERATE=1 npm run build` (`node:22-bookworm-slim`): OK (só o aviso de chunk > 500 kB, que já existia).
-
-## 7. Deploy (não executado) e validação manual
-
-O código e os assets entram na imagem. **Esta etapa tem migration.** As mudanças do inbound (etapa anterior, commit `253d39e`) também ainda não tiveram deploy e sobem juntas.
-
-```bash
-# 0) (Só leitura) Conferir as migrations pendentes: direction (se ainda não aplicada) e read_at
-docker compose exec abrasilsistema php artisan migrate:status | grep -E 'add_direction|add_read_at'
-
-# 0b) (Recomendado) Backup de lead_activities antes da migration
-docker compose exec mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" abrasilsistemas lead_activities' \
-  > lead_activities-$(date +%F-%H%M).sql
-
-# 1) Rebuild das imagens (os containers atuais continuam no ar)
-docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
-
-# 2) Migration (adiciona read_at, o índice e o backfill das inbound existentes)
-docker compose run --rm --no-deps abrasilsistema php artisan migrate --force
-docker compose run --rm --no-deps abrasilsistema php artisan migrate:status | grep add_read_at
-
-# 3) Deploy
-docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
-
-# 4) Conferência (só leitura): não lidas por lead. Logo depois do deploy, deve vir vazio (backfill)
-docker compose exec abrasilsistema php artisan tinker --execute='dump(App\Models\LeadActivity::query()->unreadInbound()->selectRaw("lead_id, count(*) as total")->groupBy("lead_id")->get()->toArray());'
-```
-
-Validação manual no painel:
-
-1. Pelo celular, mandar uma mensagem de texto para o WhatsApp da empresa a partir do número de um lead cadastrado. O n8n chama `/api/whatsapp/inbound` (201).
-2. Em **Prospecção**, o lead mostra o selo verde com "1" ao lado do nome, na tabela, no kanban e na fila de tarefas em que estiver. Passar o mouse mostra "1 mensagem WhatsApp não lida".
-3. Mandar mais uma mensagem e recarregar. O selo mostra "2".
-4. Abrir o lead. No histórico, as duas mensagens aparecem como "Recebida · Cliente → Empresa" com o selo **Nova**.
-5. Voltar para a listagem. O selo sumiu. Reabrir o lead: o "Nova" também sumiu.
-6. Enviar uma mensagem pelo botão de WhatsApp do lead. A listagem continua sem selo (outbound não conta), e o ACK segue aparecendo no histórico como antes.
-7. Outro lead com mensagem pendente continua com o selo depois de abrir o primeiro.
-
-Rollback: `docker compose run --rm --no-deps abrasilsistema php artisan migrate:rollback --step=1 --force` (remove só `read_at` e o índice), depois voltar a imagem anterior e rodar `docker compose up -d` nos 3 serviços.
+1. Rebuild da imagem, que roda `wayfinder:generate` e `npm run build`. Não há migration.
+2. Abrir um lead com WhatsApp válido. O card "Conversa WhatsApp" aparece acima do Histórico, e o Histórico não tem mais o botão "Enviar WhatsApp".
+3. Enviar uma mensagem pelo card:
+   - o botão mostra "Enviando...";
+   - o campo é limpo;
+   - a mensagem aparece uma única vez, à direita;
+   - o ACK evolui sem recarregar a página, em até cerca de 10 s por ciclo.
+4. Simular um inbound: `POST /api/whatsapp/inbound` com o token do prospect. A mensagem aparece à esquerda com "Nova" em até cerca de 10 s, e o badge da listagem de leads zera.
+5. Repetir o inbound com a aba em segundo plano. A mensagem continua não lida (badge na listagem) até a aba voltar a ficar visível.
+6. Abrir um lead sem WhatsApp válido: o campo e o botão ficam desabilitados, com a explicação.
+7. Registrar um contato manual do tipo WhatsApp: ele aparece só no Histórico, não na conversa.

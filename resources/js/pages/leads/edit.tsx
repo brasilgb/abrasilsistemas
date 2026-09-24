@@ -11,7 +11,7 @@ import {
 import LeadController from '@/actions/App/Http/Controllers/LeadController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import SendLeadWhatsappDialog from '@/components/send-lead-whatsapp-dialog';
+import LeadWhatsappConversation from '@/components/lead-whatsapp-conversation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,9 +27,10 @@ import { Spinner } from '@/components/ui/spinner';
 import WhatsappMessageStatus, {
     WhatsappMessageDirection,
 } from '@/components/whatsapp-message-status';
-import { store as storeLeadActivity } from '@/routes/leads/activities';
+import LeadForm from '@/pages/leads/form';
+import type { Lead } from '@/pages/leads/form';
 import { index } from '@/routes/leads';
-import LeadForm, { type Lead } from '@/pages/leads/form';
+import { store as storeLeadActivity } from '@/routes/leads/activities';
 
 type Props = {
     activityTypes: Record<string, string>;
@@ -356,23 +357,28 @@ export default function EditLead({
                             </CardContent>
                         </Card>
 
+                        <LeadWhatsappConversation
+                            leadId={lead.id}
+                            destination={whatsappDestination}
+                            initialUnreadIds={(lead.activities ?? [])
+                                .filter(
+                                    (activity) =>
+                                        activity.type === 'whatsapp' &&
+                                        activity.direction === 'inbound' &&
+                                        !activity.read_at,
+                                )
+                                .map((activity) => activity.id)}
+                        />
+
                         <Card>
-                            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                <div className="space-y-1.5">
-                                    <CardTitle className="flex items-center gap-2">
-                                        <History className="size-5" />
-                                        Histórico
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Contatos e anotações registrados neste
-                                        lead.
-                                    </CardDescription>
-                                </div>
-                                <SendLeadWhatsappDialog
-                                    leadId={lead.id}
-                                    leadName={lead.company_name}
-                                    destination={whatsappDestination}
-                                />
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <History className="size-5" />
+                                    Histórico
+                                </CardTitle>
+                                <CardDescription>
+                                    Contatos e anotações registrados neste lead.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {lead.activities &&

@@ -141,6 +141,20 @@ class LeadActivity extends Model
             ->whereNull('read_at');
     }
 
+    /**
+     * Mensagens trocadas pelo WhatsApp (com direction). O WhatsApp registrado manualmente
+     * em "Registrar contato" não tem direction e fica só no histórico.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function conversation(Builder $query): void
+    {
+        $query
+            ->where('type', 'whatsapp')
+            ->whereIn('direction', self::DIRECTIONS);
+    }
+
     public function lead(): BelongsTo
     {
         return $this->belongsTo(Lead::class);
