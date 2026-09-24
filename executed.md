@@ -1,3 +1,261 @@
+# Execução de `correio.md`: gerenciamento da conexão WhatsApp/WAHA pelo painel
+
+Data: 2026-09-24.
+
+## Resumo
+
+**Implementado e testado. Nada foi publicado em produção.** Em Configurações → Leads → WhatsApp da empresa, o painel agora separa **Configuração** (número, provider, sessão salvos em `settings`) de **Conexão** (estado real da sessão no WAHA). A tela permite conectar (com QR Code num modal), acompanhar o status, ver a conta autenticada (`me.id` / `me.pushName`), receber alerta de número divergente e desconectar com confirmação. Toda chamada ao WAHA sai do Laravel. A `WAHA_API_KEY` nunca chega ao navegador.
+
+Não foram alterados: o fluxo de envio CRM → n8n → WAHA, o `LeadWhatsappService`, os workflows do n8n, os webhooks do WAHA, o ACK, as credenciais e o banco. Não há migration. A sessão real `vetoros1-1` não foi consultada, conectada nem desconectada: os testes usam `Http::fake()` em containers sem rede.
+
+## 1. Arquivos criados
+
+| Arquivo | Papel |
+|---|---|
+| `app/Services/WahaService.php` | Adapter HTTP do WAHA: `getSession`, `restartSession`, `logoutSession`, `getQrCode`. Recebe o nome da sessão de quem chama, sem nada fixo no código |
+| `app/Services/WahaException.php` | Erro com mensagem amigável e status HTTP |
+| `app/Services/CompanyWhatsappConnection.php` | Regra de negócio: lê a sessão de `CompanyWhatsappSettings`, mapeia os status, compara o número configurado com `me.id` e decide quando reiniciar |
+| `app/Http/Controllers/Settings/CompanyWhatsappConnectionController.php` | Controller fino: `status`, `connect`, `qr`, `disconnect` |
+| `resources/js/components/company-whatsapp-connection.tsx` | Bloco "Conexão", modal do QR Code e confirmação de desconexão |
+| `tests/Feature/CompanyWhatsappConnectionTest.php` | 28 testes (85 asserções) |
+
+## 2. Arquivos alterados
+
+| Arquivo | Mudança |
+|---|---|
+| `config/services.php` | Novo bloco `waha` (`base_url`, `api_key`, `timeout`) lido do ENV |
+| `routes/settings.php` | 4 rotas novas (abaixo) |
+| `resources/js/pages/settings/leads.tsx` | O resumo vira "Configuração" (o badge agora diz "Integração") e o bloco "Conexão" entra logo abaixo. `formatWhatsapp` foi movido para o componente novo |
+
+## 3. Arquitetura
+
+```
+React (settings/leads) ──fetch + CSRF──▶ CompanyWhatsappConnectionController (auth + verified + admin)
+                                           └─▶ CompanyWhatsappConnection  (sessão vinda de CompanyWhatsappSettings)
+                                                 └─▶ WahaService ──X-Api-Key──▶ WAHA /api/sessions/{session}, /api/{session}/auth/qr
+```
+
+- **Fonte de verdade:** `GET /api/sessions/{session}` (`status`, `me.id`, `me.pushName`, `me.lid`). `company_whatsapp_number` serve só para comparar.
+- **Mapa de status:** `WORKING` → Conectado, `SCAN_QR_CODE` → Aguardando leitura do QR Code, `STARTING` → Conectando, `FAILED` → Falha na conexão, `STOPPED` → Desconectado. Qualquer outro status → "Status desconhecido" (o painel mostra o valor bruto). Erro de comunicação → "Erro" com mensagem amigável.
+- **Conectar:** se a sessão já está `WORKING`, `SCAN_QR_CODE` ou `STARTING`, nada é feito. Em qualquer outro estado, chama `POST /api/sessions/{session}/restart`. Se a sessão não existe no WAHA (404), devolve erro e **não cria sessão**, para não perder os webhooks configurados.
+- **QR Code:** `GET /api/{session}/auth/qr` com `Accept: image/png`. A resposta é tratada como binário (há fallback para o formato JSON base64 de outras versões do WAHA) e validada pela assinatura PNG. Vai ao navegador por rota autenticada com `Cache-Control: no-store`. Nada é salvo. O QR só é pedido quando a sessão está em `SCAN_QR_CODE` (senão a resposta é 409).
+- **Modal:** consulta `status` a cada 3 s e recarrega a imagem a cada 20 s. Se o QR expirar ou falhar, mostra o aviso e o botão "Gerar novo QR Code". Ao chegar em `WORKING`, fecha sozinho e mostra "WhatsApp conectado".
+- **Número divergente:** `me.id` é normalizado (sem `@c.us`/`@s.whatsapp.net`, só dígitos). A comparação **ignora o nono dígito** de celulares brasileiros, porque contas antigas aparecem como `555198931325@c.us`. Quando os números divergem, o painel mostra "⚠ Número divergente" com os dois números. Nada é corrigido automaticamente.
+- **Desconectar:** diálogo de confirmação e depois `POST /api/sessions/{session}/logout`. A sessão, os webhooks e as configurações ficam intactos.
+- **Segurança:** as rotas exigem `auth`, `verified` e `admin`. A sessão vem sempre das configurações (parâmetros `session` do navegador são ignorados) e é validada contra `SESSION_PATTERN`, com `rawurlencode` na URL. Timeout de conexão de 5 s e de requisição de `WAHA_TIMEOUT` (padrão 15 s). Os logs registram sessão, operação, status HTTP e corpo truncado, nunca a API key. `connect` e `disconnect` têm `throttle:10,1`.
+- **Multi-tenant futuro:** o `WahaService` não conhece empresa nem sessão fixa. Para o VetorOS, basta outro "resolvedor" de sessão por tenant no lugar de `CompanyWhatsappSettings`.
+
+## 4. Variáveis ENV
+
+| Variável | Uso | Situação |
+|---|---|---|
+| `WAHA_BASE_URL` | URL interna do WAHA | Já é passada ao `abrasilsistema` no `docker-compose.yml` (`http://waha:3000`) |
+| `WAHA_API_KEY` | `X-Api-Key` do WAHA | **Falta no serviço `abrasilsistema`** |
+| `WAHA_TIMEOUT` | Timeout em segundos (opcional, padrão 15) | Opcional |
+
+## 5. docker-compose
+
+**Precisa de uma linha**, no bloco `environment` do serviço `abrasilsistema` em `/opt/infra-abrasil/docker-compose.yml`. O worker e o scheduler herdam via `extends`. A variável `WAHA_API_KEY` já existe no `.env` da infra, porque o próprio WAHA e o VetorOS a usam:
+
+```yaml
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+```
+
+O `docker-compose.yml` não foi alterado: fica fora deste repositório e faz parte do deploy. Sem essa linha, o painel mostra "O WAHA recusou a autenticação do CRM", e o envio de mensagens continua funcionando normalmente.
+
+## 6. Rotas adicionadas
+
+| Método | URI | Nome | Middleware |
+|---|---|---|---|
+| GET | `settings/leads/whatsapp/status` | `lead-settings.whatsapp.status` | auth, verified, admin |
+| POST | `settings/leads/whatsapp/connect` | `lead-settings.whatsapp.connect` | auth, verified, admin, throttle:10,1 |
+| GET | `settings/leads/whatsapp/qr` | `lead-settings.whatsapp.qr` | auth, verified, admin |
+| POST | `settings/leads/whatsapp/disconnect` | `lead-settings.whatsapp.disconnect` | auth, verified, admin, throttle:10,1 |
+
+## 7. Testes criados (`tests/Feature/CompanyWhatsappConnectionTest.php`)
+
+| Item do correio | Teste |
+|---|---|
+| 1. Sessão WORKING | `WORKING session is shown as connected with the authenticated account` (também confere o envio do `X-Api-Key`) |
+| 2. SCAN_QR_CODE | `SCAN_QR_CODE session is waiting for the QR Code` |
+| 3. FAILED (+ STOPPED, STARTING, desconhecido) | `WAHA statuses are mapped to panel states` (4 datasets) |
+| 4. QR PNG | `the QR Code PNG is proxied without being parsed as JSON`, `the QR Code is refused when the session is not waiting for it`, `an invalid QR Code image is rejected` |
+| 5. Restart | `connect restarts a stopped or failed session` (2), `connect does not restart a session that is already working or waiting for the QR Code` (3), `connect never creates a session that does not exist in WAHA` |
+| 6. Logout | `disconnect logs out the session without deleting it or the settings` |
+| 7. Erro HTTP | `WAHA HTTP errors become friendly messages` |
+| 8. Timeout/falha | `WAHA timeouts and connection failures are handled` |
+| 9. Comparação de número | `configured number is compared to me.id after normalization` (5 datasets, incluindo sem o nono dígito) |
+| 10. Número divergente | `a different connected number is reported as divergent and never saved` (usa o caso real `555195179173@c.us`) |
+| 11. Não autorizado | `guests and readers cannot manage the WhatsApp connection` (401 para visitante, 403 para `reader`, nenhuma chamada ao WAHA) |
+| 12. API key não exposta | `the WAHA API key is never exposed in responses` (status, connect, disconnect e a página Inertia) |
+| 13. Sessão da configuração | `the session always comes from the settings, never from the browser` |
+| extra | `connection actions require a saved WAHA session` |
+
+## 8. Execução dos testes
+
+Os testes rodaram em uma cópia do projeto na scratchpad, com a imagem da aplicação (`infra-abrasil-abrasilsistema`) em `docker run --rm --network none` e o SQLite em memória do `phpunit.xml`. Nada foi executado no container de produção e nenhum banco real foi acessado.
+
+```text
+CompanyWhatsappConnectionTest   28 passed (85 assertions)
+Suíte completa                  195 passed, 1 failed (828 assertions)
+Pint --test (PHP novos/alterados) PASS
+git diff --check                sem problemas
+```
+
+A única falha já existia e não tem relação com esta tarefa: `BlogTest > administrator can upload blog images` (`imagejpeg` indisponível no GD da imagem).
+
+## 9. Build do frontend
+
+`php artisan wayfinder:generate --with-form` (imagem do projeto), depois `SKIP_WAYFINDER_GENERATE=1 npm run build` em `node:22-bookworm-slim`:
+
+- `npm run build`: OK (só o aviso de chunk > 500 kB, que já existia)
+- `tsc --noEmit`: OK
+- ESLint e Prettier no componente novo: OK
+- `leads.tsx` tem 4 erros de ESLint e trechos fora do Prettier que **já existiam no HEAD** (texto da extensão, token, `setState` em efeito das mensagens). As linhas novas estão formatadas. O restante não foi mexido para manter o diff pequeno.
+
+## 10–11. Sessão real e deploy
+
+- A sessão WAHA real **não** foi conectada, desconectada, reiniciada nem consultada.
+- **Não houve deploy.** O código e os assets entram na imagem, então é preciso rebuild/redeploy de `abrasilsistema`, `abrasilsistema-worker` e `abrasilsistema-scheduler`, depois de acrescentar `WAHA_API_KEY` no compose. Não há migration. As mudanças não foram commitadas.
+
+## Como validar depois do deploy
+
+1. Entrar como admin em Configurações → Leads. Em "Conexão", com a sessão atual, deve aparecer **Conectado**, a conta e o número autenticado. Se continuar autenticada como `555195179173@c.us`, aparece **⚠ Número divergente** (configurado: 5551998931325).
+2. Conectar/desconectar só quando for conveniente, porque o logout derruba o envio do CRM até um novo QR ser lido.
+
+---
+
+# Execução de `correio.md`: deploy controlado (concluído)
+
+Data: 2026-09-24.
+
+## Resumo
+
+**Deploy concluído e validado.** O build foi feito pelo Claude Code. O `docker compose up -d` foi executado pelo próprio usuário, porque a política de permissões bloqueou o comando para o Claude Code. As 13 validações pós-deploy passaram. Nada foi alterado em n8n, WAHA, webhooks, credenciais ou banco. Nenhum token foi exibido e nenhuma mensagem WhatsApp foi enviada.
+
+## Relatório
+
+| Item | Resultado |
+|---|---|
+| Build | ✅ `docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler` sem erros |
+| Deploy | ✅ `docker compose up -d …` executado pelo usuário. Os 3 containers foram recriados e iniciados. `mysql` e `waha` não foram tocados |
+| 1. Containers | ✅ `abrasilsistema`, `abrasilsistema-worker` e `abrasilsistema-scheduler` estão `healthy` |
+| 2. Aplicação | ✅ `GET /` → 200, `GET /login` → 200 (via nginx, `Host: abrasilsistema.localhost`). Nenhum erro/exception nos logs dos containers após o deploy |
+| 3. `POST leads/{lead}/whatsapp` | ✅ `leads.whatsapp.store` |
+| 4. `PATCH api/whatsapp/messages/{providerMessageId}/status` | ✅ `api.whatsapp.messages.status` |
+| 5. `services.n8n.whatsapp_webhook_url` | ✅ filled |
+| 6. `services.n8n.whatsapp_webhook_header` | ✅ filled |
+| 7. `services.n8n.whatsapp_webhook_token` | ✅ filled (verificado só como booleano, sem exibir o valor) |
+| 8. Header Auth no código em produção | ✅ `app/Services/LeadWhatsappService.php:90`: `->withHeaders([$header => $token])` |
+| 9. Configurações → Leads | ✅ sem login: `302 → /login`. Autenticado (requisição GET interna, só de leitura): `200`, componente Inertia `settings/leads` |
+| 10. Seção "WhatsApp da empresa" | ✅ presente no bundle (`resources/js/pages/settings/leads.tsx` → `public/build/assets/leads-*.js`), com props de WhatsApp na página e rota `PUT settings/leads/whatsapp` registrada |
+| 11. Workflow n8n | ✅ `CRM ABrasil - Enviar WhatsApp` (`VWvN7AWQc88fgSdV`) ativo |
+| 12. WAHA | ✅ `healthy` |
+| 13. Sessão `vetoros1-1` | ✅ `WORKING` (API key lida só dentro do container) |
+
+## Erros encontrados
+
+- O `docker compose up -d` foi bloqueado para o Claude Code pela política de permissões (deploy em produção). O usuário resolveu executando o comando manualmente.
+- Nenhum erro de aplicação.
+
+---
+
+# Execução de `correio.md`: deploy controlado (2ª tentativa)
+
+Data: 2026-09-24.
+
+## Resumo
+
+**Build concluído; deploy NÃO aplicado.** As imagens novas foram construídas com sucesso, mas o comando `docker compose up -d` foi bloqueado pela política de permissões do Claude Code (classificador do modo automático: "Production Deploy"). Os containers continuam rodando a versão anterior. As validações pós-deploy de 1 a 13 ficam pendentes até o `up -d` ser executado.
+
+## Relatório
+
+| Item | Resultado |
+|---|---|
+| Build | ✅ `docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler` terminou sem erros (imagens `infra-abrasil-abrasilsistema`, `-worker`, `-scheduler` geradas) |
+| Deploy | ❌ `docker compose up -d …` **bloqueado** pela permissão do Claude Code. Não foi contornado |
+| Containers | `abrasilsistema`, `abrasilsistema-worker` e `abrasilsistema-scheduler` seguem `Up 19 hours (healthy)`, **ainda com a versão antiga** |
+| Rotas (imagem nova, via `docker run --rm` só para leitura) | ✅ `POST leads/{lead}/whatsapp` (`routes/web.php:150`) e ✅ `PATCH whatsapp/messages/{providerMessageId}/status` (`routes/api.php:16`) presentes |
+| Header Auth (imagem nova) | ✅ `LeadWhatsappService.php` lê `services.n8n.whatsapp_webhook_header` (linha 72) e envia `withHeaders([$header => $token])` (linha 90) |
+| Configuração n8n (itens 5–7) | ⏳ Pendente. Precisa do container novo em execução |
+| Painel (itens 9–10) | ⏳ Pendente. Precisa do container novo em execução |
+| n8n | ✅ container `healthy`. Nada foi alterado |
+| WAHA / sessão | ✅ WAHA `healthy`. Nada foi alterado. A sessão `vetoros1-1` não foi consultada de novo nesta rodada |
+| Erros | Apenas o bloqueio de permissão do deploy. Nenhum erro de build |
+
+Nada foi alterado em n8n, WAHA, webhooks, credenciais ou banco. Nenhum token foi exibido. Nenhuma mensagem WhatsApp foi enviada.
+
+## Para concluir
+
+O usuário executa o deploy (as imagens já estão construídas):
+
+```bash
+cd /opt/infra-abrasil
+docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+```
+
+Ou libera a ação com uma regra de permissão do Bash no Claude Code. Depois disso é preciso rodar as validações 1 a 13 do `correio.md`.
+
+---
+
+# Execução de `correio.md`: deploy controlado do WhatsApp da empresa
+
+## Resumo
+
+**Deploy NÃO realizado.** As pré-checagens de infraestrutura (n8n, webhook, WAHA, sessão) passaram. As checagens das variáveis `N8N_WHATSAPP_WEBHOOK_*` no container (itens 1 a 4) não puderam ser feitas: o comando que verificava só se o token estava preenchido (sem imprimi-lo) foi bloqueado pela política de permissões do Claude Code (proteção contra exposição de credenciais). O correio pede para não fazer o deploy quando algo obrigatório não for confirmado, então o build e o `up -d` não foram executados. Nada foi alterado em containers, n8n, WAHA, webhooks ou banco. Nenhuma mensagem foi enviada.
+
+Data: 2026-09-24.
+
+## Pré-checagens
+
+| # | Verificação | Resultado |
+|---|---|---|
+| 1 | `N8N_WHATSAPP_WEBHOOK_URL` disponível no container | ⚠️ Não verificado (bloqueado) |
+| 2 | `N8N_WHATSAPP_WEBHOOK_HEADER` configurado | ⚠️ Não verificado (bloqueado). O `docker-compose.yml` usa `X-CRM-Token` como padrão |
+| 3 | `N8N_WHATSAPP_WEBHOOK_TOKEN` preenchido | ⚠️ Não verificado (bloqueado) |
+| 4 | Header compatível com o Header Auth do workflow | ⚠️ Não verificado (depende de 2 e 3) |
+| 5 | Workflow `CRM ABrasil - Enviar WhatsApp` ativo | ✅ `n8n list:workflow --active=true` lista `VWvN7AWQc88fgSdV`. `WAHA - Status WhatsApp` e `WAHA - Mensagens Recebidas → CRM` também estão ativos |
+| 6 | Webhook `crm/send-whatsapp` registrado | ✅ `POST` sem Header Auth → **403** (rota inexistente de controle → 404). O workflow não foi executado |
+| 7 | WAHA saudável | ✅ container `healthy` |
+| 8 | Sessão `vetoros1-1` WORKING | ✅ `GET /api/sessions/vetoros1-1` → 200, `status: WORKING` (API key lida só dentro do container, não exibida) |
+
+Estado atual dos containers (sem alteração): `abrasilsistema`, `abrasilsistema-worker` e `abrasilsistema-scheduler` estão `Up 19 hours (healthy)`, ainda com a versão anterior.
+
+## O que precisa ser feito para seguir
+
+Confirmar os itens 1 a 4 de uma destas formas:
+
+- **O próprio usuário roda a checagem**, que só mostra booleanos/tamanho:
+  ```bash
+  cd /opt/infra-abrasil
+  docker compose exec -T abrasilsistema sh -c '
+    for v in N8N_WHATSAPP_WEBHOOK_URL N8N_WHATSAPP_WEBHOOK_HEADER N8N_WHATSAPP_WEBHOOK_TOKEN; do
+      eval val=\$$v; [ -n "$val" ] && echo "$v=filled" || echo "$v=EMPTY"; done'
+  ```
+  E confere no n8n se a credential Header Auth do webhook usa o mesmo nome de header (padrão `X-CRM-Token`) e o mesmo valor de `ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_TOKEN` do `.env`.
+- **Ou libera a checagem** com uma regra de permissão do Bash no Claude Code, e a execução continua daqui.
+
+Com os itens confirmados, o deploy é o do correio:
+
+```bash
+cd /opt/infra-abrasil
+docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+```
+
+## Relatório final (itens pedidos)
+
+1. Deploy realizado: **não**.
+2. Containers atualizados: nenhum.
+3. Saúde dos serviços: todos `healthy` (sem mudança). WAHA ok, sessão `vetoros1-1` WORKING, n8n ok.
+4. Rotas verificadas: webhook n8n `crm/send-whatsapp` registrado (403 sem auth). As rotas Laravel de envio e ACK ficam para depois do deploy.
+5. Header Auth: exigido pelo webhook do n8n (403 sem header). A configuração do lado Laravel não foi confirmada.
+6. Nova seção do painel: ainda não disponível em produção (depende do deploy).
+7. Erros: nenhum erro de serviço. O único bloqueio foi a checagem das variáveis de ambiente.
+
+---
+
+
 # Execução de `correio.md`: sessão do WAHA vinda do Laravel no n8n
 
 ## Resumo

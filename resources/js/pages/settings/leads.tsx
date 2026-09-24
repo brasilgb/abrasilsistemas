@@ -1,6 +1,9 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Copy, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import CompanyWhatsappConnection, {
+    formatWhatsapp,
+} from '@/components/company-whatsapp-connection';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,17 +34,6 @@ type CompanyWhatsapp = {
 const providerLabels: Record<string, string> = {
     waha: 'WAHA',
 };
-
-function formatWhatsapp(number: string | null): string {
-    if (!number) {
-        return '—';
-    }
-
-    const local = number.startsWith('55') ? number.slice(2) : number;
-    const match = local.match(/^(\d{2})(\d{4,5})(\d{4})$/);
-
-    return match ? `+55 (${match[1]}) ${match[2]}-${match[3]}` : number;
-}
 
 type Props = {
     prospectApiToken: string | null;
@@ -346,9 +338,10 @@ export default function LeadSettings({
 
                 <div className="grid gap-4">
                     <div className="grid gap-1 rounded-md border p-3 text-sm">
+                        <p className="font-medium">Configuração</p>
                         <div className="flex items-center gap-2">
                             <span className="text-muted-foreground">
-                                Status:
+                                Integração:
                             </span>
                             <Badge variant={whatsappStatus.variant}>
                                 {whatsappStatus.label}
@@ -380,6 +373,11 @@ export default function LeadSettings({
                             {whatsappStatus.hint}
                         </p>
                     </div>
+
+                    {/* Remonta ao salvar outra sessão/número, para reconsultar a conexão. */}
+                    <CompanyWhatsappConnection
+                        key={`${companyWhatsapp.session}:${companyWhatsapp.number}`}
+                    />
 
                     <div className="flex items-center gap-2">
                         <Checkbox

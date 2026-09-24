@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\CompanyWhatsappConnectionController;
 use App\Http\Controllers\Settings\LeadSettingsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -32,4 +33,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('settings/leads/whatsapp', [LeadSettingsController::class, 'updateWhatsapp'])
         ->middleware('admin')
         ->name('lead-settings.whatsapp.update');
+
+    Route::middleware('admin')
+        ->controller(CompanyWhatsappConnectionController::class)
+        ->group(function () {
+            Route::get('settings/leads/whatsapp/status', 'status')->name('lead-settings.whatsapp.status');
+            Route::post('settings/leads/whatsapp/connect', 'connect')->middleware('throttle:10,1')->name('lead-settings.whatsapp.connect');
+            Route::get('settings/leads/whatsapp/qr', 'qr')->name('lead-settings.whatsapp.qr');
+            Route::post('settings/leads/whatsapp/disconnect', 'disconnect')->middleware('throttle:10,1')->name('lead-settings.whatsapp.disconnect');
+        });
 });

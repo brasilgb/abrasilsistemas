@@ -53,4 +53,11 @@ return [
         'whatsapp_webhook_token' => env('N8N_WHATSAPP_WEBHOOK_TOKEN'),
     ],
 
+    'waha' => [
+        // Usado só pelo Laravel (server-side) para gerenciar a conexão da sessão; nunca vai ao frontend.
+        'base_url' => env('WAHA_BASE_URL'),
+        'api_key' => env('WAHA_API_KEY'),
+        'timeout' => (int) env('WAHA_TIMEOUT', 15),
+    ],
+
 ];
