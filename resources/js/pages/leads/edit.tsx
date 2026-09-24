@@ -414,6 +414,14 @@ export default function EditLead({
                                                                 activity.direction
                                                             }
                                                         />
+                                                        {/* Não lida até esta visita; a abertura do lead já a marcou como lida. */}
+                                                        {activity.direction ===
+                                                            'inbound' &&
+                                                            !activity.read_at && (
+                                                                <Badge className="bg-emerald-600 text-white dark:bg-emerald-500">
+                                                                    Nova
+                                                                </Badge>
+                                                            )}
                                                         {/* Status de entrega (ACK) só existe para mensagem enviada. */}
                                                         {activity.direction !==
                                                             'inbound' && (

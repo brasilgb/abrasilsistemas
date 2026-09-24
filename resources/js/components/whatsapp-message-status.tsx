@@ -5,6 +5,7 @@ import {
     Check,
     CheckCheck,
     Clock,
+    MessageCircle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -134,6 +135,39 @@ export default function WhatsappMessageStatus({ status, className }: Props) {
         >
             <Icon className="size-3.5" aria-hidden="true" />
             {presentation.label}
+        </span>
+    );
+}
+
+type UnreadProps = {
+    count: number | null | undefined;
+    className?: string;
+};
+
+/**
+ * Quantidade de mensagens WhatsApp recebidas ainda não vistas no CRM. Sem pendências, não mostra nada.
+ */
+export function WhatsappUnreadBadge({ count, className }: UnreadProps) {
+    if (!count) {
+        return null;
+    }
+
+    const label =
+        count === 1
+            ? '1 mensagem WhatsApp não lida'
+            : `${count} mensagens WhatsApp não lidas`;
+
+    return (
+        <span
+            className={cn(
+                'inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-1.5 py-0.5 text-[11px] leading-none font-medium text-white dark:bg-emerald-500',
+                className,
+            )}
+            title={label}
+            aria-label={label}
+        >
+            <MessageCircle className="size-3" aria-hidden="true" />
+            {count > 99 ? '99+' : count}
         </span>
     );
 }

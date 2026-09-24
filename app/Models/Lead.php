@@ -185,6 +185,17 @@ class Lead extends Model
     }
 
     /**
+     * Mensagens WhatsApp recebidas ainda não vistas no CRM. Na listagem, use
+     * withCount('unreadWhatsappMessages') para contar sem N+1.
+     *
+     * @return HasMany<LeadActivity, $this>
+     */
+    public function unreadWhatsappMessages(): HasMany
+    {
+        return $this->activities()->unreadInbound();
+    }
+
+    /**
      * Lead cujo WhatsApp corresponde ao número recebido (só dígitos), com a mesma equivalência
      * usada no WhatsApp da empresa: com ou sem 55 e com ou sem o nono dígito. Com mais de um
      * lead no mesmo número, fica o contatado mais recentemente.

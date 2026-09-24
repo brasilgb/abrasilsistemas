@@ -45,6 +45,7 @@ export type Lead = {
     created_at: string;
     updated_at: string;
     activities?: LeadActivity[];
+    unread_whatsapp_messages_count?: number;
     user?: {
         id: number;
         name: string;
@@ -60,6 +61,7 @@ export type LeadActivity = {
     next_follow_up_at: string | null;
     description: string;
     message_status?: WhatsappMessageStatusValue | null;
+    read_at?: string | null;
     created_at: string;
     updated_at: string;
     user?: {

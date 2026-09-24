@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'description',
     'provider_message_id',
     'message_status',
+    'read_at',
 ])]
 class LeadActivity extends Model
 {
@@ -82,6 +85,7 @@ class LeadActivity extends Model
         return [
             'contacted_at' => 'datetime',
             'next_follow_up_at' => 'date',
+            'read_at' => 'datetime',
         ];
     }
 
@@ -120,6 +124,21 @@ class LeadActivity extends Model
     public function isInbound(): bool
     {
         return $this->direction === self::DIRECTION_INBOUND;
+    }
+
+    /**
+     * Mensagens WhatsApp recebidas que ainda não foram vistas no CRM (read_at nulo).
+     * Mensagens enviadas (outbound) nunca entram: a leitura delas é o ACK em message_status.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function unreadInbound(Builder $query): void
+    {
+        $query
+            ->where('type', 'whatsapp')
+            ->where('direction', self::DIRECTION_INBOUND)
+            ->whereNull('read_at');
     }
 
     public function lead(): BelongsTo

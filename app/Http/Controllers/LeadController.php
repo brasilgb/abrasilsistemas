@@ -30,7 +30,10 @@ class LeadController extends Controller
 
         $taskQuery = (clone $baseQuery)->whereNotIn('status', ['converted', 'lost']);
 
+        // withCount('unreadWhatsappMessages') só nas consultas exibidas: no baseQuery, a subconsulta
+        // entraria também nas agregações das métricas (count/groupBy).
         $leads = (clone $baseQuery)
+            ->withCount('unreadWhatsappMessages')
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -39,6 +42,7 @@ class LeadController extends Controller
             'filters' => $filters,
             'kanbanTotal' => (clone $baseQuery)->count(),
             'kanbanLeads' => (clone $baseQuery)
+                ->withCount('unreadWhatsappMessages')
                 ->latest()
                 ->limit(500)
                 ->get()
@@ -47,9 +51,9 @@ class LeadController extends Controller
             'leads' => $leads,
             'metrics' => $this->metrics(clone $baseQuery),
             'taskLeads' => [
-                'overdue' => (clone $taskQuery)->whereDate('next_follow_up_at', '<', today())->orderBy('next_follow_up_at')->limit(50)->get(),
-                'today' => (clone $taskQuery)->whereDate('next_follow_up_at', today())->orderBy('next_follow_up_at')->limit(50)->get(),
-                'without_follow_up' => (clone $taskQuery)->whereNull('next_follow_up_at')->latest()->limit(50)->get(),
+                'overdue' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->whereDate('next_follow_up_at', '<', today())->orderBy('next_follow_up_at')->limit(50)->get(),
+                'today' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->whereDate('next_follow_up_at', today())->orderBy('next_follow_up_at')->limit(50)->get(),
+                'without_follow_up' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->whereNull('next_follow_up_at')->latest()->limit(50)->get(),
             ],
             'taskTotals' => [
                 'overdue' => (clone $taskQuery)->whereDate('next_follow_up_at', '<', today())->count(),
@@ -254,6 +258,10 @@ class LeadController extends Controller
 
         // O ID da mensagem no provedor (WAHA) é de uso interno; o histórico só precisa do message_status.
         $lead->activities->each->makeHidden('provider_message_id');
+
+        // Abrir o lead exibe o histórico completo: as mensagens recebidas pendentes passam a lidas.
+        // O histórico já carregado mantém read_at nulo nelas, para a página destacar o que é novo.
+        $lead->unreadWhatsappMessages()->update(['read_at' => now()]);
 
         return Inertia::render('leads/edit', [
             'activityTypes' => LeadActivity::TYPES,
