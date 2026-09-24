@@ -2,7 +2,9 @@ import { Head, useForm } from '@inertiajs/react';
 import { Copy, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -18,12 +20,37 @@ const products: Record<WhatsappProduct, string> = {
     vetorpet: 'VetorPet',
 };
 
+type CompanyWhatsapp = {
+    configured: boolean;
+    enabled: boolean;
+    number: string | null;
+    provider: string | null;
+    session: string | null;
+};
+
+const providerLabels: Record<string, string> = {
+    waha: 'WAHA',
+};
+
+function formatWhatsapp(number: string | null): string {
+    if (!number) {
+        return '—';
+    }
+
+    const local = number.startsWith('55') ? number.slice(2) : number;
+    const match = local.match(/^(\d{2})(\d{4,5})(\d{4})$/);
+
+    return match ? `+55 (${match[1]}) ${match[2]}-${match[3]}` : number;
+}
+
 type Props = {
     prospectApiToken: string | null;
     prospectApiEndpoint: string;
     prospectExtensionUrl: string | null;
     prospectExtensionFilename: string | null;
     prospectExtensionSigned: boolean;
+    companyWhatsapp: CompanyWhatsapp;
+    whatsappProviders: string[];
 };
 
 export default function LeadSettings({
@@ -32,6 +59,8 @@ export default function LeadSettings({
     prospectExtensionUrl,
     prospectExtensionFilename,
     prospectExtensionSigned,
+    companyWhatsapp,
+    whatsappProviders,
 }: Props) {
     const [product, setProduct] = useState<WhatsappProduct>('vetoros');
     const [messages, setMessages] = useState(whatsappMessageTemplates);
@@ -41,6 +70,29 @@ export default function LeadSettings({
     const tokenForm = useForm({
         prospect_api_token: prospectApiToken ?? '',
     });
+    const whatsappForm = useForm({
+        enabled: companyWhatsapp.enabled,
+        number: companyWhatsapp.number ?? '',
+        provider: companyWhatsapp.provider ?? whatsappProviders[0],
+        session: companyWhatsapp.session ?? '',
+    });
+    const whatsappStatus = !companyWhatsapp.configured
+        ? {
+              label: 'Não configurado',
+              variant: 'outline' as const,
+              hint: 'Enquanto não for salvo, o envio usa a sessão definida no workflow do n8n.',
+          }
+        : companyWhatsapp.enabled
+          ? {
+                label: 'Habilitado',
+                variant: 'default' as const,
+                hint: 'As mensagens do CRM saem por este número e sessão.',
+            }
+          : {
+                label: 'Desabilitado',
+                variant: 'secondary' as const,
+                hint: 'O envio de WhatsApp pelo CRM está bloqueado.',
+            };
 
     function copyToken() {
         if (!tokenForm.data.prospect_api_token) return;
@@ -283,6 +335,160 @@ export default function LeadSettings({
                                 </li>
                             </ol>
                         </div>
+                    </div>
+                </div>
+
+                <Heading
+                    variant="small"
+                    title="WhatsApp da empresa"
+                    description="Número remetente das mensagens enviadas pelo CRM e a sessão do WAHA vinculada a ele. Não altera o WhatsApp dos leads."
+                />
+
+                <div className="grid gap-4">
+                    <div className="grid gap-1 rounded-md border p-3 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">
+                                Status:
+                            </span>
+                            <Badge variant={whatsappStatus.variant}>
+                                {whatsappStatus.label}
+                            </Badge>
+                        </div>
+                        <p>
+                            <span className="text-muted-foreground">
+                                Número:
+                            </span>{' '}
+                            {formatWhatsapp(companyWhatsapp.number)}
+                        </p>
+                        <p>
+                            <span className="text-muted-foreground">
+                                Sessão:
+                            </span>{' '}
+                            <span className="font-mono">
+                                {companyWhatsapp.session ?? '—'}
+                            </span>{' '}
+                            {companyWhatsapp.provider && (
+                                <span className="text-muted-foreground">
+                                    (
+                                    {providerLabels[companyWhatsapp.provider] ??
+                                        companyWhatsapp.provider}
+                                    )
+                                </span>
+                            )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            {whatsappStatus.hint}
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Checkbox
+                            id="company_whatsapp_enabled"
+                            checked={whatsappForm.data.enabled}
+                            onCheckedChange={(checked) =>
+                                whatsappForm.setData(
+                                    'enabled',
+                                    checked === true,
+                                )
+                            }
+                        />
+                        <Label htmlFor="company_whatsapp_enabled">
+                            Integração habilitada
+                        </Label>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="company_whatsapp_number">
+                            WhatsApp da empresa
+                        </Label>
+                        <Input
+                            id="company_whatsapp_number"
+                            inputMode="tel"
+                            placeholder="(51) 99999-8888"
+                            value={whatsappForm.data.number}
+                            onChange={(event) =>
+                                whatsappForm.setData(
+                                    'number',
+                                    event.target.value,
+                                )
+                            }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            O mesmo número autenticado na sessão do WAHA. É
+                            salvo só com dígitos (55 + DDD + número).
+                        </p>
+                        {whatsappForm.errors.number && (
+                            <p className="text-sm text-destructive">
+                                {whatsappForm.errors.number}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="company_whatsapp_provider">
+                            Provedor
+                        </Label>
+                        <select
+                            id="company_whatsapp_provider"
+                            value={whatsappForm.data.provider}
+                            onChange={(event) =>
+                                whatsappForm.setData(
+                                    'provider',
+                                    event.target.value,
+                                )
+                            }
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                        >
+                            {whatsappProviders.map((provider) => (
+                                <option key={provider} value={provider}>
+                                    {providerLabels[provider] ?? provider}
+                                </option>
+                            ))}
+                        </select>
+                        {whatsappForm.errors.provider && (
+                            <p className="text-sm text-destructive">
+                                {whatsappForm.errors.provider}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="company_whatsapp_session">
+                            Sessão do WAHA
+                        </Label>
+                        <Input
+                            id="company_whatsapp_session"
+                            placeholder="ex.: vetoros1-1"
+                            value={whatsappForm.data.session}
+                            onChange={(event) =>
+                                whatsappForm.setData(
+                                    'session',
+                                    event.target.value,
+                                )
+                            }
+                            className="font-mono"
+                        />
+                        {whatsappForm.errors.session && (
+                            <p className="text-sm text-destructive">
+                                {whatsappForm.errors.session}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                            type="button"
+                            onClick={() =>
+                                whatsappForm.put('/settings/leads/whatsapp', {
+                                    preserveScroll: true,
+                                })
+                            }
+                            disabled={whatsappForm.processing}
+                        >
+                            {whatsappForm.processing
+                                ? 'Salvando...'
+                                : 'Salvar WhatsApp da empresa'}
+                        </Button>
                     </div>
                 </div>
 

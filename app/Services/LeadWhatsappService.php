@@ -13,9 +13,14 @@ use Illuminate\Support\Facades\Log;
  *
  * Quem registra a LeadActivity é o próprio workflow do n8n, pelo endpoint
  * POST /api/prospects/{lead}/whatsapp/log; este serviço não grava histórico.
+ *
+ * O remetente (WhatsApp da empresa, provedor e sessão WAHA) vem de CompanyWhatsappSettings;
+ * o destinatário é sempre o WhatsApp do Lead.
  */
 class LeadWhatsappService
 {
+    public function __construct(private readonly CompanyWhatsappSettings $companyWhatsapp) {}
+
     /**
      * Normaliza o WhatsApp do Lead para o formato usado pelo WAHA (55 + DDD + número),
      * seguindo a mesma regra do link wa.me da listagem de leads: só dígitos e prefixo 55.
@@ -54,6 +59,8 @@ class LeadWhatsappService
             throw new LeadWhatsappException('O WhatsApp cadastrado neste prospect não é um número válido.');
         }
 
+        $sender = $this->sender($lead);
+
         $url = config('services.n8n.whatsapp_webhook_url');
 
         if (blank($url)) {
@@ -88,6 +95,7 @@ class LeadWhatsappService
                     'nome' => $lead->company_name,
                     'whatsapp' => $number,
                     'mensagem' => $message,
+                    ...$sender,
                 ]);
         } catch (ConnectionException $exception) {
             // Timeout não garante que a mensagem deixou de ser enviada: o n8n pode ter concluído depois.
@@ -106,6 +114,39 @@ class LeadWhatsappService
         }
 
         return $this->handleResponse($lead, $response);
+    }
+
+    /**
+     * Campos do remetente acrescentados ao payload do n8n. Sem configuração salva no painel,
+     * o payload segue o contrato anterior e o n8n usa a sessão que ele mesmo define.
+     *
+     * @return array{provider?: string, session?: string, remetente_whatsapp?: string}
+     *
+     * @throws LeadWhatsappException
+     */
+    private function sender(Lead $lead): array
+    {
+        $company = $this->companyWhatsapp->current();
+
+        if (! $company['configured']) {
+            return [];
+        }
+
+        if (! $company['enabled']) {
+            throw new LeadWhatsappException('O envio de WhatsApp está desativado nas configurações da empresa.');
+        }
+
+        if (blank($company['session']) || blank($company['number']) || blank($company['provider'])) {
+            Log::error('Envio de WhatsApp: WhatsApp da empresa habilitado sem número, provedor ou sessão.', ['lead_id' => $lead->id]);
+
+            throw new LeadWhatsappException('O envio de WhatsApp não está configurado. Avise o administrador do sistema.');
+        }
+
+        return [
+            'provider' => $company['provider'],
+            'session' => $company['session'],
+            'remetente_whatsapp' => $company['number'],
+        ];
     }
 
     /**

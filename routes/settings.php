@@ -29,4 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('settings/leads', [LeadSettingsController::class, 'update'])
         ->middleware('admin')
         ->name('lead-settings.update');
+    Route::put('settings/leads/whatsapp', [LeadSettingsController::class, 'updateWhatsapp'])
+        ->middleware('admin')
+        ->name('lead-settings.whatsapp.update');
 });

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\CompanyWhatsappRequest;
 use App\Models\Setting;
+use App\Services\CompanyWhatsappSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -15,7 +17,7 @@ class LeadSettingsController extends Controller
     /**
      * Show the lead capture settings page.
      */
-    public function edit(): Response
+    public function edit(CompanyWhatsappSettings $companyWhatsapp): Response
     {
         $extension = collect(File::exists(public_path('files')) ? File::files(public_path('files')) : [])
             ->filter(fn ($file) => in_array($file->getExtension(), ['xpi', 'zip'], true)
@@ -29,6 +31,8 @@ class LeadSettingsController extends Controller
             'prospectExtensionUrl' => $extension ? asset('files/'.$extension->getFilename()) : null,
             'prospectExtensionFilename' => $extension?->getFilename(),
             'prospectExtensionSigned' => $extension?->getExtension() === 'xpi',
+            'companyWhatsapp' => $companyWhatsapp->current(),
+            'whatsappProviders' => CompanyWhatsappSettings::PROVIDERS,
         ]);
     }
 
@@ -46,6 +50,23 @@ class LeadSettingsController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => 'Token de integração salvo.',
+        ]);
+
+        return to_route('lead-settings.edit');
+    }
+
+    public function updateWhatsapp(CompanyWhatsappRequest $request, CompanyWhatsappSettings $companyWhatsapp): RedirectResponse
+    {
+        $companyWhatsapp->save([
+            'enabled' => $request->boolean('enabled'),
+            'number' => $request->validated('number'),
+            'provider' => $request->validated('provider'),
+            'session' => $request->validated('session'),
+        ]);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'WhatsApp da empresa salvo.',
         ]);
 
         return to_route('lead-settings.edit');

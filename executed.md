@@ -1,4 +1,394 @@
-# Execução de `correio.md`: envio manual de WhatsApp pela tela do prospect
+# Execução de `correio.md`: sessão do WAHA vinda do Laravel no n8n
+
+## Resumo
+
+O workflow `CRM ABrasil - Enviar WhatsApp` (ID `VWvN7AWQc88fgSdV`) passou a usar a sessão enviada pelo Laravel em `body.session`. Quando ela não vem, usa `vetoros1-1`. Só o campo `session` do node **Edit Fields** mudou. Nenhuma mensagem real foi enviada.
+
+## O que foi alterado
+
+| | |
+|---|---|
+| Workflow | `CRM ABrasil - Enviar WhatsApp` (`VWvN7AWQc88fgSdV`) |
+| Node | `Edit Fields` (Set 3.5), campo `session` |
+| Expressão anterior | `vetoros1-1` (valor fixo) |
+| Expressão nova | `={{ $json.body.session \|\| 'vetoros1-1' }}` |
+| Versão anterior | `d862ee56-1c44-4ca4-8808-6204d0bc747b` |
+| Versão nova (publicada) | `62acfd64-527d-472e-a848-f0daa1b22d46` |
+
+O diff entre o backup e o JSON importado tem uma única linha. HTTP Request, webhook, Header Auth, If, "Registrar envio no CRM", resposta, credentials e os workflows `WAHA - Status WhatsApp` e `WAHA - Mensagens Recebidas → CRM` ficaram como estavam.
+
+## Como foi aplicado
+
+O n8n 2.40.5 roda em modo regular. Nesse modo, o `import:workflow --activeState=fromJson` não funciona, e o `publish:workflow` só vale depois de reiniciar o n8n. Com autorização do usuário:
+
+```bash
+cd /opt/infra-abrasil/backups/n8n
+# JSON gerado a partir do backup, trocando apenas o campo session (script com assert do valor antigo)
+docker cp crm_enviar_whatsapp_session_dinamica.json infra-abrasil-n8n-1:/tmp/wf_new.json
+docker exec infra-abrasil-n8n-1 n8n import:workflow --input=/tmp/wf_new.json   # nova versão (import desativa)
+docker exec infra-abrasil-n8n-1 n8n publish:workflow --id=VWvN7AWQc88fgSdV      # publica a versão atual
+cd /opt/infra-abrasil && docker compose restart n8n                              # alguns segundos fora do ar
+```
+
+Os arquivos temporários do container (`/tmp/wf_new.json` e `/tmp/wf_backup.json`) foram removidos depois.
+
+## Backup
+
+```bash
+docker exec infra-abrasil-n8n-1 n8n export:workflow --id=VWvN7AWQc88fgSdV --output=/tmp/wf_backup.json
+docker cp infra-abrasil-n8n-1:/tmp/wf_backup.json \
+  /opt/infra-abrasil/backups/n8n/crm_enviar_whatsapp_VWvN7AWQc88fgSdV_20260924_115100.json
+```
+
+O backup tem a definição original completa, com as credentials referenciadas só pelo ID e sem segredos. A versão `d862ee56-…` continua também no histórico de versões do n8n. O JSON aplicado está em `/opt/infra-abrasil/backups/n8n/crm_enviar_whatsapp_session_dinamica.json`.
+
+## Como reverter
+
+```bash
+docker exec infra-abrasil-n8n-1 n8n publish:workflow --id=VWvN7AWQc88fgSdV --versionId=d862ee56-1c44-4ca4-8808-6204d0bc747b
+cd /opt/infra-abrasil && docker compose restart n8n
+```
+
+Pelo editor também dá: restaure a versão `d862ee56-…` no histórico e publique, ou volte o campo `session` para `vetoros1-1`.
+
+## Validações
+
+| # | Verificação | Resultado |
+|---|---|---|
+| 1 | Workflow continua ativo | ✅ `active = 1`, `activeVersionId = 62acfd64-…`. Os outros dois workflows WAHA também estão ativos. Webhooks registrados: `crm/send-whatsapp`, `waha-message-status`, `waha-message-received`. n8n `healthy` depois do restart |
+| 2 | Edit Fields lê `body.session` | ✅ a versão publicada tem `={{ $json.body.session \|\| 'vetoros1-1' }}` |
+| 3 | HTTP Request continua com `{{$json.session}}` | ✅ body `"session": "{{$json.session}}"`, URL `http://waha:3000/api/sendText` |
+| 4 | Sem `session` no body → `vetoros1-1` | ✅ `{whatsapp}` resulta em `vetoros1-1`, e `session: ""` também resulta em `vetoros1-1` |
+| 5 | Com `session` no body → prevalece a recebida | ✅ `session: "outra-sessao"` resulta em `outra-sessao` |
+| 6 | Nenhuma mensagem real enviada | ✅ |
+
+Os itens 4 e 5 foram validados avaliando a expressão exata do node com o motor de expressões do próprio n8n (`n8n-workflow`), dentro do container, sem executar o workflow. O webhook de produção também foi testado com um `POST` sem Header Auth, que respondeu **403**. Isso confirma que ele está registrado e que a autenticação continua exigida, sem que o workflow tenha sido executado.
+
+Observação: o n8n ficou alguns segundos fora do ar durante o restart. Eventos do WAHA que chegaram nesse intervalo, se houve algum, podem não ter sido processados.
+
+---
+
+
+# Etapa anterior: vínculo formal do WhatsApp da empresa (Empresa → WAHA)
+
+## Resumo
+
+O painel ganhou a seção **WhatsApp da empresa** em *Configurações → Leads* (`/settings/leads`). Ela guarda o número remetente, o provedor (`waha`), a sessão do WAHA e se a integração está habilitada. O envio pelo CRM (`LeadWhatsappService`) passa a ler essa configuração: com a integração habilitada, manda `provider`, `session` e `remetente_whatsapp` ao n8n; desabilitada, bloqueia o envio antes de chamar o n8n.
+
+Não foi criada migration, não houve alteração no n8n, no WAHA, nos containers, no `.env` nem nos webhooks `waha-message-status` e `waha-message-received`. Não houve deploy.
+
+**Ponto principal:** `vetoros1-1` **não estava no Laravel**. Ela está fixa no workflow do n8n. Até esse workflow passar a ler `body.session`, o n8n continua usando o valor fixo dele (ver item 9).
+
+## 1. Estrutura encontrada antes da alteração
+
+| Item | Onde / como |
+|---|---|
+| Empresa | Não há model de "empresa" em uso. Existe `App\Models\Account` (tabela `accounts`), mas as migrations dela **não estão no repositório** (rodaram só em produção), e o próprio model diz que a multiempresa ficou inacabada. O sistema opera como empresa única (ABrasil). |
+| Configurações da empresa/integrações | Tabela `settings` (chave/valor, `value` com cast `encrypted`), model `App\Models\Setting`. Já guarda o token de integração da extensão (`prospect_api_token`). |
+| Painel | `resources/js/pages/settings/leads.tsx` (menu *Configurações → Leads*, só admin), controller `Settings\LeadSettingsController`, rotas em `routes/settings.php` (`auth` + `verified` + `admin`). A página já tinha "Token de integração" e "Mensagens de WhatsApp". |
+| Telefone/WhatsApp existentes | Só dos leads: `leads.whatsapp` e `leads.phone` (destinatários). Não havia nenhum campo para o WhatsApp da empresa. |
+| Envio de WhatsApp | `App\Services\LeadWhatsappService::send()` → `POST` no webhook do n8n com `prospect_id`, `nome`, `whatsapp` e `mensagem`. Nenhuma sessão no payload. |
+| Status/ACK | `PATCH /api/whatsapp/messages/{id}/status` (sem sessão, sem alteração). |
+| Variáveis de ambiente (Laravel) | `N8N_WHATSAPP_WEBHOOK_URL`, `N8N_WHATSAPP_WEBHOOK_HEADER`, `N8N_WHATSAPP_WEBHOOK_TOKEN`, `N8N_WHATSAPP_WEBHOOK_TIMEOUT`, `AB_PROSPECT_API_TOKEN`. O compose também passa `WAHA_BASE_URL=http://waha:3000`, mas o Laravel não a usa. **`WAHA_API_KEY` não é repassada** ao container `abrasilsistema`. |
+| Variáveis de ambiente (infra) | `WAHA_ENGINE`, `WAHA_API_KEY`, `WAHA_DASHBOARD_*`, `WAHA_NOWEB_WA_VERSION`, `N8N_*`, `ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_*`. Nenhuma define a sessão. |
+
+Decisão: usei a tabela `settings`, que já existe, em vez de `accounts`. `accounts` não tem migration versionada, não existe no banco de testes e não é usada por nenhuma tela. Colocar ali dados novos criaria uma dependência de uma estrutura inacabada. Se a multiempresa for retomada, as quatro chaves migram para colunas de `accounts` sem mudar o contrato do service.
+
+## 2. Arquivos modificados
+
+Criados:
+
+- `app/Services/CompanyWhatsappSettings.php`: lê e grava a configuração (`current()`, `save()`), com constantes `PROVIDERS` e `SESSION_PATTERN`.
+- `app/Http/Requests/Settings/CompanyWhatsappRequest.php`: validação.
+- `tests/Feature/CompanyWhatsappSettingsTest.php`: 20 testes.
+
+Alterados:
+
+- `app/Models/Setting.php`: constantes das quatro chaves.
+- `app/Services/LeadWhatsappService.php`: recebe `CompanyWhatsappSettings` no construtor e ganha o método privado `sender()`, que monta os campos do remetente.
+- `app/Http/Controllers/Settings/LeadSettingsController.php`: `edit()` envia `companyWhatsapp` e `whatsappProviders`, e há uma nova ação `updateWhatsapp()`.
+- `routes/settings.php`: `PUT settings/leads/whatsapp`, nome `lead-settings.whatsapp.update`, middleware `auth`, `verified` e `admin`.
+- `resources/js/pages/settings/leads.tsx`: seção "WhatsApp da empresa".
+- `executed.md`: este relatório.
+
+## 3. Migration
+
+**Nenhuma.** A tabela `settings` (`2026_09_22_120000_create_settings_table.php`) já comporta a configuração. Os registros existentes não mudam.
+
+## 4. Campos adicionados
+
+Chaves novas na tabela `settings`:
+
+| Chave | Valor | Regra |
+|---|---|---|
+| `company_whatsapp_enabled` | `'1'` / `'0'` | obrigatório (boolean) |
+| `company_whatsapp_number` | dígitos, ex. `5551998931325` | obrigatório se habilitado; normalizado por `LeadWhatsappService::normalizeNumber()` (mesma regra dos leads: 10–11 dígitos ganham `55`, 12–13 começando com `55` ficam iguais, o resto é rejeitado) |
+| `company_whatsapp_provider` | `waha` | obrigatório, `in:waha` |
+| `company_whatsapp_session` | ex. `vetoros1-1` | obrigatório se habilitado; `^[A-Za-z0-9_-]{1,64}$` |
+
+Nenhum segredo vai para o banco nem para o frontend. A API key do WAHA e o token do n8n continuam só no ambiente. A página de configurações recebe só número, provedor, sessão e status (coberto por teste).
+
+No painel (*Configurações → Leads → WhatsApp da empresa*):
+
+- quadro de status com um badge **Não configurado / Habilitado / Desabilitado**, o número formatado e a sessão com o provedor;
+- checkbox "Integração habilitada", campos de número, provedor (select) e sessão, e o botão "Salvar WhatsApp da empresa".
+
+O status mostra o estado **da configuração**. Não consulta o WAHA ao vivo: o container do Laravel não recebe `WAHA_API_KEY` e a tarefa proibia mexer em containers e compose.
+
+## 5. Como ficou Empresa → WAHA
+
+```text
+Painel (Configurações → Leads → WhatsApp da empresa)
+   ↓  PUT /settings/leads/whatsapp  (admin)
+settings: company_whatsapp_{enabled, number, provider, session}
+   ↓  CompanyWhatsappSettings::current()
+LeadWhatsappService::send(Lead, mensagem)
+   ├─ destinatário = Lead.whatsapp (normalizado)       → "whatsapp"
+   └─ remetente    = WhatsApp da empresa               → "remetente_whatsapp", "provider", "session"
+   ↓  POST webhook n8n (Header Auth, sem mudança)
+n8n "CRM ABrasil - Enviar WhatsApp" → WAHA /api/sendText
+```
+
+Payload com a integração **habilitada** (só acrescenta campos; os quatro originais não mudaram):
+
+```json
+{
+    "prospect_id": 118,
+    "nome": "Assistência Técnica ABC",
+    "whatsapp": "5551999998888",
+    "mensagem": "Texto",
+    "provider": "waha",
+    "session": "vetoros1-1",
+    "remetente_whatsapp": "5551998931325"
+}
+```
+
+Comportamento por estado:
+
+| Estado no painel | Envio | Payload |
+|---|---|---|
+| Nunca salvo (situação atual em produção) | segue como antes | só `prospect_id`, `nome`, `whatsapp`, `mensagem`; o n8n usa a sessão dele |
+| Habilitado | envia | + `provider`, `session`, `remetente_whatsapp` |
+| Desabilitado | **bloqueado**, o n8n não é chamado; aparece "O envio de WhatsApp está desativado nas configurações da empresa." | — |
+| Habilitado sem número/sessão (só se o banco for editado à mão) | bloqueado, com "não está configurado" + log de erro | — |
+
+O modo "nunca salvo" existe para não quebrar o envio que já funciona: o deploy não muda nada até um admin salvar a configuração.
+
+## 6. Onde `vetoros1-1` estava definido
+
+- **Laravel:** em lugar nenhum. Não há ocorrência no código, na config, no `.env.example` nem no compose.
+- **n8n**, consultado **somente leitura** no `database.sqlite` (definição dos nós, sem credenciais):
+  - workflow **"CRM ABrasil - Enviar WhatsApp"** (`VWvN7AWQc88fgSdV`, ativo), nó **"Edit Fields"**: atribuição fixa `session = "vetoros1-1"`. O nó "HTTP Request" usa `{{$json.session}}` no body para `http://waha:3000/api/sendText`;
+  - workflow "My workflow" (`5yDW56CTIWuWLdeY`, **inativo**, teste manual): `"session": "vetoros1-1"` e um `chatId` fixo no body.
+- **WAHA:** a sessão existe no volume `./volumes/waha` (não foi consultado nem alterado).
+
+## 7. Como a sessão passou a ser resolvida
+
+- No Laravel, a sessão vem **só** de `settings.company_whatsapp_session`, via `CompanyWhatsappSettings`. Não há nenhum valor fixo no código de negócio (o único `vetoros1-1` fica no placeholder do campo e nos dados de teste).
+- Ela vai ao n8n no campo `session` do payload do webhook, junto com `provider` e `remetente_whatsapp`.
+- **No n8n, a sessão efetivamente usada continua sendo a fixa** do nó "Edit Fields", porque o workflow ignora `body.session`. Isso não foi alterado, conforme a tarefa (ver item 9).
+
+## 8. Testes executados e resultados
+
+Ambiente: cópia do working tree na scratchpad, `composer install` em container descartável da imagem `infra-abrasil-abrasilsistema`, e testes em `docker run --rm --network none` com o SQLite em memória do `phpunit.xml`. Nenhum PHP rodou no container de produção, nenhum banco real foi acessado e nenhuma chamada real foi feita ao n8n/WAHA (`Http::fake()` + `Http::preventStrayRequests()`).
+
+`tests/Feature/CompanyWhatsappSettingsTest.php`:
+
+| Requisito | Teste |
+|---|---|
+| Configuração pode ser salva | `admin saves the company WhatsApp configuration` |
+| Número normalizado | `company WhatsApp number is normalized to digits` (máscara, `+55`, já com 55, fixo) e `invalid company WhatsApp numbers are rejected` |
+| Provider aceito | `only supported providers are accepted` (`evolution` recusado, `waha` aceito) |
+| Session configurável | `the WAHA session is configurable and validated` |
+| Obrigatoriedade ao habilitar | `number and session are required to enable the integration`, `the integration can be saved disabled without number and session` |
+| Autorização | `readers cannot change the company WhatsApp` (403) |
+| Painel sem segredos | `settings page shows the company WhatsApp status without secrets`, `settings page reports the integration as not configured by default` |
+| Sessão da empresa usada no envio | `sending uses the configured company session and sender number` (payload exato) |
+| Envio bloqueado se desabilitado | `sending is blocked when the company integration is disabled` (n8n não é chamado) |
+| Lead não interfere na empresa (e vice-versa) | `lead WhatsApp and company WhatsApp do not interfere with each other` |
+| Fluxo existente compatível | `without a saved configuration the existing n8n contract is kept`, e os 39 testes de `LeadWhatsappSendTest.php` rodaram **sem alteração** |
+
+Resultados:
+
+```text
+CompanyWhatsappSettingsTest + LeadWhatsappSendTest     59 passed (217 assertions)
+Suíte completa                                        167 passed, 1 failed (743 assertions)
+Pint --test (7 arquivos PHP criados/alterados)        PASS
+tsc --noEmit                                          OK
+npm run build (após wayfinder:generate --with-form)   OK
+git diff --check                                      OK
+```
+
+A falha é pré-existente e sem relação com esta etapa: `BlogTest > administrator can upload blog images` (`imagejpeg function is not defined`, GD da imagem sem JPEG).
+
+ESLint/Prettier em `settings/leads.tsx`: o código novo está limpo. Ficam 4 erros de ESLint (linhas 12, 98, 99 e 111: `consistent-type-specifier-style`, `curly`, `padding-line` e `set-state-in-effect`) e o aviso de Prettier nos textos da extensão, que **já existiam no HEAD**. Não foram corrigidos para manter o diff mínimo.
+
+## 9. O que ainda depende do n8n
+
+1. **Sessão fixa no n8n.** O nó "Edit Fields" do workflow "CRM ABrasil - Enviar WhatsApp" continua com `session = "vetoros1-1"`. Para a configuração do painel valer de fato, esse campo precisa passar a ler o payload, mantendo o valor atual como fallback durante a transição:
+   ```text
+   session = {{ $json.body.session || 'vetoros1-1' }}
+   ```
+   Isso **não foi feito** (a tarefa proíbe alterar o n8n). Até lá, se o painel tiver uma sessão diferente de `vetoros1-1`, o n8n vai ignorá-la e continuar enviando por `vetoros1-1`.
+2. **`remetente_whatsapp` e `provider`** são só informativos para o n8n hoje; nenhum nó os usa.
+3. **Webhooks de entrada** (`waha-message-status` e `waha-message-received`) não recebem nem conferem a sessão. O ACK continua localizando a mensagem só pelo `provider_message_id`. Se houver mais de uma sessão/número no futuro, esses workflows vão precisar repassar `session` ao CRM.
+4. **Status ao vivo da sessão** (WORKING/SCAN_QR, número realmente autenticado): exige que o Laravel consulte o WAHA (`GET /api/sessions/{session}`) com `WAHA_API_KEY`, que hoje não é repassada ao container `abrasilsistema`. Fica como próximo passo, e depende de mudar o compose.
+
+## Deploy (NÃO executado)
+
+```bash
+cd /opt/infra-abrasil
+docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+```
+
+Não há migration. Depois do deploy, o envio continua igual até um admin salvar a configuração em *Configurações → Leads → WhatsApp da empresa* (número autenticado no WAHA, provedor WAHA, sessão `vetoros1-1`, habilitado). Recomendo salvar exatamente `vetoros1-1` enquanto o n8n (item 9.1) não for ajustado.
+
+---
+
+# Etapa anterior: autenticação Header Auth do Laravel para o webhook do n8n
+
+## Resumo
+
+A correção pedida **já está no código**, no commit `c1d814b` ("Adiciona envio manual de WhatsApp pelo prospect via n8n com Header Auth"). Nesta etapa nenhum arquivo de código precisou mudar. O trabalho foi auditar a implementação contra os requisitos, rodar os testes e achar a causa do 403 em produção.
+
+**Causa do 403:** o container em produção está desatualizado e o token não está configurado.
+
+- `infra-abrasil-abrasilsistema-1` foi criado em 2026-09-23 16:17 UTC, **antes** do commit `c1d814b` (16:38 UTC). O `LeadWhatsappService` em execução **não tem** `withHeaders`, então chama o n8n sem o header.
+- No container em execução, `N8N_WHATSAPP_WEBHOOK_HEADER` e `N8N_WHATSAPP_WEBHOOK_TOKEN` estão **vazias** (só a URL está definida).
+- `/opt/infra-abrasil/.env` **não tem** `ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_TOKEN` (nem o `..._HEADER`).
+
+Depois do rebuild e com o token no `.env`, o Laravel passa a enviar o header. Se o token continuar vazio, o novo código **não chama** o n8n e mostra "O envio de WhatsApp não está configurado. Avise o administrador do sistema."
+
+## 1. Arquivos alterados
+
+Nesta etapa só mudou `executed.md` (este relatório). A implementação auditada está no commit `c1d814b`:
+
+| Arquivo | O que faz para a autenticação |
+|---|---|
+| `config/services.php` | Bloco `n8n` com `whatsapp_webhook_header` e `whatsapp_webhook_token` |
+| `app/Services/LeadWhatsappService.php` | `->withHeaders([$header => $token])` na chamada. Sem header/token, não chama o n8n: gera um erro amigável e loga só o **nome** da variável que falta |
+| `.env.example` | `N8N_WHATSAPP_WEBHOOK_HEADER=X-CRM-Token` e `N8N_WHATSAPP_WEBHOOK_TOKEN=` (vazio) |
+| `tests/Feature/LeadWhatsappSendTest.php` | Testes de header, token, ausência e vazamento |
+| `/opt/infra-abrasil/docker-compose.yml` (fora deste repositório) | Serviço `abrasilsistema` já repassa as variáveis (linhas 153–155) |
+
+Checagem dos requisitos:
+
+- n8n não foi alterado e a autenticação do webhook continua ativa.
+- Não há token no código, só `env()`.
+- O token não vai para o frontend: o controller só expõe `whatsappDestination`, e isso é coberto por teste.
+- O token não vai para os logs. Os logs têm `lead_id`, o nome da variável ausente e o status/corpo da resposta do n8n; a URL do webhook é mascarada em erros de conexão.
+- Fluxo funcional, endpoints de ACK/status e banco sem mudança. Nenhuma migration e nenhuma LeadActivity criada pelo Laravel.
+
+## 2. Configuração adicionada
+
+`config/services.php`:
+
+```php
+'n8n' => [
+    'whatsapp_webhook_url' => env('N8N_WHATSAPP_WEBHOOK_URL'),
+    'whatsapp_webhook_timeout' => (int) env('N8N_WHATSAPP_WEBHOOK_TIMEOUT', 20),
+    'whatsapp_webhook_header' => env('N8N_WHATSAPP_WEBHOOK_HEADER', 'X-CRM-Token'),
+    'whatsapp_webhook_token' => env('N8N_WHATSAPP_WEBHOOK_TOKEN'),
+],
+```
+
+`LeadWhatsappService::send()`:
+
+```php
+Http::acceptJson()->asJson()
+    ->withHeaders([$header => $token])
+    ->connectTimeout(5)->timeout($timeout)
+    ->post($url, ['prospect_id' => ..., 'nome' => ..., 'whatsapp' => ..., 'mensagem' => ...]);
+```
+
+## 3. Nome do header encontrado
+
+**`X-CRM-Token`** é o padrão configurado. Esse nome vem do nome da credential informado no `correio.md` e **não foi confirmado** no n8n.
+
+Na credential "Header Auth" do n8n, o nome do header é o campo **Name**, que fica cifrado junto com o valor (**Value**). O nome de exibição da credential ("X-CRM-Token") pode ser diferente dele. Para ler o campo seria preciso decriptar a credential, e o sandbox desta sessão bloqueou isso por envolver segredos. Não houve outra tentativa.
+
+**Ação necessária:** abra a credential no editor do n8n e confira o campo **Name**. Se for diferente de `X-CRM-Token`, defina `ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_HEADER` com o nome correto. Nenhuma mudança de código é necessária.
+
+## 4. Como configurar o docker-compose
+
+Já está configurado em `/opt/infra-abrasil/docker-compose.yml`, serviço `abrasilsistema`. O `abrasilsistema-worker` e o `abrasilsistema-scheduler` herdam via `extends`:
+
+```yaml
+    environment:
+      N8N_WHATSAPP_WEBHOOK_URL: ${ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_URL:-}
+      N8N_WHATSAPP_WEBHOOK_HEADER: ${ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_HEADER:-X-CRM-Token}
+      N8N_WHATSAPP_WEBHOOK_TOKEN: ${ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_TOKEN:-}
+```
+
+Nada a alterar no compose. Observação: o `env_file` do serviço é `./gateway/abrasilsistemas/.env.example`, versionado. O token **não** deve ser colocado nesse arquivo, só no `/opt/infra-abrasil/.env`. Como o `environment:` do compose tem precedência sobre o `env_file`, o valor do `.env` de infra prevalece.
+
+## 5. Variáveis a adicionar em `/opt/infra-abrasil/.env`
+
+O `.env` de produção não foi modificado. Adicione manualmente:
+
+```dotenv
+ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_HEADER=X-CRM-Token
+ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_TOKEN=<mesmo valor do campo "Value" da credential Header Auth no n8n>
+```
+
+`ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_URL` já está definida no container em execução. Confirme que o valor é `https://n8n.abrasilsistemas.com.br/webhook/crm/send-whatsapp`.
+
+## 6. Testes executados e resultados
+
+Ambiente: `git archive HEAD` copiado para a scratchpad. `composer install` (com dev) rodou em container descartável da imagem `infra-abrasil-abrasilsistema`, e os testes rodaram em `docker run --rm --network none` com o SQLite em memória do `phpunit.xml`. Nenhum PHP/Artisan rodou no host ou no container de produção, e nenhuma chamada real foi feita ao n8n (`Http::fake()` + `Http::preventStrayRequests()`).
+
+O que `tests/Feature/LeadWhatsappSendTest.php` cobre, conforme pedido:
+
+| Requisito | Teste |
+|---|---|
+| Header correto e token correto enviados | `authorized user sends the WhatsApp through the n8n webhook` (`hasHeader('X-CRM-Token', token)`) |
+| Nome do header vem da config | `the webhook auth header name comes from configuration` |
+| Token (ou header) ausente: n8n não é chamado, sem LeadActivity, log sem token | `missing webhook auth does not call n8n nor leak anything` (dataset token/header) |
+| Token/header fora das props Inertia e do HTML | `lead edit page exposes only the normalized destination, never internal URLs or tokens` |
+| Token fora das mensagens de erro e dos logs no 403 do n8n | `n8n rejecting the auth (403) shows a friendly error without the token` |
+| Fluxo de sucesso e payload exato `prospect_id`, `nome`, `whatsapp`, `mensagem` | `authorized user sends...` (`$request->data() === [...]`) |
+| Nenhuma LeadActivity extra | `the web controller does not create a LeadActivity of its own` |
+
+Resultados:
+
+```text
+tests/Feature/LeadWhatsappSendTest.php                        39 passed (141 assertions)
+LeadWhatsappSend + LeadHistoryWhatsappStatus + WhatsappMessageStatusApi
+                                                              75 passed (362 assertions)
+Suíte completa                                                147 passed, 1 failed (667 assertions)
+Pint --test (5 arquivos PHP da integração)                    PASS
+git diff --check HEAD~1 HEAD                                  OK
+```
+
+A falha é pré-existente e não tem relação com esta etapa: `BlogTest > administrator can upload blog images`, com `imagejpeg function is not defined` (o GD da imagem não tem suporte a JPEG).
+
+TypeScript/build: não foi executado porque nenhum arquivo de frontend mudou nesta etapa. O último build, na etapa anterior, passou em `tsc --noEmit` e `npm run build`.
+
+## 7. Comandos para deploy (NÃO executados)
+
+```bash
+# 1. Confira o campo "Name" da credential Header Auth no editor do n8n (ver item 3).
+
+# 2. Adicione ao /opt/infra-abrasil/.env (manualmente, sem commitar):
+#    ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_HEADER=X-CRM-Token
+#    ABRASILSISTEMA_N8N_WHATSAPP_WEBHOOK_TOKEN=<valor da credential>
+
+# 3. Rebuild e recriação (o código em produção é anterior ao commit c1d814b):
+cd /opt/infra-abrasil
+docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+
+# 4. Conferência sem imprimir o token:
+docker exec infra-abrasil-abrasilsistema-1 php artisan tinker --execute="var_dump(config('services.n8n.whatsapp_webhook_header'), filled(config('services.n8n.whatsapp_webhook_token')));"
+docker exec infra-abrasil-abrasilsistema-1 grep -c withHeaders app/Services/LeadWhatsappService.php
+```
+
+Não há migration a rodar. O workflow "CRM ABrasil - Enviar WhatsApp" precisa estar **ativo** no n8n para a URL `/webhook/...` responder.
+
+---
+
+# Etapa anterior: envio manual de WhatsApp pela tela do prospect
 
 ## Resumo
 
