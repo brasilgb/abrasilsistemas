@@ -26,6 +26,17 @@ class WhatsappMessageStatusController extends Controller
             ], 404);
         }
 
+        // ACK é ciclo de entrega de mensagem enviada; mensagem recebida nunca vira DEVICE/READ.
+        if ($activity->isInbound()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Status ignorado: mensagem recebida não tem status de entrega.',
+                'activity_id' => $activity->id,
+                'message_status' => $activity->message_status,
+                'ignored' => true,
+            ]);
+        }
+
         if ($activity->message_status === $status) {
             return response()->json([
                 'success' => true,

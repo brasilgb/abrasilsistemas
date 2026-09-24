@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import type { WhatsappMessageStatusValue } from '@/components/whatsapp-message-status';
+import type {
+    WhatsappMessageDirectionValue,
+    WhatsappMessageStatusValue,
+} from '@/components/whatsapp-message-status';
 import { cn } from '@/lib/utils';
 
 export type Lead = {
@@ -51,6 +54,7 @@ export type Lead = {
 export type LeadActivity = {
     id: number;
     type: string;
+    direction?: WhatsappMessageDirectionValue | null;
     status: string | null;
     contacted_at: string | null;
     next_follow_up_at: string | null;

@@ -1,3 +1,204 @@
+# Execução de `correio.md`: direção das mensagens WhatsApp (inbound/outbound)
+
+Data: 2026-09-24.
+
+## Resumo
+
+**Implementado e testado. Não houve deploy, a migration não rodou em produção e nada foi commitado.** A tabela `lead_activities` ganhou a coluna `direction` (`inbound` / `outbound`, com null para legado e para o que não é mensagem). O endpoint que o n8n usa para registrar mensagens aceita `direction`. Quando ele não vem, a mensagem é `outbound`, que é o contrato atual do workflow de envio. Mensagem inbound grava `message_status = null` e nunca recebe ACK. O histórico do lead passa a mostrar "Enviada · Empresa → Cliente" ou "Recebida · Cliente → Empresa", e o status de entrega só aparece nas enviadas.
+
+n8n, WAHA, webhooks, sessão `vetoros1-1`, credenciais, docker-compose, `LeadWhatsappService`, a conexão/QR Code e a regra de progressão do ACK **não foram alterados**.
+
+> ⚠ **Achado principal da auditoria: hoje o fluxo de entrada não chega ao Laravel.** O workflow publicado "WAHA - Mensagens Recebidas → CRM" (`sDkp8A7egcrpaL7y`, versão `55d2bc85…`) tem **só o nó Webhook**, sem nenhum HTTP Request para o CRM. As 4 versões no histórico do n8n são iguais nesse ponto. O único workflow que chama `POST /api/prospects/{lead}/whatsapp/log` é o **"CRM ABrasil - Enviar WhatsApp"**. Portanto o registro "Teste recebimento CRM 02" (lead 118, `3EB0C2EF5A6141DC0935D3`) **muito provavelmente foi gravado pelo workflow de envio**, ou seja, é uma mensagem *enviada* pelo CRM. Isso também explicaria o `message_status = DEVICE`, que teria vindo do ACK de uma mensagem enviada. Não consegui confirmar no MySQL, porque a leitura do banco de produção foi bloqueada pela política de permissões e não tentei contornar. Veja o item 12 e a consulta proposta no item 13.
+
+## 1. Auditoria realizada
+
+| Ponto | Onde | Observação |
+|---|---|---|
+| Migrations | `database/migrations/2026_07_16_145200_create_lead_activities_table.php`, `…2026_09_23_120000_add_whatsapp_provider_fields_to_lead_activities_table.php` | `type` string (default `note`); `provider_message_id` e `message_status` nullable; índice `(lead_id, provider_message_id)` |
+| Model | `app/Models/LeadActivity.php` | Atributo `#[Fillable]`, constantes de string (`TYPES`, `MESSAGE_STATUS_*`), regra `canTransitionMessageStatusTo`. Não há enums PHP no projeto, então segui as constantes |
+| Criação de LeadActivity `whatsapp` | `Api/WhatsappActivityController@store` (n8n) e `LeadActivityController@store` (registro manual, o usuário pode escolher o tipo "WhatsApp") | `LeadController` só cria `note` (Kanban/lote) |
+| Envio | `LeadWhatsappService` → webhook n8n `crm/send-whatsapp` | O serviço **não** grava histórico: quem grava é o n8n, pelo endpoint de log |
+| Endpoint n8n de log | `POST /api/prospects/{lead}/whatsapp/log` (`prospect.token`, `throttle:30,1`) | Payload do workflow de envio: `{message_id: key.id, status: <status da resposta do WAHA>, message}` e **sem campo de direção** |
+| Endpoint de ACK | `PATCH /api/whatsapp/messages/{id}/status` (`prospect.token`, `throttle:120,1`) | Workflow "WAHA - Status WhatsApp": `message_id = payload.id.split('_').pop()`, `status = ackName` |
+| Mensagens recebidas no n8n | Workflow "WAHA - Mensagens Recebidas → CRM" | **Só o nó Webhook (`waha-message-received`), sem chamada ao Laravel** (ver o destaque acima) |
+| Serialização | `LeadController@edit` | Carrega `activities` com o model inteiro e oculta `provider_message_id`. O `DashboardController` seleciona colunas fixas e não usa status nem direção |
+| Frontend | `pages/leads/edit.tsx` (histórico), `components/whatsapp-message-status.tsx`, tipo `LeadActivity` em `pages/leads/form.tsx` | O status aparece em toda atividade `whatsapp`. O dashboard mostra só a descrição |
+| Testes existentes | `WhatsappActivityApiTest`, `WhatsappMessageStatusApiTest`, `LeadHistoryWhatsappStatusTest`, `LeadWhatsappSendTest` | |
+
+Os workflows foram lidos em uma **cópia** do `database.sqlite` do n8n na scratchpad, só pelas definições (`workflow_entity`, `workflow_history`, `workflow_published_version`). O n8n não foi tocado e o conteúdo das execuções não foi lido.
+
+## 2. Arquivos criados
+
+- `database/migrations/2026_09_24_120000_add_direction_to_lead_activities_table.php`
+
+## 3. Arquivos alterados
+
+| Arquivo | Mudança |
+|---|---|
+| `app/Models/LeadActivity.php` | `direction` no fillable; `DIRECTION_INBOUND`, `DIRECTION_OUTBOUND`, `DIRECTIONS`; `isInbound()` |
+| `app/Http/Requests/Api/LogWhatsappActivityRequest.php` | `direction` opcional (`inbound`/`outbound`, normalizado para minúsculas); `status` passa a ser `required_unless:direction,inbound` |
+| `app/Http/Controllers/Api/WhatsappActivityController.php` | Grava `direction` (padrão `outbound`); inbound grava `message_status = null`; mensagens de resposta específicas para inbound. O JSON do outbound não mudou |
+| `app/Http/Controllers/Api/WhatsappMessageStatusController.php` | ACK para uma atividade inbound responde `200 {success: true, ignored: true}` sem alterar nada |
+| `resources/js/components/whatsapp-message-status.tsx` | Novo `WhatsappMessageDirection` e tipo `WhatsappMessageDirectionValue` |
+| `resources/js/pages/leads/edit.tsx` | Direção ao lado do status; status de entrega oculto para inbound |
+| `resources/js/pages/leads/form.tsx` | `direction?` no tipo `LeadActivity` |
+| `tests/Feature/WhatsappActivityApiTest.php`, `WhatsappMessageStatusApiTest.php`, `LeadHistoryWhatsappStatusTest.php` | Testes novos (item 9) |
+
+## 4. Migration criada
+
+```php
+$table->string('direction', 10)->nullable()->after('type');   // down(): dropColumn('direction')
+```
+
+- **String nullable, sem default.** Segue o padrão de `type` e `message_status`, que são strings validadas por constantes. Não usei enum no MySQL: mudar os valores depois exigiria `ALTER`, e o projeto não usa enums em nenhuma tabela.
+- **Null** vale para notas, ligações, e-mails, reuniões, registros manuais e para o legado anterior à coluna. Nenhum registro histórico muda.
+- **Sem índice.** O histórico é sempre filtrado por `lead_id`, que já tem os índices `(lead_id, created_at)` e `(lead_id, provider_message_id)`. O volume por lead é pequeno, então um índice em `direction` não ajudaria.
+- `ADD COLUMN` nullable no MySQL 8.4 é uma operação instantânea, sem reescrever a tabela.
+- Testei `migrate` e `rollback` em SQLite descartável: a coluna é criada e removida sem erro.
+
+## 5. Regra final de direction
+
+| Origem | direction |
+|---|---|
+| `POST …/whatsapp/log` **sem** `direction` (workflow de envio atual) | `outbound` |
+| `POST …/whatsapp/log` com `direction: "outbound"` | `outbound` |
+| `POST …/whatsapp/log` com `direction: "inbound"` | `inbound` |
+| `direction` com outro valor | `422` |
+| Registro manual pelo formulário do lead (qualquer tipo, inclusive "WhatsApp") | `null`, porque é anotação de um humano e não mensagem trafegada |
+| Notas automáticas (Kanban/lote) | `null` |
+| Registros anteriores à migration | `null` |
+
+O padrão `outbound` é seguro porque o único chamador do endpoint hoje é o workflow de envio (verificado nas definições do n8n). O contrato dele continua igual e não precisa mudar.
+
+**Para o recebimento funcionar**, o workflow "WAHA - Mensagens Recebidas → CRM" vai precisar (numa tarefa futura, já que alterar o n8n estava fora do escopo) de um HTTP Request com a mesma credencial Header Auth `Bearer`:
+
+```json
+POST https://abrasilsistemas.com.br/api/prospects/{lead_id}/whatsapp/log
+{ "direction": "inbound", "message_id": "<id curto>", "message": "<texto>" }
+```
+
+Pontos de atenção para esse workflow:
+- **filtrar `payload.fromMe = false`**, porque `message.any` também dispara para as mensagens enviadas;
+- usar o id curto (`payload.id.split('_').pop()`), igual ao workflow de ACK, para a deduplicação funcionar;
+- resolver o `lead_id` pelo número do remetente. Não existe endpoint de busca de lead por telefone, e isso também fica para a próxima etapa.
+
+## 6. `message_status` para inbound
+
+- **Inbound grava `message_status = null`**, mesmo se o payload mandar `status` (por exemplo `DEVICE`), porque o valor é descartado. Para inbound o `status` é opcional.
+- **Um ACK que chegue para uma mensagem inbound é ignorado** (`200`, `ignored: true`, sem gravar). Assim uma mensagem recebida nunca vira DEVICE/READ, nem se o workflow de ACK repassar eventos de mensagens recebidas.
+- A regra de progressão (`PENDING → SERVER → DEVICE → READ → PLAYED`, ERROR só antes de DEVICE) **não mudou**. A checagem de inbound entra antes dela. Registros com `direction = null` (legado) continuam recebendo ACK como antes.
+- Nenhum contrato quebra: o frontend já tratava `message_status = null` (não mostra nada), e o JSON do endpoint para outbound é idêntico.
+
+## 7. Estratégia para registros históricos
+
+**Nenhum registro foi alterado.** O legado fica com `direction = null`, e a interface mostra esses registros como antes (status, se houver, e nenhuma direção).
+
+Regra que **proponho, mas não apliquei**. A consulta do banco de produção foi bloqueada, então não pude medir quantos registros ela afetaria:
+
+> `type = 'whatsapp' AND user_id IS NULL AND provider_message_id IS NOT NULL AND direction IS NULL` → `outbound`
+
+Justificativa: esse conjunto só pode ter sido criado pelo `POST …/whatsapp/log`, e até esta tarefa o único chamador era o workflow de envio. Registros `whatsapp` com `user_id` preenchido são manuais e continuam `null`.
+
+**A regra depende de uma confirmação sua:** o registro "Teste recebimento CRM 02" teria de ser confirmado como *enviado*. Se ele de fato foi recebido, alguma coisa fora do que encontrei chamou o endpoint, e a regra deixaria de ser segura. Veja a consulta no item 13.
+
+## 8. Alterações de frontend
+
+No card de cada atividade `whatsapp` do histórico (`leads/edit.tsx`), na linha onde já aparecia o status:
+
+- **outbound:** `↗ Enviada · Empresa → Cliente` e, ao lado, o status de sempre (Enviando / Enviada / Entregue / Lida / Reproduzida / Erro no envio);
+- **inbound:** `↙ Recebida · Cliente → Empresa` em verde, **sem** status de entrega (nunca "Entregue");
+- **legado ou manual (`null`):** igual a antes, só o status se existir. A linha some quando está vazia (`empty:hidden`).
+
+Nada mais no layout mudou. O dashboard não foi alterado porque não mostra status nem tipo.
+
+## 9. Testes executados
+
+Casos novos:
+
+| Requisito | Teste |
+|---|---|
+| A: envio pelo CRM → `whatsapp` + `outbound` | `records a send without direction as outbound` (contrato real do workflow de envio) e `records an explicit outbound message` |
+| B: recebimento → `whatsapp` + `inbound` | `records a received message as inbound without a delivery status` |
+| C: inbound sem DEVICE artificial | o mesmo teste, com o dataset "with an artificial DEVICE status"; e `never applies an ACK to a received message` (6 status) |
+| D: outbound aceita SERVER/DEVICE/READ/PLAYED | `keeps the ACK progression for outbound messages` (e os testes antigos de progressão) |
+| E: proteção contra regressão | `does not regress outbound messages` (READ→DEVICE, PLAYED→READ, DEVICE→ERROR) e os testes antigos |
+| F: inbound mantém lead_id/description/provider_message_id/contacted_at | assertions no teste B, que também confere `last_contacted_at` do lead |
+| G: atividades que não são WhatsApp | `manual and non WhatsApp activities keep working without a direction` (fluxo real do formulário) e os testes antigos |
+| H: autenticação | `rejects an inbound message without a valid token` e os testes antigos de token/401 dos dois endpoints e de login no envio |
+| Extras | `deduplicates a received message`, `rejects an invalid direction`, `still requires a status for outbound messages`, `lead history exposes the direction of WhatsApp messages` (e `provider_message_id` continua oculto) |
+
+Ambiente: cópia do working tree na scratchpad, `composer install` em container descartável da imagem `infra-abrasil-abrasilsistema`, e testes em `docker run --rm --network none` com o SQLite em memória do `phpunit.xml`. Nenhum PHP rodou no container de produção e nenhum banco real foi acessado ou migrado.
+
+## 10. Resultado dos testes
+
+```text
+Arquivos WhatsApp + LeadManagement   125 passed (632 assertions)
+Suíte completa                       219 passed, 1 failed (956 assertions)
+Pint --test (PHP alterados/novos)    PASS (10 arquivos)
+Migration up/rollback (SQLite)       OK
+```
+
+A única falha já existia e não tem relação com esta tarefa: `BlogTest > administrator can upload blog images` (`imagejpeg function is not defined`, GD da imagem sem JPEG). É a mesma falha registrada nas etapas anteriores.
+
+## 11. Resultado do build
+
+`php artisan wayfinder:generate --with-form` (imagem do projeto) e depois, em `node:22-bookworm-slim`:
+
+- `tsc --noEmit`: OK
+- `SKIP_WAYFINDER_GENERATE=1 npm run build`: OK (só o aviso de chunk > 500 kB, que já existia)
+- ESLint/Prettier: `whatsapp-message-status.tsx` e `form.tsx` OK. O `edit.tsx` tem 3 erros de ESLint (`import/order`, `consistent-type-specifier-style`) e trechos fora do Prettier que **já existiam no HEAD** (conferi rodando as ferramentas na versão do HEAD). As linhas novas estão formatadas, e não mexi no restante para manter o diff pequeno.
+
+## 12. Riscos e pendências
+
+1. **O recebimento não está ligado.** O workflow de mensagens recebidas não chama o Laravel (item 5). Até ele ser completado, nenhuma mensagem inbound será gravada. O Laravel já está pronto para recebê-las.
+2. **O registro "Teste recebimento CRM 02" precisa ser confirmado** com a consulta do item 13. Não foi possível ler o banco de produção.
+3. **Ordem do deploy.** O código novo grava `direction`. Se ele subir antes da migration, o `POST …/whatsapp/log` do n8n falha (coluna inexistente) e a mensagem sai pelo WhatsApp sem ir para o histórico. Por isso o roteiro do item 13 **aplica a migration com a imagem nova antes do `up -d`**. A coluna nova é nullable e o código antigo a ignora, então esse passo é seguro com os containers atuais no ar.
+4. Registros de atividade "WhatsApp" criados manualmente pelo formulário ficam com `direction = null`, porque não há como saber a direção. Se quiser, o formulário pode ganhar essa escolha depois.
+5. O backfill do legado (item 7) segue pendente, à espera da sua decisão.
+
+## 13. Comandos para você executar manualmente
+
+Nenhum destes comandos foi executado.
+
+```bash
+cd /opt/infra-abrasil
+
+# 0) (Recomendado) Conferir o registro "Teste recebimento CRM 02" e medir o legado (só leitura)
+docker compose exec abrasilsistema php artisan tinker --execute='
+  dump(DB::table("lead_activities")->where("provider_message_id","3EB0C2EF5A6141DC0935D3")->first(["id","lead_id","user_id","type","message_status","created_at"]));
+  dump(DB::table("lead_activities")->where("type","whatsapp")->selectRaw("user_id is null as auto, provider_message_id is not null as has_id, count(*) c")->groupBy("auto","has_id")->get());'
+
+# 1) Backup da tabela antes da migration
+docker compose exec mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" abrasilsistemas lead_activities' \
+  > backups/lead_activities_$(date +%Y%m%d_%H%M%S).sql
+
+# 2) Rebuild das imagens (containers atuais continuam no ar)
+docker compose build abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+
+# 3) Aplicar a migration com a IMAGEM NOVA, antes de trocar os containers
+docker compose run --rm --no-deps abrasilsistema php artisan migrate --force
+docker compose run --rm --no-deps abrasilsistema php artisan migrate:status | grep add_direction
+
+# 4) Deploy
+docker compose up -d abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+
+# 5) Validação pós-deploy
+docker compose ps abrasilsistema abrasilsistema-worker abrasilsistema-scheduler
+docker compose exec abrasilsistema php artisan tinker --execute='dump(Schema::hasColumn("lead_activities","direction"));'
+docker compose exec abrasilsistema php artisan route:list --path=api
+```
+
+Validação funcional:
+
+1. Enviar uma mensagem pelo CRM a um lead de teste. O histórico deve mostrar **"Enviada · Empresa → Cliente"** e o status evoluindo com os ACKs (Enviada → Entregue → Lida).
+2. Conferir no banco que o registro novo tem `direction = 'outbound'`:
+   `docker compose exec abrasilsistema php artisan tinker --execute='dump(DB::table("lead_activities")->where("type","whatsapp")->latest("id")->first(["id","direction","message_status"]));'`
+3. Registros antigos devem continuar aparecendo como antes, sem direção.
+
+Rollback, se necessário: `docker compose run --rm --no-deps abrasilsistema php artisan migrate:rollback --step=1 --force` e voltar a imagem anterior. A remoção da coluna só descarta `direction`.
+
+---
+
 # Execução de `correio.md`: gerenciamento da conexão WhatsApp/WAHA pelo painel
 
 Data: 2026-09-24.

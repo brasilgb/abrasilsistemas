@@ -102,3 +102,63 @@ test('lead history loads mixed activities with their message status', function (
             ->where('lead.activities.1.type', 'note')
             ->where('lead.activities.1.message_status', null));
 });
+
+test('lead history exposes the direction of WhatsApp messages', function () {
+    $user = User::factory()->create();
+    $lead = leadForHistory($user);
+
+    $outbound = $lead->activities()->create([
+        'type' => 'whatsapp',
+        'direction' => LeadActivity::DIRECTION_OUTBOUND,
+        'contacted_at' => now(),
+        'description' => 'Mensagem enviada.',
+        'provider_message_id' => '3EB0OUT',
+        'message_status' => LeadActivity::MESSAGE_STATUS_DEVICE,
+    ]);
+    $outbound->forceFill(['created_at' => now()->subHour()])->save();
+
+    $lead->activities()->create([
+        'type' => 'whatsapp',
+        'direction' => LeadActivity::DIRECTION_INBOUND,
+        'contacted_at' => now(),
+        'description' => 'Resposta do cliente.',
+        'provider_message_id' => '3EB0IN',
+    ]);
+
+    $this->actingAs($user)->get(route('leads.edit', $lead))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('lead.activities', 2)
+            ->where('lead.activities.0.direction', 'inbound')
+            ->where('lead.activities.0.message_status', null)
+            ->missing('lead.activities.0.provider_message_id')
+            ->where('lead.activities.1.direction', 'outbound')
+            ->where('lead.activities.1.message_status', 'DEVICE'));
+});
+
+test('manual and non WhatsApp activities keep working without a direction', function () {
+    $user = User::factory()->create();
+    $lead = leadForHistory($user);
+
+    $this->actingAs($user)
+        ->post(route('leads.activities.store', $lead), [
+            'type' => 'call',
+            'status' => 'interested',
+            'contacted_at' => now()->toDateTimeString(),
+            'description' => 'Ligação registrada manualmente.',
+        ])
+        ->assertRedirect();
+
+    $activity = $lead->activities()->sole();
+
+    expect($activity->type)->toBe('call')
+        ->and($activity->direction)->toBeNull()
+        ->and($activity->message_status)->toBeNull()
+        ->and($lead->fresh()->status)->toBe('interested');
+
+    $this->actingAs($user)->get(route('leads.edit', $lead))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('lead.activities.0.type', 'call')
+            ->where('lead.activities.0.direction', null));
+});

@@ -202,3 +202,45 @@ test('the WhatsApp status API accepts any valid status when none is set', functi
 
     expect($activity->fresh()->message_status)->toBe('SERVER');
 });
+
+test('the WhatsApp status API never applies an ACK to a received message', function (string $status) {
+    $activity = whatsappStatusActivity(null, ['direction' => LeadActivity::DIRECTION_INBOUND]);
+
+    patchWhatsappStatus($status)
+        ->assertOk()
+        ->assertExactJson([
+            'success' => true,
+            'message' => 'Status ignorado: mensagem recebida não tem status de entrega.',
+            'activity_id' => $activity->id,
+            'message_status' => null,
+            'ignored' => true,
+        ]);
+
+    expect($activity->fresh()->message_status)->toBeNull()
+        ->and($activity->fresh()->direction)->toBe(LeadActivity::DIRECTION_INBOUND);
+})->with(LeadActivity::MESSAGE_STATUSES);
+
+test('the WhatsApp status API keeps the ACK progression for outbound messages', function (string $from, string $to) {
+    $activity = whatsappStatusActivity($from, ['direction' => LeadActivity::DIRECTION_OUTBOUND]);
+
+    patchWhatsappStatus($to)->assertOk()->assertJson(['message_status' => $to]);
+
+    expect($activity->fresh()->message_status)->toBe($to);
+})->with([
+    'PENDING -> SERVER' => ['PENDING', 'SERVER'],
+    'SERVER -> DEVICE' => ['SERVER', 'DEVICE'],
+    'DEVICE -> READ' => ['DEVICE', 'READ'],
+    'READ -> PLAYED' => ['READ', 'PLAYED'],
+]);
+
+test('the WhatsApp status API does not regress outbound messages', function (string $from, string $to) {
+    $activity = whatsappStatusActivity($from, ['direction' => LeadActivity::DIRECTION_OUTBOUND]);
+
+    patchWhatsappStatus($to)->assertOk()->assertJson(['ignored' => true, 'message_status' => $from]);
+
+    expect($activity->fresh()->message_status)->toBe($from);
+})->with([
+    'READ -> DEVICE' => ['READ', 'DEVICE'],
+    'PLAYED -> READ' => ['PLAYED', 'READ'],
+    'DEVICE -> ERROR' => ['DEVICE', 'ERROR'],
+]);

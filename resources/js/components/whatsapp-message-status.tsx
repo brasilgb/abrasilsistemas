@@ -1,9 +1,73 @@
-import { AlertCircle, Check, CheckCheck, Clock } from 'lucide-react';
+import {
+    AlertCircle,
+    ArrowDownLeft,
+    ArrowUpRight,
+    Check,
+    CheckCheck,
+    Clock,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type WhatsappMessageStatusValue =
     'PENDING' | 'SERVER' | 'DEVICE' | 'READ' | 'PLAYED' | 'ERROR';
+
+export type WhatsappMessageDirectionValue = 'inbound' | 'outbound';
+
+const DIRECTION_PRESENTATION: Record<
+    WhatsappMessageDirectionValue,
+    { label: string; flow: string; icon: LucideIcon; className: string }
+> = {
+    inbound: {
+        label: 'Recebida',
+        flow: 'Cliente → Empresa',
+        icon: ArrowDownLeft,
+        className: 'text-emerald-600 dark:text-emerald-400',
+    },
+    outbound: {
+        label: 'Enviada',
+        flow: 'Empresa → Cliente',
+        icon: ArrowUpRight,
+        className: 'text-muted-foreground',
+    },
+};
+
+type DirectionProps = {
+    direction: string | null | undefined;
+    className?: string;
+};
+
+/**
+ * Direção da mensagem WhatsApp. Atividades sem direction (legado ou registro manual) não mostram nada.
+ */
+export function WhatsappMessageDirection({
+    direction,
+    className,
+}: DirectionProps) {
+    const presentation = direction
+        ? DIRECTION_PRESENTATION[direction as WhatsappMessageDirectionValue]
+        : undefined;
+
+    if (!presentation) {
+        return null;
+    }
+
+    const Icon = presentation.icon;
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1',
+                presentation.className,
+                className,
+            )}
+            title={`Mensagem ${presentation.label.toLowerCase()}: ${presentation.flow}`}
+        >
+            <Icon className="size-3.5" aria-hidden="true" />
+            {presentation.label} · {presentation.flow}
+        </span>
+    );
+}
 
 const STATUS_PRESENTATION: Record<
     WhatsappMessageStatusValue,

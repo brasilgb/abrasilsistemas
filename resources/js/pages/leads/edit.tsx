@@ -24,7 +24,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import WhatsappMessageStatus from '@/components/whatsapp-message-status';
+import WhatsappMessageStatus, {
+    WhatsappMessageDirection,
+} from '@/components/whatsapp-message-status';
 import { store as storeLeadActivity } from '@/routes/leads/activities';
 import { index } from '@/routes/leads';
 import LeadForm, { type Lead } from '@/pages/leads/form';
@@ -406,12 +408,22 @@ export default function EditLead({
                                                 </p>
 
                                                 {activity.type === 'whatsapp' && (
-                                                    <WhatsappMessageStatus
-                                                        status={
-                                                            activity.message_status
-                                                        }
-                                                        className="mt-2 text-xs"
-                                                    />
+                                                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs empty:hidden">
+                                                        <WhatsappMessageDirection
+                                                            direction={
+                                                                activity.direction
+                                                            }
+                                                        />
+                                                        {/* Status de entrega (ACK) só existe para mensagem enviada. */}
+                                                        {activity.direction !==
+                                                            'inbound' && (
+                                                            <WhatsappMessageStatus
+                                                                status={
+                                                                    activity.message_status
+                                                                }
+                                                            />
+                                                        )}
+                                                    </div>
                                                 )}
 
                                                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">

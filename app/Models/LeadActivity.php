@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'lead_id',
     'user_id',
     'type',
+    'direction',
     'status',
     'contacted_at',
     'next_follow_up_at',
@@ -28,6 +29,20 @@ class LeadActivity extends Model
         'call' => 'Ligação',
         'email' => 'E-mail',
         'meeting' => 'Reunião',
+    ];
+
+    /**
+     * Direção da mensagem WhatsApp, armazenada em direction:
+     * inbound = cliente → empresa; outbound = empresa → cliente.
+     * Nulo em atividades que não são mensagens e no legado anterior à coluna.
+     */
+    public const DIRECTION_INBOUND = 'inbound';
+
+    public const DIRECTION_OUTBOUND = 'outbound';
+
+    public const DIRECTIONS = [
+        self::DIRECTION_INBOUND,
+        self::DIRECTION_OUTBOUND,
     ];
 
     /**
@@ -97,6 +112,14 @@ class LeadActivity extends Model
         }
 
         return array_search($status, $progression, true) > array_search($current, $progression, true);
+    }
+
+    /**
+     * Mensagem recebida do cliente: não tem ciclo de entrega, então não recebe ACK.
+     */
+    public function isInbound(): bool
+    {
+        return $this->direction === self::DIRECTION_INBOUND;
     }
 
     public function lead(): BelongsTo
