@@ -1,4 +1,6 @@
 import Heading from '@/components/heading';
+import { LeadFollowUpSummary } from '@/components/lead-follow-up';
+import type { LeadFollowUpState } from '@/components/lead-follow-up';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +34,7 @@ type LeadSummary = {
     lead_score: number;
     priority: 'high' | 'medium' | 'low';
     next_follow_up_at?: string | null;
+    follow_up_state?: LeadFollowUpState | null;
     created_at?: string | null;
 };
 
@@ -347,11 +350,14 @@ export default function Dashboard({
                                                 <p className="truncate text-sm font-medium">
                                                     {lead.company_name}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {formatDate(
-                                                        lead.next_follow_up_at,
-                                                    )}
-                                                </p>
+                                                <LeadFollowUpSummary
+                                                    value={
+                                                        lead.next_follow_up_at ??
+                                                        null
+                                                    }
+                                                    state={lead.follow_up_state}
+                                                    className="text-xs text-muted-foreground"
+                                                />
                                             </div>
                                             <Badge
                                                 variant="outline"

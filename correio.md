@@ -1,39 +1,91 @@
-CRM-WA-07 — Fase 2: UX comercial da conversa WhatsApp
-Trabalhar sobre a Fase 1 já implementada e não alterar n8n, WAHA, Docker/infra nem os endpoints de integração existentes. Não criar suporte a mídia, áudio, documentos ou anexos.
-Implementar:
-1. Composer de mensagens
-   - Enter envia.
-   - Shift+Enter cria nova linha.
-   - impedir duplo envio enquanto a requisição estiver em andamento;
-   - manter o texto digitado caso o envio falhe;
-   - limpar o campo somente após envio confirmado;
-   - feedback visual discreto durante envio e em caso de erro.
-2. Cabeçalho da conversa
-   - exibir os dados comerciais já existentes no lead/prospect, sem criar campos novos desnecessariamente;
-   - priorizar nome, empresa, WhatsApp, situação/status e responsável somente se esses dados já existirem no modelo atual.
-3. Mensagens rápidas
-   - primeiro auditar se o projeto já possui estrutura semelhante;
-   - permitir selecionar textos prontos para primeiro contato, apresentação e follow-up;
-   - inicialmente priorizar solução simples e reutilizável;
-   - não criar migration sem antes justificar que ela é realmente necessária.
-4. Variáveis
-   - preparar substituições como {{nome}} e {{empresa}}, exclusivamente para campos que realmente existam no lead;
-   - mostrar o texto final ao usuário antes do envio;
-   - nunca enviar automaticamente ao selecionar um template.
-5. Integração com o fluxo comercial
-   - auditar os status/etapas atualmente existentes no CRM;
-   - facilitar a atualização do estágio do prospect a partir da área da conversa quando isso puder reutilizar funcionalidades existentes;
-   - não inventar um novo pipeline ou modelo de dados.
-6. Preservar Fase 1
-   - polling incremental de 5 s;
-   - paginação/histórico;
-   - atualização de ACK;
-   - inbound/outbound;
-   - não lidas;
-   - scroll e indicador de novas mensagens;
-   - envio realizado pelo celular aparecendo como outbound.
-A Fase 1 possui atualmente paginação e polling incremental no mesmo endpoint e não deve regredir.   Texto colado
-Fora do escopo: imagens, vídeos, áudio, gravação de voz, documentos, anexos, stickers e qualquer processamento de mídia.
-Antes de implementar, auditar models, controllers, componentes React, rotas e testes relacionados a leads/WhatsApp para reutilizar o que já existe.
-Depois da implementação, executar os testes relacionados ao WhatsApp, testes do fluxo de leads afetado, TypeScript, ESLint/Prettier e Pint. Não fazer deploy nem commit.
-Ao final, gerar resumo.md contendo: arquivos criados/alterados, comportamento implementado, decisões tomadas, testes executados/resultados, migrations (se houver), riscos/limitações e roteiro E2E manual.
+CRM-WA-08 — Follow-up Comercial de Prospects
+O CRM já possui conversa WhatsApp operacional e integração com o funil comercial. A próxima tarefa é implementar um mecanismo simples de próximo contato, para que prospects não sejam esquecidos.
+Antes de alterar código, auditar completamente o modelo Lead, migrations, controllers, rotas, listagem, Kanban, formulário e histórico. Reutilizar campos e estruturas existentes sempre que possível.
+Objetivo
+Permitir que o operador saiba:
+- quando deve entrar novamente em contato com determinado prospect;
+- quais contatos estão vencidos;
+- quais precisam de contato hoje;
+- quais estão programados para os próximos dias.
+Não criar automação de envio de WhatsApp. O sistema apenas organiza e sinaliza o trabalho comercial. O operador continua decidindo e enviando cada mensagem.
+1. Primeiro auditar o que já existe
+Verificar especialmente se Lead já possui campos equivalentes a:
+- last_contacted_at;
+- próximo contato/follow-up;
+- responsável;
+- status;
+- observações/histórico.
+O relatório anterior confirma que last_contacted_at já participa da mudança de estágio; portanto, não duplicar esse conceito.
+Se não existir campo adequado para próximo contato, documentar a necessidade antes de criar migration.
+2. Próximo follow-up
+Cada prospect ativo poderá possuir uma data/hora opcional para próximo contato.
+Na interface, permitir:
+Hoje · Amanhã · +3 dias · +7 dias · Escolher data/hora · Remover
+Não enviar WhatsApp automaticamente quando chegar a data.
+3. Integração com a conversa WhatsApp
+Na área comercial da conversa criada na Fase 2, mostrar:
+Próximo contato: 28/09/2026 09:00
+e permitir alterar rapidamente.
+Depois de uma conversa, o operador poderá programar manualmente o próximo contato.
+Não programar follow-up automaticamente apenas porque uma mensagem foi enviada.
+4. Situações visuais
+Apresentar de maneira clara:
+Atrasado — horário já passou.
+Hoje — contato previsto para hoje.
+Próximo — agendado para data futura.
+Sem follow-up — nenhum próximo contato definido.
+Utilizar componentes/badges já existentes no projeto sempre que possível.
+5. Listagem de prospects
+Adicionar informações/filtros que permitam localizar:
+Follow-ups atrasados
+Follow-ups de hoje
+Próximos follow-ups
+Sem follow-up
+Evitar transformar a listagem em dashboard complexo.
+6. Funil
+Respeitar os estados existentes:
+Novo → Contatado → Interessado → Reunião → Convertido / Perdido
+Prospect Convertido ou Perdido não deve aparecer como follow-up pendente, mesmo que exista uma data antiga registrada.
+Avaliar se a data deve ser limpa ao converter/perder ou simplesmente ignorada. Escolher a solução com menor efeito colateral e documentar a decisão.
+7. Histórico
+Alterações relevantes devem ficar auditáveis no histórico do lead, por exemplo:
+Próximo contato definido para 28/09/2026 às 09:00.
+Próximo contato alterado de ... para ...
+Próximo contato removido.
+Essas entradas devem ser atividades/notas e nunca aparecer na conversa WhatsApp nem contar como mensagem não lida.
+8. Responsável
+Se o lead já possui responsável, reutilizá-lo.
+Não criar neste momento distribuição automática, filas de vendedores, round-robin ou regras complexas de equipes.
+9. Fora do escopo
+Não implementar:
+- disparo automático de WhatsApp;
+- campanhas;
+- sequências automáticas;
+- IA escolhendo quando enviar;
+- mídia/anexos;
+- calendário completo;
+- integração Google Calendar;
+- notificações push;
+- e-mail;
+- novo sistema de permissões.
+O CRM continua sendo uma ferramenta de prospecção assistida pelo operador.
+10. Segurança e regressão
+Preservar integralmente CRM-WA-06 e CRM-WA-07.
+A Fase 2 terminou com 317 testes relacionados a WhatsApp/LeadManagement passando com 1.448 assertions.   Texto colado
+Não alterar n8n, WAHA ou Docker/infra.
+Executar testes específicos do novo recurso, testes de Lead/WhatsApp/Kanban afetados, suíte completa quando viável, Pint, TypeScript, ESLint e Prettier.
+Entrega
+Não fazer deploy nem commit.
+Gerar resumo.md contendo:
+- auditoria encontrada;
+- decisão sobre banco/migration;
+- arquivos criados e alterados;
+- comportamento implementado;
+- regras de follow-up;
+- integração com WhatsApp;
+- integração com funil;
+- filtros;
+- histórico;
+- testes/resultados;
+- riscos e limitações;
+- roteiro E2E manual.

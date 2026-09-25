@@ -56,18 +56,6 @@ function formatDateTime(value: string | null) {
     }).format(new Date(value));
 }
 
-function formatDate(value: string | null) {
-    if (!value) {
-        return '-';
-    }
-
-    return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    }).format(new Date(value));
-}
-
 export default function EditLead({
     activityTypes,
     lead,
@@ -317,11 +305,11 @@ export default function EditLead({
 
                                             <div className="grid gap-2">
                                                 <Label htmlFor="next_follow_up_at_activity">
-                                                    Próximo follow-up
+                                                    Próximo contato
                                                 </Label>
                                                 <Input
                                                     id="next_follow_up_at_activity"
-                                                    type="date"
+                                                    type="datetime-local"
                                                     name="next_follow_up_at"
                                                 />
                                                 <InputError
@@ -464,7 +452,7 @@ export default function EditLead({
                                                         <span className="inline-flex items-center gap-1">
                                                             <CalendarClock className="size-3" />
                                                             Follow-up:{' '}
-                                                            {formatDate(
+                                                            {formatDateTime(
                                                                 activity.next_follow_up_at,
                                                             )}
                                                         </span>

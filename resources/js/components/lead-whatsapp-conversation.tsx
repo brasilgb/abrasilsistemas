@@ -20,6 +20,8 @@ import {
     useState,
 } from 'react';
 import InputError from '@/components/input-error';
+import { LeadFollowUpControl } from '@/components/lead-follow-up';
+import type { LeadFollowUpState } from '@/components/lead-follow-up';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -95,6 +97,8 @@ export type ConversationLead = WhatsappMessageLead & {
     whatsapp: string | null;
     status: string;
     lost_reason: string | null;
+    next_follow_up_at: string | null;
+    follow_up_state: LeadFollowUpState | null;
     user?: { id: number; name: string } | null;
 };
 
@@ -732,6 +736,11 @@ export default function LeadWhatsappConversation({
                         lead={lead}
                         statuses={statuses}
                         lostReasons={lostReasons}
+                    />
+                    {/* key: salvar (aqui, no formulário ou pelo estágio) recarrega o lead e reinicia o controle. */}
+                    <LeadFollowUpControl
+                        key={`${lead.next_follow_up_at ?? ''}:${lead.follow_up_state ?? 'closed'}`}
+                        lead={lead}
                     />
                 </div>
             </CardHeader>

@@ -3,6 +3,7 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -305,7 +306,9 @@ test('authenticated users can register lead activities', function () {
 
     $lead->refresh();
 
-    expect(LeadActivity::query()->where('lead_id', $lead->id)->count())->toBe(1);
+    // A atividade registrada e a nota de auditoria do próximo contato (CRM-WA-08).
+    expect(LeadActivity::query()->where('lead_id', $lead->id)->count())->toBe(2);
+    expect(LeadActivity::query()->where('lead_id', $lead->id)->where('description', 'like', 'Próximo contato definido para%')->exists())->toBeTrue();
     expect($lead->status)->toBe('interested');
     expect($lead->last_contacted_at)->not->toBeNull();
     expect($lead->next_follow_up_at->toDateString())->toBe($followUpAt);
@@ -404,11 +407,13 @@ test('csv import skips duplicate leads', function () {
 });
 
 test('task queues include open leads and exclude closed leads', function () {
+    // Meio-dia em Brasília: "hoje" é o restante do dia comercial, não a data em UTC.
+    $this->travelTo(CarbonImmutable::parse('2026-09-25 12:00', 'America/Sao_Paulo'));
     $user = User::factory()->create(['email_verified_at' => now()]);
 
     foreach ([
         ['company_name' => 'Atrasado aberto', 'status' => 'contacted', 'next_follow_up_at' => now()->subDay()],
-        ['company_name' => 'Para hoje', 'status' => 'interested', 'next_follow_up_at' => today()],
+        ['company_name' => 'Para hoje', 'status' => 'interested', 'next_follow_up_at' => now()->addHours(2)],
         ['company_name' => 'Sem tarefa', 'status' => 'new', 'next_follow_up_at' => null],
         ['company_name' => 'Convertido atrasado', 'status' => 'converted', 'next_follow_up_at' => now()->subDay()],
     ] as $data) {

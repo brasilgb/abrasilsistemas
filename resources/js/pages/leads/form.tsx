@@ -1,6 +1,8 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { toDateTimeLocalValue } from '@/components/lead-follow-up';
+import type { LeadFollowUpState } from '@/components/lead-follow-up';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +42,7 @@ export type Lead = {
     lead_score: number;
     priority: 'high' | 'medium' | 'low';
     next_follow_up_at: string | null;
+    follow_up_state: LeadFollowUpState | null;
     last_contacted_at: string | null;
     notes: string | null;
     created_at: string;
@@ -313,16 +316,14 @@ export default function LeadForm({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="next_follow_up_at">Próximo follow-up</Label>
+                    <Label htmlFor="next_follow_up_at">Próximo contato</Label>
                     <Input
                         id="next_follow_up_at"
-                        type="date"
+                        type="datetime-local"
                         name="next_follow_up_at"
-                        defaultValue={
-                            lead?.next_follow_up_at
-                                ? lead.next_follow_up_at.slice(0, 10)
-                                : ''
-                        }
+                        defaultValue={toDateTimeLocalValue(
+                            lead?.next_follow_up_at,
+                        )}
                     />
                     <InputError message={errors.next_follow_up_at} />
                 </div>

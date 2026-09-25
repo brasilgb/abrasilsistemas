@@ -146,6 +146,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('leads/clear', [LeadController::class, 'clear'])->name('leads.clear');
         Route::patch('leads/bulk', [LeadController::class, 'bulkUpdate'])->name('leads.bulk');
         Route::patch('leads/{lead}/status', [LeadController::class, 'status'])->name('leads.status');
+        Route::patch('leads/{lead}/follow-up', [LeadController::class, 'followUp'])->name('leads.follow-up');
         Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
         Route::post('leads/{lead}/whatsapp', [LeadWhatsappController::class, 'store'])->middleware('throttle:10,1')->name('leads.whatsapp.store');

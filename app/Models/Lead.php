@@ -4,12 +4,17 @@ namespace App\Models;
 
 use App\Services\CompanyWhatsappConnection;
 use App\Services\LeadWhatsappService;
+use Carbon\CarbonInterface;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 
 #[Fillable([
@@ -49,6 +54,7 @@ class Lead extends Model
     protected $appends = [
         'lead_score',
         'priority',
+        'follow_up_state',
     ];
 
     public const STATUSES = [
@@ -59,6 +65,29 @@ class Lead extends Model
         'converted' => 'Convertido',
         'lost' => 'Perdido',
     ];
+
+    /** Estágios encerrados: nunca contam como follow-up pendente, mesmo com data gravada. */
+    public const CLOSED_STATUSES = ['converted', 'lost'];
+
+    /**
+     * Situação do próximo contato de um prospect aberto (atributo follow_up_state e filtro follow_up).
+     * overdue = o horário já passou; today = ainda hoje; upcoming = depois de hoje.
+     */
+    public const FOLLOW_UP_STATES = [
+        'overdue' => 'Atrasado',
+        'today' => 'Hoje',
+        'upcoming' => 'Próximo',
+        'none' => 'Sem follow-up',
+    ];
+
+    /**
+     * Relógio da equipe comercial. O app grava em UTC; "hoje" e as datas digitadas sem fuso
+     * (formulários, CSV) seguem este fuso.
+     */
+    public const FOLLOW_UP_TIMEZONE = 'America/Sao_Paulo';
+
+    /** Horário assumido quando o próximo contato chega só com a data (CSV, integrações antigas). */
+    public const FOLLOW_UP_DEFAULT_TIME = '09:00';
 
     public const LOST_REASONS = [
         'price' => 'Preço',
@@ -88,7 +117,7 @@ class Lead extends Model
             'rating' => 'decimal:2',
             'reviews' => 'integer',
             'captured_at' => 'datetime',
-            'next_follow_up_at' => 'date',
+            'next_follow_up_at' => 'datetime',
             'last_contacted_at' => 'datetime',
         ];
     }
@@ -109,6 +138,125 @@ class Lead extends Model
 
             $lead->account_id = auth()->user()?->account_id ?? Account::query()->value('id');
         });
+
+        // Toda mudança do próximo contato, venha de qualquer tela, fica no histórico como nota:
+        // não é mensagem WhatsApp, então não aparece na conversa nem conta como não lida.
+        static::updated(function (self $lead): void {
+            if (! $lead->wasChanged('next_follow_up_at')) {
+                return;
+            }
+
+            $lead->activities()->create([
+                'user_id' => auth()->id(),
+                'type' => 'note',
+                'description' => self::followUpChangeDescription(
+                    $lead->getOriginal('next_follow_up_at'),
+                    $lead->next_follow_up_at,
+                ),
+            ]);
+        });
+    }
+
+    /**
+     * Grava sempre em UTC, sem segundos. Texto sem fuso (datetime-local do formulário, CSV) é
+     * horário de Brasília; só a data vale às 09:00. Com fuso (ISO da conversa), vale o instante.
+     */
+    public function setNextFollowUpAtAttribute(mixed $value): void
+    {
+        $this->attributes['next_follow_up_at'] = self::normalizeFollowUpAt($value);
+    }
+
+    public static function normalizeFollowUpAt(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            $date = Carbon::instance($value);
+        } else {
+            $value = trim((string) $value);
+
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+                $value .= ' '.self::FOLLOW_UP_DEFAULT_TIME;
+            }
+
+            $hasTimezone = preg_match('/(Z|[+-]\d{2}:?\d{2})$/i', $value) === 1;
+            $date = Carbon::parse($value, $hasTimezone ? null : self::FOLLOW_UP_TIMEZONE);
+        }
+
+        return $date->setTimezone(config('app.timezone'))->startOfMinute()->format('Y-m-d H:i:s');
+    }
+
+    /** Fim do dia comercial de hoje, no fuso do app (para comparar com o banco). */
+    public static function followUpTodayEndsAt(): CarbonInterface
+    {
+        return now(self::FOLLOW_UP_TIMEZONE)->endOfDay()->setTimezone(config('app.timezone'));
+    }
+
+    public static function formatFollowUpAt(DateTimeInterface $value): string
+    {
+        $date = Carbon::instance($value)->setTimezone(self::FOLLOW_UP_TIMEZONE);
+
+        return $date->format('d/m/Y').' às '.$date->format('H:i');
+    }
+
+    private static function followUpChangeDescription(?DateTimeInterface $from, ?DateTimeInterface $to): string
+    {
+        if ($to === null) {
+            return 'Próximo contato removido'.($from ? ' (estava em '.self::formatFollowUpAt($from).').' : '.');
+        }
+
+        if ($from === null) {
+            return 'Próximo contato definido para '.self::formatFollowUpAt($to).'.';
+        }
+
+        return 'Próximo contato alterado de '.self::formatFollowUpAt($from).' para '.self::formatFollowUpAt($to).'.';
+    }
+
+    public function isClosed(): bool
+    {
+        return in_array($this->status, self::CLOSED_STATUSES, true);
+    }
+
+    /** Situação do próximo contato (chave de FOLLOW_UP_STATES); nula para Convertido/Perdido. */
+    public function getFollowUpStateAttribute(): ?string
+    {
+        if ($this->isClosed()) {
+            return null;
+        }
+
+        if ($this->next_follow_up_at === null) {
+            return 'none';
+        }
+
+        if ($this->next_follow_up_at->lt(now())) {
+            return 'overdue';
+        }
+
+        return $this->next_follow_up_at->lte(self::followUpTodayEndsAt()) ? 'today' : 'upcoming';
+    }
+
+    /**
+     * Prospects abertos na situação de follow-up informada. Mesma regra de follow_up_state.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function followUpState(Builder $query, string $state): void
+    {
+        if (! array_key_exists($state, self::FOLLOW_UP_STATES)) {
+            return;
+        }
+
+        $query->whereNotIn('status', self::CLOSED_STATUSES);
+
+        match ($state) {
+            'overdue' => $query->where('next_follow_up_at', '<', now()),
+            'today' => $query->whereBetween('next_follow_up_at', [now(), self::followUpTodayEndsAt()]),
+            'upcoming' => $query->where('next_follow_up_at', '>', self::followUpTodayEndsAt()),
+            'none' => $query->whereNull('next_follow_up_at'),
+        };
     }
 
     public function getLeadScoreAttribute(): int
@@ -128,15 +276,11 @@ class Lead extends Model
             'meeting' => 60,
         ][$this->status] ?? 10;
 
-        if ($this->next_follow_up_at !== null) {
-            if ($this->next_follow_up_at->isPast() && ! $this->next_follow_up_at->isToday()) {
-                $score += 25;
-            } elseif ($this->next_follow_up_at->isToday()) {
-                $score += 18;
-            } else {
-                $score += 8;
-            }
-        }
+        $score += [
+            'overdue' => 25,
+            'today' => 18,
+            'upcoming' => 8,
+        ][$this->follow_up_state] ?? 0;
 
         if ($this->whatsapp) {
             $score += 8;

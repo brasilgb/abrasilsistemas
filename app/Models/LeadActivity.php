@@ -112,9 +112,15 @@ class LeadActivity extends Model
     {
         return [
             'contacted_at' => 'datetime',
-            'next_follow_up_at' => 'date',
+            'next_follow_up_at' => 'datetime',
             'read_at' => 'datetime',
         ];
+    }
+
+    /** Mesma normalização do próximo contato do lead (UTC; texto sem fuso é horário de Brasília). */
+    public function setNextFollowUpAtAttribute(mixed $value): void
+    {
+        $this->attributes['next_follow_up_at'] = Lead::normalizeFollowUpAt($value);
     }
 
     /**

@@ -34,7 +34,7 @@ class LeadController extends Controller
 
         $this->applyFollowUpFilter($baseQuery, $filters['follow_up'] ?? null);
 
-        $taskQuery = (clone $baseQuery)->whereNotIn('status', ['converted', 'lost']);
+        $taskQuery = (clone $baseQuery)->whereNotIn('status', Lead::CLOSED_STATUSES);
 
         // withCount('unreadWhatsappMessages') só nas consultas exibidas: no baseQuery, a subconsulta
         // entraria também nas agregações das métricas (count/groupBy).
@@ -57,14 +57,14 @@ class LeadController extends Controller
             'leads' => $leads,
             'metrics' => $this->metrics(clone $baseQuery),
             'taskLeads' => [
-                'overdue' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->whereDate('next_follow_up_at', '<', today())->orderBy('next_follow_up_at')->limit(50)->get(),
-                'today' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->whereDate('next_follow_up_at', today())->orderBy('next_follow_up_at')->limit(50)->get(),
-                'without_follow_up' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->whereNull('next_follow_up_at')->latest()->limit(50)->get(),
+                'overdue' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->followUpState('overdue')->orderBy('next_follow_up_at')->limit(50)->get(),
+                'today' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->followUpState('today')->orderBy('next_follow_up_at')->limit(50)->get(),
+                'without_follow_up' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->followUpState('none')->latest()->limit(50)->get(),
             ],
             'taskTotals' => [
-                'overdue' => (clone $taskQuery)->whereDate('next_follow_up_at', '<', today())->count(),
-                'today' => (clone $taskQuery)->whereDate('next_follow_up_at', today())->count(),
-                'without_follow_up' => (clone $taskQuery)->whereNull('next_follow_up_at')->count(),
+                'overdue' => (clone $taskQuery)->followUpState('overdue')->count(),
+                'today' => (clone $taskQuery)->followUpState('today')->count(),
+                'without_follow_up' => (clone $taskQuery)->followUpState('none')->count(),
             ],
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
@@ -105,13 +105,8 @@ class LeadController extends Controller
      */
     private function applyFollowUpFilter(Builder $query, ?string $followUp): Builder
     {
-        return $query->when($followUp, function ($query, string $followUp) {
-            $query
-                ->when($followUp === 'overdue', fn ($query) => $query->whereDate('next_follow_up_at', '<', today()))
-                ->when($followUp === 'today', fn ($query) => $query->whereDate('next_follow_up_at', today()))
-                ->when($followUp === 'upcoming', fn ($query) => $query->whereDate('next_follow_up_at', '>', today()))
-                ->when($followUp === 'none', fn ($query) => $query->whereNull('next_follow_up_at'));
-        });
+        // Só prospects abertos: Convertido/Perdido nunca aparecem como follow-up pendente.
+        return $query->when($followUp, fn ($query, string $followUp) => $query->followUpState($followUp));
     }
 
     /**
@@ -122,11 +117,11 @@ class LeadController extends Controller
     {
         $total = (clone $query)->count();
         $converted = (clone $query)->where('status', 'converted')->count();
-        $open = (clone $query)->whereNotIn('status', ['converted', 'lost'])->count();
-        $overdue = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', '<', today())->count();
-        $today = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', today())->count();
-        $upcoming = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereDate('next_follow_up_at', '>', today())->count();
-        $withoutFollowUp = (clone $query)->whereNotIn('status', ['converted', 'lost'])->whereNull('next_follow_up_at')->count();
+        $open = (clone $query)->whereNotIn('status', Lead::CLOSED_STATUSES)->count();
+        $overdue = (clone $query)->followUpState('overdue')->count();
+        $today = (clone $query)->followUpState('today')->count();
+        $upcoming = (clone $query)->followUpState('upcoming')->count();
+        $withoutFollowUp = (clone $query)->followUpState('none')->count();
         $highPriority = (clone $query)
             ->whereNotIn('status', ['converted', 'lost'])
             ->get(['id', 'status', 'next_follow_up_at', 'whatsapp', 'email', 'contact_name', 'website', 'instagram', 'notes'])
@@ -367,6 +362,33 @@ class LeadController extends Controller
         ]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Status atualizado.']);
+
+        return back();
+    }
+
+    /**
+     * Agenda, altera ou remove o próximo contato (atalhos da conversa WhatsApp). O histórico
+     * é registrado pelo próprio Lead ao salvar. Nunca dispara mensagem.
+     */
+    public function followUp(Request $request, Lead $lead): RedirectResponse
+    {
+        $data = $request->validate([
+            'next_follow_up_at' => ['present', 'nullable', 'date'],
+        ]);
+
+        if ($data['next_follow_up_at'] !== null && $lead->isClosed()) {
+            throw ValidationException::withMessages([
+                'next_follow_up_at' => 'Prospect convertido ou perdido não tem próximo contato. Reabra o estágio antes de agendar.',
+            ]);
+        }
+
+        $lead->next_follow_up_at = $data['next_follow_up_at'];
+        $lead->save();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $lead->next_follow_up_at ? 'Próximo contato agendado.' : 'Próximo contato removido.',
+        ]);
 
         return back();
     }

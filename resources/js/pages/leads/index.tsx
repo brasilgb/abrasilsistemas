@@ -1,7 +1,6 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
 import {
     BarChart3,
-    CalendarClock,
     Columns3,
     FileUp,
     ListTodo,
@@ -17,6 +16,7 @@ import AppPagination, { PaginationSummary } from '@/components/app-pagination';
 import type { PaginationData } from '@/components/app-pagination';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { LeadFollowUpSummary } from '@/components/lead-follow-up';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -94,18 +94,6 @@ type Props = {
     users: { id: number; name: string }[];
 };
 
-function formatDate(value: string | null) {
-    if (!value) {
-        return '-';
-    }
-
-    return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    }).format(new Date(value));
-}
-
 function TaskColumn({
     title,
     description,
@@ -152,9 +140,13 @@ function TaskColumn({
                                     />
                                 </div>
                                 <p className="truncate text-xs text-muted-foreground">
-                                    {lead.contact_name || lead.whatsapp || '-'}{' '}
-                                    · {formatDate(lead.next_follow_up_at)}
+                                    {lead.contact_name || lead.whatsapp || '-'}
                                 </p>
+                                <LeadFollowUpSummary
+                                    value={lead.next_follow_up_at}
+                                    state={lead.follow_up_state}
+                                    className="text-xs text-muted-foreground"
+                                />
                                 <p className="truncate text-xs text-muted-foreground">
                                     Responsável:{' '}
                                     {lead.user?.name ?? 'Não definido'}
@@ -367,10 +359,10 @@ function LeadKanbanCard({
                 <p className="truncate">
                     {[lead.city, lead.state].filter(Boolean).join(' / ') || '-'}
                 </p>
-                <p className="inline-flex items-center gap-1">
-                    <CalendarClock className="size-3.5" />
-                    {formatDate(lead.next_follow_up_at)}
-                </p>
+                <LeadFollowUpSummary
+                    value={lead.next_follow_up_at}
+                    state={lead.follow_up_state}
+                />
                 {lead.notes && (
                     <p className="line-clamp-2" title={lead.notes}>
                         {lead.notes}
@@ -439,7 +431,8 @@ function LeadKanbanCard({
                             </select>
                             <Input
                                 name="next_follow_up_at"
-                                type="date"
+                                type="datetime-local"
+                                aria-label="Próximo contato"
                                 className="h-8 text-xs"
                             />
                             <textarea
@@ -599,6 +592,7 @@ function LeadFilterFields({
                         <option value="overdue">Atrasados</option>
                         <option value="today">Hoje</option>
                         <option value="upcoming">Próximos</option>
+                        <option value="none">Sem follow-up</option>
                     </select>
                 </div>
             )}
@@ -1725,12 +1719,14 @@ export default function LeadsIndex({
                                                             </Badge>
                                                         </td>
                                                         <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
-                                                            <span className="inline-flex items-center gap-2">
-                                                                <CalendarClock className="size-4" />
-                                                                {formatDate(
-                                                                    lead.next_follow_up_at,
-                                                                )}
-                                                            </span>
+                                                            <LeadFollowUpSummary
+                                                                value={
+                                                                    lead.next_follow_up_at
+                                                                }
+                                                                state={
+                                                                    lead.follow_up_state
+                                                                }
+                                                            />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <div className="flex justify-end gap-1">
