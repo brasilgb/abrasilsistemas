@@ -1,220 +1,195 @@
-# Execução de `correio.md`: CRM-WA-06, sincronização de mensagens enviadas fora do CRM
+# Execução de `correio.md`: CRM-WA-07, Fase 1 (conversa WhatsApp operacional)
 
-Data: 2026-09-24.
+Data: 2026-09-25.
 
 ## Status
 
-**Parte do CRM implementada e validada. A etapa ainda não está concluída.**
+**Fase 1 implementada e validada em ambiente descartável.**
 
-Continuam **pendentes**:
+- **Nenhuma migration.** Nenhuma coluna ou tabela nova.
+- n8n, WAHA, Docker/infra e os endpoints do CRM-WA-06 (`/log`, `/inbound`, `/outbound-external`, `/messages/{id}/status`) **não foram alterados**.
+- O banco de produção não foi acessado. Nada rodou no container de produção.
+- Sem deploy e sem commit.
 
-- deploy;
-- alteração do workflow no n8n;
-- teste de ponta a ponta.
+## Auditoria encontrada
 
-O n8n só pode passar a chamar `/api/whatsapp/outbound-external` depois que o CRM estiver publicado com a rota nova. As duas ações mexem em produção e aguardam confirmação (ver "Próximos passos").
+O CRM-WA-05 já tinha entregado boa parte da base:
 
-- **Sem migration. Sem UNIQUE.**
-- Frontend, `WhatsappInboundController`, `StoreWhatsappInboundRequest`, `WhatsappMessageStatusController`, `LeadWhatsappService`, WAHA, n8n e docker-compose **não foram alterados**.
-- O banco de produção não foi acessado.
-- Nenhum commit foi feito.
-
-## Arquivos criados
-
-- `app/Http/Controllers/Api/WhatsappExternalOutboundController.php`
-- `app/Http/Requests/Api/StoreWhatsappExternalOutboundRequest.php`
-- `tests/Feature/WhatsappExternalOutboundApiTest.php`
-
-## Arquivos alterados
-
-- `routes/api.php`: +1 rota.
-- `app/Models/LeadActivity.php`:
-  - `WHATSAPP_MESSAGE_LOCK_PREFIX`;
-  - `whatsappMessageLock()`, com o lock compartilhado;
-  - `findWhatsappMessage()`, com a busca global por `type=whatsapp + provider_message_id`.
-- `app/Http/Controllers/Api/WhatsappActivityController.php` (`/log`): hardening descrito abaixo.
-
-## Endpoint criado
-
-`POST /api/whatsapp/outbound-external`
-
-- Nome: `api.whatsapp.outbound-external`.
-- Middleware: `throttle:120,1` e `prospect.token`.
-
-Payload:
-
-```json
-{ "session": "vetoros1-1", "provider_message_id": "ID_CURTO_WAHA", "to": "555195179173@s.whatsapp.net",
-  "message": "Texto enviado", "status": "SERVER", "timestamp": 1790281001 }
-```
-
-| Situação | Resposta |
+| Item | Estado antes |
 |---|---|
-| Criou a atividade | `201 {success:true, activity_id, lead_id}` |
-| Id já registrado (por `/log`, `/inbound` ou por ele mesmo) | `200 {success:true, reason:"already_logged", idempotent:true, activity_id, lead_id}` |
-| Sessão diferente da configurada | `200 {success:false, reason:"session_mismatch"}` |
-| Nenhuma sessão configurada no painel | `200 {success:false, reason:"session_not_configured"}` |
-| Destinatário = número da empresa (com ou sem nono dígito) | `200 {success:false, reason:"self_chat"}` |
-| Nenhum lead com o número | `200 {success:false, reason:"lead_not_found"}`. O log registra só `session` e `provider_message_id`, sem número nem token |
-| Lock ocupado por mais de 5 s | `409 {success:false, reason:"processing"}`, retentável |
-| `to` inválido (`@lid`, `@g.us`, `@broadcast`, `status@broadcast`, `@newsletter`, letras, menos de 10 ou mais de 15 dígitos) ou payload inválido | `422` |
+| Componente | `resources/js/components/lead-whatsapp-conversation.tsx`, usado em `leads/edit.tsx` |
+| Leitura | `GET leads/{lead}/whatsapp/messages` (`LeadWhatsappConversationController@index`), JSON com as **100 últimas**, sem paginação |
+| Polling | A cada **10 s**, sempre rebaixando as 100 últimas (não incremental). Pausava com a aba oculta e parava no unmount. Merge por `id` |
+| Não lidas | `read_at` só em inbound (scope `unreadInbound`). Abrir o lead marca tudo como lido (`LeadController@edit`). O componente chama `POST leads/{lead}/whatsapp/read` (`up_to_id`) com a aba visível. O selo "Nova" fica na sessão. A listagem usa `withCount('unreadWhatsappMessages')` + `WhatsappUnreadBadge` |
+| ACK | `message_status` (PENDING, SERVER, DEVICE, READ, PLAYED, ERROR). O update do ACK usa `save()`, então toca o `updated_at` |
+| Autorização | Rotas no grupo `auth` + `verified` + `admin`. Não há dono por lead: todo admin acessa todos os leads |
+| Tempo real | Não há WebSocket/Reverb no projeto |
 
-Atividade criada:
+**Lacunas em relação ao pedido:**
 
-- `type=whatsapp`;
-- `direction=outbound`;
-- `user_id=null`;
-- `status=null`;
-- `read_at=null`;
-- `description=message`;
-- `provider_message_id` = id curto;
-- `contacted_at=now()`;
-- `message_status` = `status` do payload (normalizado para maiúsculas) quando está em `LeadActivity::MESSAGE_STATUSES`; caso contrário, `SERVER`.
+- polling não incremental e de 10 s;
+- sem histórico paginado;
+- sem separador por data;
+- sem indicador de "novas mensagens" ao ler o histórico;
+- rótulos de status diferentes do pedido;
+- throttle de 60/min apertado para 5 s com várias abas.
 
-O `last_contacted_at` do lead é atualizado como no `/log`. O `timestamp` é validado, mas não é usado: `contacted_at` e `created_at` seguem `now()`, igual aos demais endpoints.
+## Arquivos
 
-## Estratégia de resolução do destinatário
+**Criados**
 
-1. O **n8n** envia em `to` o `_data.key.remoteJidAlt` quando o `remoteJid` é `@lid`. Nos outros casos, envia o `remoteJid`. O CRM recusa `@lid`, então um LID não resolvido nunca vira associação errada.
-2. O FormRequest aceita telefone puro, formatado, `@c.us` ou `@s.whatsapp.net`, com a mesma regex do `from` do inbound. Normaliza com `CompanyWhatsappConnection::normalizeJid()` e exige de 10 a 15 dígitos.
-3. `Lead::findByWhatsappNumber()` é reutilizado sem mudança: 55 opcional, nono dígito, máscara, soft delete e desempate por `last_contacted_at`/`id`.
-4. Nenhum lead é criado.
+- `app/Http/Requests/Leads/LeadWhatsappMessagesRequest.php`: valida `before_id` e `since`.
+- `tests/Feature/LeadWhatsappConversationPollingTest.php`
 
-## Estratégia de idempotência
+**Alterados**
 
-- **Chave lógica:** `type=whatsapp + provider_message_id` (id curto), com **busca global**, em qualquer lead. Texto, telefone e horário não são usados.
-- **Lock:** `LeadActivity::whatsappMessageLock($id)` = `Cache::lock('whatsapp-inbound:'.sha1($id), 10)`, com `block(5)`. É **exatamente a mesma chave** que o `WhatsappInboundController` já usava. Assim, `/inbound`, `/log` e `/outbound-external` se serializam pela mesma mensagem, sem mexer no inbound. O teste `the shared message lock is the same one used by the inbound API` garante que as chaves continuem iguais.
-- A checagem de duplicidade e a inserção rodam **dentro** do lock nos dois endpoints.
+- `app/Http/Controllers/LeadWhatsappConversationController.php`: `index` ganhou paginação por cursor e polling incremental. `markRead` não mudou.
+- `resources/js/components/lead-whatsapp-conversation.tsx`: polling incremental de 5 s, histórico, separador por data, indicador de novas mensagens, direção e estado vazio.
+- `resources/js/components/whatsapp-message-status.tsx`: rótulos `PENDING` → **Pendente** e `ERROR` → **Falhou**.
+- `routes/web.php`: throttle de `leads.whatsapp.messages` de 60 para **120/min**.
 
-## Hardening realizado no `/log`
+Os testes existentes não foram alterados.
 
-`WhatsappActivityController@store`:
+## Endpoints
 
-- Quando há `message_id`, a checagem e a inserção passam a rodar dentro do lock compartilhado. Sem `message_id`, o comportamento é o anterior, sem lock.
-- A busca de duplicidade deixou de ser `$lead->activities()` e passou a ser **global** (`type=whatsapp + provider_message_id`). Se a mensagem já estiver registrada em qualquer lead, a resposta é idempotente (`200`, `idempotent:true`, `activity_id` existente).
-- Com o lock ocupado por mais de 5 s, a resposta é `409 processing`, igual ao inbound. Na prática o lock dura milissegundos.
-- O contrato do n8n não mudou: mesmo payload, mesmas mensagens, `201` na criação e `200` idempotente.
+Nenhum endpoint novo. O `GET leads/{lead}/whatsapp/messages` foi **reutilizado** e estendido, de forma compatível:
 
-Cenários do correio:
+| Chamada | Retorno |
+|---|---|
+| sem parâmetros | 100 mais recentes, em ordem cronológica + `has_more` + `cursor` |
+| `?before_id=ID` | 100 anteriores a essa mensagem + `has_more` + `cursor` |
+| `?since=CURSOR` | mensagens da conversa com `updated_at >= cursor` + `reset` + `cursor` |
 
-| Caso | Resultado | Teste |
-|---|---|---|
-| A: `/log` grava e o `fromMe` chega depois | uma atividade (a do `/log`, com texto e status preservados) | `a CRM send logged first is not duplicated by the fromMe event` |
-| B: o `fromMe` grava e o `/log` chega depois (mesmo lead **e** outro lead com o mesmo número) | uma atividade | `a fromMe event recorded first is not duplicated by the later CRM log` |
-| C: simultâneos | uma atividade (o segundo espera o lock e cai na checagem global) | `the CRM log and the external outbound API share the message lock` |
+- `before_id` precisa ser uma mensagem da conversa **do lead da rota** (exists com `lead_id`, `type=whatsapp` e `direction`). Se não for, retorna 422.
+- `since` é um inteiro ≥ 0.
+- Os dois parâmetros são mutuamente exclusivos (`prohibits`).
+- Campos expostos: os mesmos de antes (`id`, `direction`, `description`, `created_at`, `message_status`, `read_at`). O `provider_message_id` continua oculto.
+- `POST leads/{lead}/whatsapp/read` foi reutilizado sem mudança.
+
+## Polling
+
+- A cada **5 s**, só com a aba visível. Também roda ao voltar para a aba. O intervalo e o listener são removidos no unmount.
+- Um request por vez. Um pedido durante outro vira um novo ciclo em seguida.
+- A 1ª carga traz a página recente e o `cursor` (`now() - 2 s`, em Unix). Os ciclos seguintes pedem só `?since=cursor`, ou seja, apenas o que foi criado ou alterado. O polling não recarrega o lead nem a página Inertia.
+- O `updated_at` muda:
+  - na criação (`/log`, `/inbound`, `/outbound-external`);
+  - no ACK;
+  - no `markRead`.
+- Por isso o incremental percebe mensagens novas **e** mudanças de status em mensagens já exibidas.
+- **Folga de 2 s no cursor:** `updated_at` tem precisão de segundo. Pode haver repetição, mas a tela faz merge por `id`, então não duplica.
+- **Mudança em massa:** mais de 200 alterações num ciclo retornam `reset: true`, e a tela recarrega a página recente.
+
+## Não lidas
+
+A semântica atual foi preservada:
+
+- abrir o lead marca as pendentes;
+- a conversa marca, com `up_to_id`, só as inbound exibidas com a aba visível;
+- outbound nunca entra (a leitura dela é o ACK);
+- `read_at` já preenchido não é regravado;
+- a consulta (inclusive o polling) não tem efeito colateral.
+
+O selo "Nova" continua na bolha durante a visita. O contador da listagem cai assim que o `markRead` roda.
+
+## Paginação
+
+- A abertura traz as 100 mais recentes. "Carregar mensagens anteriores" aparece no topo enquanto `has_more` for verdadeiro.
+- **Keyset** em (`created_at`, `id`), coerente com a ordenação da tela. O desempate por `id` cobre várias mensagens no mesmo segundo. O teste cruza a fronteira de página com empate e verifica que não há duplicata nem buraco.
+- Ao inserir mensagens antigas, a posição do scroll é preservada.
+- Tudo passa pelo mesmo merge por `id`, então páginas e polling não duplicam registros.
+
+## UX
+
+- Inbound fica à esquerda e outbound à direita (verde).
+- Cada bolha mostra a direção ("Recebida · Cliente → Empresa" / "Enviada · Empresa → Cliente"), o horário (HH:mm) e, na outbound, o status.
+- Separador por dia: "Hoje", "Ontem" ou a data por extenso.
+- A conversa abre no fim. Se o usuário estiver perto do fim (80 px), a tela acompanha as mensagens novas. Se estiver lendo o histórico, o scroll não é forçado e aparece o botão flutuante "N novas mensagens ↓". O botão some ao rolar até o fim.
+- Após enviar uma mensagem, a tela sempre vai para o fim. Isso corrigiu um caso em que o `onSuccess` era sobrescrito pelo cálculo de posição.
+- Carregamento: spinner só na 1ª carga e no botão de histórico. O polling é silencioso.
+- Estado vazio com ícone e convite para enviar a primeira mensagem. Erro discreto em texto.
+
+## Mapeamento ACK/status (outbound)
+
+| `message_status` | Rótulo |
+|---|---|
+| PENDING | Pendente |
+| SERVER | Enviada |
+| DEVICE | Entregue |
+| READ | Lida |
+| PLAYED | Reproduzida (mantido; só ocorre em mídia/áudio) |
+| ERROR | Falhou |
+
+Os rótulos novos também valem no histórico de atividades de `leads/edit.tsx`, que usa o mesmo componente.
+
+## Segurança
+
+- Leitura só por rota web autenticada (`auth` + `verified` + `admin` + throttle). Nenhum endpoint público.
+- Os testes cobrem: sem login → 401, usuário `reader` → 403, nos três modos.
+- A consulta é sempre escopada em `$lead->activities()`. O `before_id` é validado contra o lead da rota.
+- Nenhum token do WAHA/n8n é exposto.
+- Limitação: não existe dono por lead no modelo atual, então "lead que o usuário não pode acessar" equivale a "usuário não admin".
 
 ## Testes criados
 
-Arquivo: `tests/Feature/WhatsappExternalOutboundApiTest.php`, com **49 casos e 194 asserções**. Cobertura dos 29 itens do correio:
+`tests/Feature/LeadWhatsappConversationPollingTest.php`: **20 testes**.
 
-| Itens | Teste |
-|---|---|
-| 1, 2 | `requires the integration token` (sem token e token errado) |
-| 3, 4, 5, 6 | `records a message sent outside the CRM as outbound` |
-| 7 | `keeps a valid ACK status from the payload` + `falls back to SERVER without a valid status` |
-| 8, 9, 10, 11 | `finds the lead by the recipient` (`@s.whatsapp.net`, `@c.us`, telefone puro e formatado) |
-| 12 | `matches Brazilian numbers with or without the ninth digit and country code` |
-| 13 | `does not create a lead or an activity for an unknown recipient` |
-| 14 | `ignores a session other than the configured one` |
-| 15 | `ignores messages while no company session is configured` (nada salvo / salvo sem sessão) |
-| 16 | `ignores a message sent to the company own number` |
-| 17, 18, 19, 20 | `rejects recipients that are not a phone` (grupo, `status@broadcast`, lista de broadcast, newsletter, LID, inválidos) |
-| 21 | `does not duplicate a repeated event` |
-| 22 | `a CRM send logged first is not duplicated by the fromMe event` |
-| 23 | `a fromMe event recorded first is not duplicated by the later CRM log` |
-| 24 | `the CRM log and the external outbound API share the message lock` + `the shared message lock is the same one used by the inbound API` |
-| 25 | `a later ACK updates the activity recorded by the external outbound API` (SERVER → DEVICE → READ → PLAYED, com anti-regressão) |
-| 26 | `the inbound API keeps working alongside the external outbound API` |
-| 27, 28 | `the conversation returns the external message as outbound and markRead leaves it untouched` |
-| 29 | `updates last_contacted_at` |
-| extra | `rejects an invalid payload` |
+| # | Obrigatório | Cobertura |
+|---|---|---|
+| 1 | autorizado consulta | página + `has_more` + `cursor` |
+| 2 | não autorizado | 401 sem login e 403 para `reader`, nos 3 modos |
+| 3–5 | inbound, outbound, status/ACK | direção e `message_status` (PENDING, DEVICE, ERROR) |
+| 6 | leitura marca só inbound pertinente | outbound, já lidas e posteriores ao `up_to_id` intactas; contador da listagem |
+| 7 | já lidas não são alteradas | `read_at` antigo preservado; polling não marca nada |
+| 8 | paginação sem duplicar | 3 páginas com empate de segundo na fronteira; validação de `before_id` (outro lead, nota, inexistente, texto, zero) |
+| 9 | polling incremental retorna novas | só o que mudou após o cursor, sem outro lead e sem nota |
+| 10 | ACK percebido | PATCH do status aparece no `since` e só ela |
+| 11 | sem mensagens | página e polling vazios |
+| 12 | fluxos anteriores | `/log` (repetido, sem duplicar), `/inbound` e `/outbound-external` aparecem no polling com direção e status corretos |
+| extra | | `since` inválido e combinação com `before_id`; `reset` em mudança em massa; `read_at` refletido no polling |
 
-Nenhum teste existente foi alterado ou removido.
+## Resultados
 
-## Resultados dos testes
+O ambiente foi uma cópia do working tree na scratchpad, em containers `docker run --rm --network none`:
 
-Os testes rodaram numa cópia do working tree na scratchpad, em containers descartáveis `docker run --rm --network none`:
-
-- PHP na imagem `infra-abrasil-abrasilsistema`, com SQLite em memória;
-- Node em `node:22-bookworm-slim`;
-- `vendor` e `node_modules` montados de uma execução anterior, com `composer.lock` e `package-lock.json` idênticos.
-
-Nada rodou no container de produção.
+- imagem `infra-abrasil-abrasilsistema`, com SQLite em memória e `APP_KEY` descartável;
+- `node:22-bookworm-slim`;
+- `vendor` e `node_modules` de uma execução anterior, com locks idênticos.
 
 | Validação | Resultado |
 |---|---|
-| `--filter=WhatsappExternalOutbound` | **49 passed (194 assertions)** |
-| `--filter="WhatsappExternalOutbound\|WhatsappInbound\|WhatsappActivity\|WhatsappMessageStatus\|LeadWhatsapp"` | **208 passed (833 assertions)** |
-| Suíte completa | **334 passed, 1 failed**. A falha é `BlogTest > administrator can upload blog images` (`imagejpeg` indisponível na imagem, sem GD/JPEG). Ela já existia antes e não tem relação com esta etapa |
-| `pint --test` nos 6 arquivos PHP criados ou alterados | **PASS** |
-| `wayfinder:generate --with-form` + `tsc --noEmit` | **OK, 0 erros**. As ações tipadas do controller novo são geradas, e a pasta é ignorada pelo git |
-| ESLint | Nenhum arquivo TS/TSX do repositório foi alterado, então não há arquivo afetado a verificar |
+| `--filter=LeadWhatsappConversation` (novos + existentes) | **42 passed (188 assertions)** |
+| `--filter="WhatsappExternalOutbound\|WhatsappInbound\|WhatsappActivity\|WhatsappMessageStatus\|LeadWhatsapp"` | **228 passed (932 assertions)** |
+| Suíte completa | **354 passed, 1 failed**. A falha é `BlogTest > administrator can upload blog images` (`imagejpeg` indisponível na imagem). É pré-existente e já aparecia no CRM-WA-06 |
+| `pint --test` (controller, request, teste, rotas) | **PASS** |
+| `wayfinder:generate --with-form` + `tsc --noEmit` | **0 erros** |
+| ESLint + Prettier (`lead-whatsapp-conversation.tsx`, `whatsapp-message-status.tsx`) | **OK**. O Prettier foi aplicado |
 
-## Alterações realizadas no n8n
+## Migrations
 
-**Nenhuma ainda.** A alteração depende do deploy do CRM: sem ele, o nó HTTP novo receberia 404.
+**Nenhuma migration.**
 
-Especificação do que falta no workflow "WAHA - Mensagens Recebidas → CRM":
+## Riscos e limitações
 
-1. **Backup:** exportar o workflow atual antes de mexer.
-2. **Switch** em `payload.fromMe`, no `message.any`:
-   - `false` → fluxo atual para `/api/whatsapp/inbound` (sem mudança);
-   - `true` → ramo novo.
-3. **Filtros do ramo `fromMe`:**
-   - `event === 'message.any'`;
-   - chat que não termina em `@g.us`, `@broadcast` nem `@newsletter`;
-   - texto não vazio.
-4. **Wait opcional** de alguns segundos. É só uma defesa extra: a garantia já está no lock do CRM.
-5. **HTTP `POST /api/whatsapp/outbound-external`**, com a mesma credencial Bearer do inbound e o corpo:
-   - `session` = `{{$json.body.session}}`;
-   - `provider_message_id` = `payload._data.key.id`;
-   - `to` = `remoteJid.endsWith('@lid') && remoteJidAlt ? remoteJidAlt : remoteJid`;
-   - `message` = `payload.body`, com fallback para `_data.message.conversation` e depois `_data.message.extendedTextMessage.text`;
-   - `status` = `payload.ackName`;
-   - `timestamp` = `payload.timestamp`.
-6. Tratar `success:false` e `already_logged` como fim normal. `409` pode ser repetido.
+1. **Índice:** o polling filtra por `lead_id` + `updated_at`, e não há índice em `updated_at`. O índice `lead_id` limita a varredura às atividades do lead, o que basta para o volume atual. Se um lead acumular milhares de atividades, avaliar o índice (`lead_id`, `updated_at`), que exigiria migration.
+2. **Relógio:** o cursor usa o relógio do app, e o `updated_at` também. Com vários containers web, uma diferença de relógio acima de 2 s poderia perder uma mudança. O `reset`/recarga por visibilidade atenua. Mitigação futura: cursor baseado em `max(updated_at)` do banco.
+3. **Carga:** 12 req/min por aba aberta. O throttle subiu para 120/min por usuário, o que comporta cerca de 10 abas.
+4. **Histórico e ACK:** mudanças de ACK em mensagens antigas carregadas via histórico são percebidas pelo incremental. Após um `reset`, mudanças anteriores a ele fora da página recente não são reaplicadas (caso raro).
+5. **Ordem:** segue `created_at` do CRM, não o `timestamp` do WhatsApp (limitação herdada do CRM-WA-06).
+6. **"Novas mensagens":** conta também outbound vinda do celular ou de outra aba, não só inbound.
+7. **Sem dono por lead:** a autorização é por papel (admin), como no restante do CRM.
 
-## Confirmação sobre migrations
+## Roteiro manual de validação E2E
 
-**Nenhuma migration foi criada.** `git status database/` não mostra alterações. Também não foi adicionado UNIQUE.
+Validar após o deploy, que **não foi feito**.
 
-## Limitações restantes
-
-1. **Garantia de aplicação, não de banco:** sem UNIQUE, a proteção depende do lock no cache compartilhado (Redis em produção). Um cache por processo ou por container quebraria a garantia. Em produção, `CACHE_STORE` precisa continuar compartilhado entre os containers web.
-2. **Ordem na conversa:** `created_at = now()`. Um `fromMe` reemitido tarde (reconexão do WAHA) de uma mensagem nunca registrada entra como se fosse recente. O `timestamp` é recebido, mas não é usado.
-3. **CRM × celular × WhatsApp Web não se distinguem:** todas as origens ficam com `user_id=null` e `direction=outbound`. `source` ficou fora do escopo.
-4. **Só texto:** mídia e áudio enviados pelo celular não entram.
-5. **Volume:** toda mensagem enviada pela sessão, inclusive para quem não é lead, gera uma chamada ao CRM, com o `LIKE` do `findByWhatsappNumber`. O throttle é de 120/min, compartilhado por IP com as outras rotas da API.
-6. **`/log` com 409:** se o lock ficar preso por mais de 5 s (só em caso de falha), o `/log` responde 409. Não verifiquei se o workflow de envio repete a chamada nesse caso.
-
-## Próximos passos (aguardando confirmação)
-
-1. Commit na branch `feat/whatsapp-message-direction`.
-2. Rebuild e deploy do CRM, sem migration. A rota fica ociosa até o n8n chamá-la.
-3. Validação pós-deploy:
-   - `POST /api/whatsapp/outbound-external` sem token deve responder 401;
-   - com token e um número inexistente, deve responder `lead_not_found`.
-4. Backup e alteração do workflow no n8n, conforme a seção do n8n acima.
-
-## Roteiro de teste ponta a ponta
-
-1. **Celular → lead:** pelo celular da sessão `vetoros1-1`, enviar um texto a um número cadastrado como lead.
-   - Em até cerca de 10 s (polling), a mensagem aparece **à direita** no card "Conversa WhatsApp", com ACK SERVER.
-   - O ACK evolui para DEVICE e depois READ.
-2. **LID:** repetir o passo 1 com um contato endereçado por LID (como no payload capturado). A associação deve vir pelo `remoteJidAlt`.
-3. **CRM → lead:** enviar pelo card. Deve aparecer **uma** única bolha. No banco, `provider_message_id` deve ter uma única linha.
-4. **Inbound:** o lead responde. A mensagem aparece à esquerda com "Nova", e o badge da listagem funciona.
-5. **Sem lead:** enviar pelo celular a um número que não é lead. Nada é gravado, e o n8n recebe `lead_not_found`.
-6. **Grupo e status:** enviar a um grupo e postar um status. Nada é gravado (filtrado no n8n; o CRM responde 422 se chegar).
-7. **Duplicidade:** reexecutar no n8n a mesma execução `fromMe`. A resposta é `already_logged`, sem atividade nova.
-8. **Para si mesmo:** enviar uma mensagem ao próprio número da empresa. A resposta é `self_chat`.
-
-## Critérios de conclusão do CRM-WA-06
-
-| Critério | Situação |
-|---|---|
-| 1. Mensagem do celular aparece como outbound | Coberto por teste; falta o E2E, que depende do deploy e do n8n |
-| 2. Mensagem do CRM aparece só uma vez | Coberto por teste (casos A, B e C); falta o E2E |
-| 3. Inbound continua funcionando | Todos os testes do inbound passam; falta o E2E |
-| 4. ACK continua funcionando | Coberto por teste; falta o E2E |
-| 5. Eventos duplicados não geram atividades duplicadas | Coberto por teste |
+1. Abrir um lead com conversa. A conversa abre posicionada no fim, com separadores de data e direção em cada bolha.
+2. **Inbound:** o cliente envia uma mensagem. Em até cerca de 5 s, ela aparece à esquerda com "Nova", sem reload. No DevTools, só há chamadas `messages?since=…`.
+3. Em outra aba, a listagem de leads não mostra o badge desse lead depois do `markRead`. Com a aba da conversa oculta, a mensagem continua não lida até voltar à aba.
+4. **Envio pelo CRM:** enviar pelo card. A bolha aparece à direita como "Pendente" ou "Enviada" e evolui para "Entregue" e depois "Lida" sem reload. Deve haver uma única bolha.
+5. **Celular:** enviar pelo aparelho da sessão. A mensagem aparece à direita.
+6. **Scroll:** rolar para cima e receber uma mensagem. A posição se mantém e aparece "1 nova mensagem ↓". Clicar leva ao fim e o botão some.
+7. **Histórico:** em um lead com mais de 100 mensagens, clicar em "Carregar mensagens anteriores". As mensagens antigas entram no topo sem pular a leitura e sem duplicar. O botão some ao chegar ao início.
+8. **Vazio:** em um lead sem mensagens, aparece o estado vazio. Sem WhatsApp válido, o envio fica desabilitado.
+9. **Falha:** uma mensagem com ACK ERROR aparece como "Falhou".
+10. **Navegação:** sair da tela do lead. No DevTools, o polling para.
+11. **Acesso:** um usuário não admin recebe 403 em `leads/{id}/whatsapp/messages`.

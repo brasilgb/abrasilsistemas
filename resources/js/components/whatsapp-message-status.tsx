@@ -75,7 +75,7 @@ const STATUS_PRESENTATION: Record<
     { label: string; icon: LucideIcon; className: string }
 > = {
     PENDING: {
-        label: 'Enviando',
+        label: 'Pendente',
         icon: Clock,
         className: 'text-muted-foreground',
     },
@@ -100,7 +100,7 @@ const STATUS_PRESENTATION: Record<
         className: 'font-medium text-sky-600 dark:text-sky-400',
     },
     ERROR: {
-        label: 'Erro no envio',
+        label: 'Falhou',
         icon: AlertCircle,
         className: 'font-medium text-destructive',
     },
