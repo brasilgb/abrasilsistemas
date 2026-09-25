@@ -51,3 +51,106 @@ export function writeWhatsappMessages(
 ) {
     window.localStorage.setItem(messagesKey, JSON.stringify(messages));
 }
+
+/** Campos do lead que podem entrar numa mensagem rápida como {{variavel}}. */
+export type WhatsappMessageLead = {
+    contact_name: string | null;
+    company_name: string;
+    city: string | null;
+};
+
+export const whatsappMessageVariables = {
+    nome: (lead: WhatsappMessageLead) => lead.contact_name,
+    empresa: (lead: WhatsappMessageLead) => lead.company_name,
+    cidade: (lead: WhatsappMessageLead) => lead.city,
+} satisfies Record<string, (lead: WhatsappMessageLead) => string | null>;
+
+export type WhatsappQuickMessage = {
+    key: string;
+    group: 'Primeiro contato' | 'Apresentação' | 'Follow-up';
+    label: string;
+    text: string;
+};
+
+const quickMessageTexts = {
+    firstContact: `Olá, tudo bem? Falo com a {{empresa}}?
+
+Sou Anderson, da ABrasil Sistemas. Gostaria de apresentar rapidamente uma solução que pode ajudar na rotina de vocês. Posso te enviar mais detalhes por aqui?`,
+    followUp: `Olá, {{nome}}, tudo bem?
+
+Passando para saber se você conseguiu dar uma olhada na apresentação que te enviei. Se fizer sentido, podemos marcar uma conversa rápida para tirar dúvidas. Qual o melhor dia para você?`,
+    followUpLast: `Olá, {{nome}}, tudo bem?
+
+Não quero ser inconveniente: se agora não for o momento para a {{empresa}}, sem problemas. Fico à disposição para quando fizer sentido conversarmos.`,
+};
+
+/**
+ * Mensagens rápidas da conversa. As apresentações reutilizam os textos por produto
+ * (os mesmos da listagem de leads, com a edição salva em Configurações > Leads).
+ */
+export function whatsappQuickMessages(
+    presentations: Record<WhatsappProduct, string>,
+): WhatsappQuickMessage[] {
+    return [
+        {
+            key: 'first_contact',
+            group: 'Primeiro contato',
+            label: 'Primeiro contato',
+            text: quickMessageTexts.firstContact,
+        },
+        {
+            key: 'presentation_vetoros',
+            group: 'Apresentação',
+            label: 'Apresentação VetorOS',
+            text: presentations.vetoros,
+        },
+        {
+            key: 'presentation_vetorpet',
+            group: 'Apresentação',
+            label: 'Apresentação VetorPet',
+            text: presentations.vetorpet,
+        },
+        {
+            key: 'follow_up',
+            group: 'Follow-up',
+            label: 'Follow-up após apresentação',
+            text: quickMessageTexts.followUp,
+        },
+        {
+            key: 'follow_up_last',
+            group: 'Follow-up',
+            label: 'Último follow-up',
+            text: quickMessageTexts.followUpLast,
+        },
+    ];
+}
+
+const variablePattern = /\{\{\s*([a-z_]+)\s*\}\}/gi;
+
+/** Variáveis ainda não resolvidas no texto (ex.: {{nome}} de um lead sem contato). */
+export function unresolvedWhatsappVariables(text: string): string[] {
+    return [
+        ...new Set(
+            [...text.matchAll(variablePattern)].map((match) => match[0]),
+        ),
+    ];
+}
+
+/**
+ * Substitui as variáveis pelos dados do lead. Uma variável sem valor no lead (ou desconhecida)
+ * fica no texto, para o operador completar antes de enviar.
+ */
+export function fillWhatsappVariables(
+    text: string,
+    lead: WhatsappMessageLead,
+): string {
+    return text.replace(variablePattern, (placeholder, name: string) => {
+        const resolve =
+            whatsappMessageVariables[
+                name.toLowerCase() as keyof typeof whatsappMessageVariables
+            ];
+        const value = resolve?.(lead)?.trim();
+
+        return value ? value : placeholder;
+    });
+}

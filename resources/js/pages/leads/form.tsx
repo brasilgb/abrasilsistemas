@@ -273,7 +273,10 @@ export default function LeadForm({
 
                 <div className="grid gap-2">
                     <Label htmlFor="status">Status</Label>
+                    {/* key: o status pode mudar fora deste formulário (conversa WhatsApp);
+                        remonta só este campo para não salvar de volta o valor antigo. */}
                     <select
+                        key={lead?.status}
                         id="status"
                         name="status"
                         defaultValue={lead?.status ?? 'new'}
@@ -291,6 +294,7 @@ export default function LeadForm({
                 <div className="grid gap-2">
                     <Label htmlFor="lost_reason">Motivo de perda</Label>
                     <select
+                        key={lead?.lost_reason ?? ''}
                         id="lost_reason"
                         name="lost_reason"
                         defaultValue={lead?.lost_reason ?? ''}

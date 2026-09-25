@@ -20,6 +20,12 @@ use Inertia\Response;
 
 class LeadController extends Controller
 {
+    /** Telas que alteram só o status do lead (PATCH leads/{lead}/status), com o texto do histórico. */
+    private const STATUS_ORIGINS = [
+        'kanban' => 'pelo Kanban',
+        'whatsapp' => 'pela conversa WhatsApp',
+    ];
+
     public function index(Request $request): Response
     {
         $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up', 'owner']);
@@ -332,6 +338,8 @@ class LeadController extends Controller
         $data = $request->validate([
             'status' => ['required', 'string', Rule::in(array_keys(Lead::STATUSES))],
             'lost_reason' => ['nullable', 'required_if:status,lost', 'string', Rule::in(array_keys(Lead::LOST_REASONS))],
+            // De onde veio a mudança, só para o texto do histórico. Sem o campo, vale o Kanban.
+            'origin' => ['nullable', 'string', Rule::in(array_keys(self::STATUS_ORIGINS))],
         ]);
 
         $previousStatus = $lead->status;
@@ -350,9 +358,10 @@ class LeadController extends Controller
             'status' => $lead->status,
             'contacted_at' => now(),
             'description' => sprintf(
-                'Status alterado de %s para %s pelo Kanban%s.',
+                'Status alterado de %s para %s %s%s.',
                 Lead::STATUSES[$previousStatus] ?? $previousStatus,
                 Lead::STATUSES[$lead->status] ?? $lead->status,
+                self::STATUS_ORIGINS[$data['origin'] ?? 'kanban'],
                 $lead->lost_reason ? ' (motivo: '.(Lead::LOST_REASONS[$lead->lost_reason] ?? $lead->lost_reason).')' : ''
             ),
         ]);

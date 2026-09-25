@@ -1,168 +1,131 @@
-# Execução de `correio.md`: CRM-WA-07, Fase 1 (conversa WhatsApp operacional)
+# Execução de `correio.md`: CRM-WA-07, Fase 2 (UX comercial da conversa WhatsApp)
 
 Data: 2026-09-25.
 
 ## Status
 
-**Fase 1 implementada e validada em ambiente descartável.**
+**Fase 2 implementada e validada em ambiente descartável.**
 
-- **Nenhuma migration.** Nenhuma coluna ou tabela nova.
-- n8n, WAHA, Docker/infra e os endpoints do CRM-WA-06 (`/log`, `/inbound`, `/outbound-external`, `/messages/{id}/status`) **não foram alterados**.
+- **Nenhuma migration.** Nenhuma coluna, tabela ou endpoint novo.
+- n8n, WAHA, Docker/infra e os endpoints de integração (`/log`, `/inbound`, `/outbound-external`, `/messages/{id}/status`) **não foram alterados**. `GET …/whatsapp/messages` e `POST …/whatsapp/read` (Fase 1) também não.
+- Sem suporte a mídia, áudio, documentos ou anexos.
 - O banco de produção não foi acessado. Nada rodou no container de produção.
 - Sem deploy e sem commit.
 
-## Auditoria encontrada
+## Auditoria
 
-O CRM-WA-05 já tinha entregado boa parte da base:
-
-| Item | Estado antes |
-|---|---|
-| Componente | `resources/js/components/lead-whatsapp-conversation.tsx`, usado em `leads/edit.tsx` |
-| Leitura | `GET leads/{lead}/whatsapp/messages` (`LeadWhatsappConversationController@index`), JSON com as **100 últimas**, sem paginação |
-| Polling | A cada **10 s**, sempre rebaixando as 100 últimas (não incremental). Pausava com a aba oculta e parava no unmount. Merge por `id` |
-| Não lidas | `read_at` só em inbound (scope `unreadInbound`). Abrir o lead marca tudo como lido (`LeadController@edit`). O componente chama `POST leads/{lead}/whatsapp/read` (`up_to_id`) com a aba visível. O selo "Nova" fica na sessão. A listagem usa `withCount('unreadWhatsappMessages')` + `WhatsappUnreadBadge` |
-| ACK | `message_status` (PENDING, SERVER, DEVICE, READ, PLAYED, ERROR). O update do ACK usa `save()`, então toca o `updated_at` |
-| Autorização | Rotas no grupo `auth` + `verified` + `admin`. Não há dono por lead: todo admin acessa todos os leads |
-| Tempo real | Não há WebSocket/Reverb no projeto |
-
-**Lacunas em relação ao pedido:**
-
-- polling não incremental e de 10 s;
-- sem histórico paginado;
-- sem separador por data;
-- sem indicador de "novas mensagens" ao ler o histórico;
-- rótulos de status diferentes do pedido;
-- throttle de 60/min apertado para 5 s com várias abas.
+| Item | O que já existia | Uso na Fase 2 |
+|---|---|---|
+| Composer | `<Form>` do Inertia, botão "Enviar", sem atalho de teclado | Substituído por envio controlado (`router.post`) na mesma rota `leads.whatsapp.store` |
+| Dados comerciais | `Lead`: `contact_name`, `company_name`, `city`, `whatsapp`, `status`, `lost_reason`, `user` (responsável). Já vêm no prop `lead` de `leads/edit` | Cabeçalho da conversa, sem campo novo |
+| Mensagens prontas | `resources/js/lib/lead-whatsapp-messages.ts`: apresentação por produto (VetorOS/VetorPet), editável em Configurações > Leads (salva em `localStorage`), usada no botão WhatsApp da listagem | Reutilizada como grupo "Apresentação". Primeiro contato e follow-up foram adicionados na mesma lib |
+| Variáveis | Não existiam | Criadas na mesma lib, só para campos existentes |
+| Funil | `Lead::STATUSES` (Novo, Contatado, Interessado, Reunião, Convertido, Perdido) + `LOST_REASONS`. `PATCH leads/{lead}/status` (Kanban) valida, exige motivo quando "Perdido", preenche `last_contacted_at` e registra nota no histórico | Reutilizado pela conversa. Único ajuste: parâmetro opcional `origin` |
 
 ## Arquivos
 
 **Criados**
 
-- `app/Http/Requests/Leads/LeadWhatsappMessagesRequest.php`: valida `before_id` e `since`.
-- `tests/Feature/LeadWhatsappConversationPollingTest.php`
+- `tests/Feature/LeadWhatsappConversationCommercialTest.php`
 
 **Alterados**
 
-- `app/Http/Controllers/LeadWhatsappConversationController.php`: `index` ganhou paginação por cursor e polling incremental. `markRead` não mudou.
-- `resources/js/components/lead-whatsapp-conversation.tsx`: polling incremental de 5 s, histórico, separador por data, indicador de novas mensagens, direção e estado vazio.
-- `resources/js/components/whatsapp-message-status.tsx`: rótulos `PENDING` → **Pendente** e `ERROR` → **Falhou**.
-- `routes/web.php`: throttle de `leads.whatsapp.messages` de 60 para **120/min**.
+- `app/Http/Controllers/LeadController.php`: `status()` aceita `origin` opcional (`kanban` | `whatsapp`), usado só no texto do histórico. Sem o campo, o comportamento e o texto do Kanban continuam iguais.
+- `resources/js/components/lead-whatsapp-conversation.tsx`: composer, cabeçalho comercial, estágio do funil e mensagens rápidas. Polling, histórico, scroll e não lidas da Fase 1 **não foram tocados**.
+- `resources/js/lib/lead-whatsapp-messages.ts`: `whatsappQuickMessages`, `fillWhatsappVariables` e `unresolvedWhatsappVariables`. As funções existentes não mudaram.
+- `resources/js/pages/leads/edit.tsx`: passa `lead`, `statuses` e `lostReasons` para a conversa (antes era `leadId`).
+- `resources/js/pages/leads/form.tsx`: `key` nos selects de status e motivo de perda. Explicação em "Decisões".
 
-Os testes existentes não foram alterados.
+## Comportamento implementado
 
-## Endpoints
+### 1. Composer
 
-Nenhum endpoint novo. O `GET leads/{lead}/whatsapp/messages` foi **reutilizado** e estendido, de forma compatível:
+- **Enter** envia. **Shift+Enter** quebra a linha. O Enter que confirma um IME (acentuação/composição) é ignorado.
+- **Duplo envio:** uma trava síncrona (`ref`) e o estado `sending` bloqueiam Enter e clique durante a requisição. O campo fica `readOnly` e o botão mostra "Enviando...".
+- **Falha:** o texto permanece no campo e o erro aparece abaixo, com borda vermelha:
+  - validação ou falha do n8n/WAHA: a mensagem vinda do backend (`message`/`whatsapp`);
+  - 429 (throttle 10/min): "Muitos envios seguidos...";
+  - outro erro HTTP ou sem rede: "...O texto foi mantido; tente de novo." (sem o modal de erro do Inertia).
+- O campo é limpo **só no `onSuccess`**. Depois disso a conversa vai para o fim e roda um ciclo de polling (mesmo comportamento da Fase 1).
+- Digitar de novo limpa o erro. Contador `n/4000` e dica de atalhos continuam visíveis.
 
-| Chamada | Retorno |
-|---|---|
-| sem parâmetros | 100 mais recentes, em ordem cronológica + `has_more` + `cursor` |
-| `?before_id=ID` | 100 anteriores a essa mensagem + `has_more` + `cursor` |
-| `?since=CURSOR` | mensagens da conversa com `updated_at >= cursor` + `reset` + `cursor` |
+### 2. Cabeçalho da conversa
 
-- `before_id` precisa ser uma mensagem da conversa **do lead da rota** (exists com `lead_id`, `type=whatsapp` e `direction`). Se não for, retorna 422.
-- `since` é um inteiro ≥ 0.
-- Os dois parâmetros são mutuamente exclusivos (`prohibits`).
-- Campos expostos: os mesmos de antes (`id`, `direction`, `description`, `created_at`, `message_status`, `read_at`). O `provider_message_id` continua oculto.
-- `POST leads/{lead}/whatsapp/read` foi reutilizado sem mudança.
+Mostra apenas dados que já existem no lead:
 
-## Polling
+- nome do contato (ou "Contato sem nome");
+- empresa · cidade;
+- WhatsApp formatado, com "(inválido)" quando o número não normaliza;
+- responsável;
+- estágio do funil, editável (item 5).
 
-- A cada **5 s**, só com a aba visível. Também roda ao voltar para a aba. O intervalo e o listener são removidos no unmount.
-- Um request por vez. Um pedido durante outro vira um novo ciclo em seguida.
-- A 1ª carga traz a página recente e o `cursor` (`now() - 2 s`, em Unix). Os ciclos seguintes pedem só `?since=cursor`, ou seja, apenas o que foi criado ou alterado. O polling não recarrega o lead nem a página Inertia.
-- O `updated_at` muda:
-  - na criação (`/log`, `/inbound`, `/outbound-external`);
-  - no ACK;
-  - no `markRead`.
-- Por isso o incremental percebe mensagens novas **e** mudanças de status em mensagens já exibidas.
-- **Folga de 2 s no cursor:** `updated_at` tem precisão de segundo. Pode haver repetição, mas a tela faz merge por `id`, então não duplica.
-- **Mudança em massa:** mais de 200 alterações num ciclo retornam `reset: true`, e a tela recarrega a página recente.
+### 3. Mensagens rápidas
 
-## Não lidas
+Menu "Mensagens rápidas" ao lado do botão Enviar, agrupado:
 
-A semântica atual foi preservada:
-
-- abrir o lead marca as pendentes;
-- a conversa marca, com `up_to_id`, só as inbound exibidas com a aba visível;
-- outbound nunca entra (a leitura dela é o ACK);
-- `read_at` já preenchido não é regravado;
-- a consulta (inclusive o polling) não tem efeito colateral.
-
-O selo "Nova" continua na bolha durante a visita. O contador da listagem cai assim que o `markRead` roda.
-
-## Paginação
-
-- A abertura traz as 100 mais recentes. "Carregar mensagens anteriores" aparece no topo enquanto `has_more` for verdadeiro.
-- **Keyset** em (`created_at`, `id`), coerente com a ordenação da tela. O desempate por `id` cobre várias mensagens no mesmo segundo. O teste cruza a fronteira de página com empate e verifica que não há duplicata nem buraco.
-- Ao inserir mensagens antigas, a posição do scroll é preservada.
-- Tudo passa pelo mesmo merge por `id`, então páginas e polling não duplicam registros.
-
-## UX
-
-- Inbound fica à esquerda e outbound à direita (verde).
-- Cada bolha mostra a direção ("Recebida · Cliente → Empresa" / "Enviada · Empresa → Cliente"), o horário (HH:mm) e, na outbound, o status.
-- Separador por dia: "Hoje", "Ontem" ou a data por extenso.
-- A conversa abre no fim. Se o usuário estiver perto do fim (80 px), a tela acompanha as mensagens novas. Se estiver lendo o histórico, o scroll não é forçado e aparece o botão flutuante "N novas mensagens ↓". O botão some ao rolar até o fim.
-- Após enviar uma mensagem, a tela sempre vai para o fim. Isso corrigiu um caso em que o `onSuccess` era sobrescrito pelo cálculo de posição.
-- Carregamento: spinner só na 1ª carga e no botão de histórico. O polling é silencioso.
-- Estado vazio com ícone e convite para enviar a primeira mensagem. Erro discreto em texto.
-
-## Mapeamento ACK/status (outbound)
-
-| `message_status` | Rótulo |
-|---|---|
-| PENDING | Pendente |
-| SERVER | Enviada |
-| DEVICE | Entregue |
-| READ | Lida |
-| PLAYED | Reproduzida (mantido; só ocorre em mídia/áudio) |
-| ERROR | Falhou |
-
-Os rótulos novos também valem no histórico de atividades de `leads/edit.tsx`, que usa o mesmo componente.
-
-## Segurança
-
-- Leitura só por rota web autenticada (`auth` + `verified` + `admin` + throttle). Nenhum endpoint público.
-- Os testes cobrem: sem login → 401, usuário `reader` → 403, nos três modos.
-- A consulta é sempre escopada em `$lead->activities()`. O `before_id` é validado contra o lead da rota.
-- Nenhum token do WAHA/n8n é exposto.
-- Limitação: não existe dono por lead no modelo atual, então "lead que o usuário não pode acessar" equivale a "usuário não admin".
-
-## Testes criados
-
-`tests/Feature/LeadWhatsappConversationPollingTest.php`: **20 testes**.
-
-| # | Obrigatório | Cobertura |
+| Grupo | Mensagem | Origem do texto |
 |---|---|---|
-| 1 | autorizado consulta | página + `has_more` + `cursor` |
-| 2 | não autorizado | 401 sem login e 403 para `reader`, nos 3 modos |
-| 3–5 | inbound, outbound, status/ACK | direção e `message_status` (PENDING, DEVICE, ERROR) |
-| 6 | leitura marca só inbound pertinente | outbound, já lidas e posteriores ao `up_to_id` intactas; contador da listagem |
-| 7 | já lidas não são alteradas | `read_at` antigo preservado; polling não marca nada |
-| 8 | paginação sem duplicar | 3 páginas com empate de segundo na fronteira; validação de `before_id` (outro lead, nota, inexistente, texto, zero) |
-| 9 | polling incremental retorna novas | só o que mudou após o cursor, sem outro lead e sem nota |
-| 10 | ACK percebido | PATCH do status aparece no `since` e só ela |
-| 11 | sem mensagens | página e polling vazios |
-| 12 | fluxos anteriores | `/log` (repetido, sem duplicar), `/inbound` e `/outbound-external` aparecem no polling com direção e status corretos |
-| extra | | `since` inválido e combinação com `before_id`; `reset` em mudança em massa; `read_at` refletido no polling |
+| Primeiro contato | Primeiro contato | nova (usa `{{empresa}}`) |
+| Apresentação | Apresentação VetorOS / VetorPet | **existente**, com a edição salva em Configurações > Leads |
+| Follow-up | Follow-up após apresentação; Último follow-up | novas (usam `{{nome}}`/`{{empresa}}`) |
 
-## Resultados
+### 4. Variáveis
 
-O ambiente foi uma cópia do working tree na scratchpad, em containers `docker run --rm --network none`:
+- Suportadas: `{{nome}}` → `contact_name`, `{{empresa}}` → `company_name`, `{{cidade}}` → `city`. Todas são campos existentes do lead.
+- Ao escolher um template, o texto **já substituído** vai para o campo de mensagem. Esse é o texto final, visível e editável antes do envio. **Nada é enviado ao selecionar.**
+- Se o campo já tiver texto, a tela pede confirmação antes de substituir.
+- Uma variável sem valor no lead (ex.: `{{nome}}` sem contato) ou desconhecida **fica no texto**. Aparece o aviso "Complete antes de enviar: {{nome}}" e o envio fica bloqueado até o operador editar. Assim nunca sai "Olá, ," nem um placeholder cru para o cliente.
+
+### 5. Estágio do funil na conversa
+
+- Um select com os estágios de `Lead::STATUSES` salva na hora pelo `PATCH leads/{lead}/status` do Kanban, com `origin=whatsapp`.
+- "Perdido" mostra o select de motivo e o botão Salvar, porque o backend continua exigindo `lost_reason`.
+- O histórico registra "Status alterado de X para Y **pela conversa WhatsApp**". A nota é do tipo `note`, então não entra na conversa nem nas não lidas (há teste para isso).
+- Recarrega só o prop `lead` (`only: ['lead']`), sem recarregar a página.
+
+### 6. Fase 1 preservada
+
+O código de polling de 5 s, `?since`/`?before_id`, merge por id, ACK, não lidas/`markRead`, selo "Nova", scroll e indicador de novas mensagens **não foi alterado**. Só o JSX do composer e do cabeçalho mudou. O envio pelo celular continua aparecendo como outbound pelo polling (`/outbound-external` intacto). Todos os testes da Fase 1 passam.
+
+## Decisões
+
+1. **Sem migration para templates.** A estrutura existente (textos no código + edição local em Configurações) atende "simples e reutilizável". Persistir no banco só se justifica quando os templates precisarem ser compartilhados entre operadores. Isso já está listado como pendência em `INSTRUCOES_ABRASILSISTEMAS.md`, então a migration fica para essa tarefa.
+2. **Reutilizar o endpoint do Kanban** em vez de criar outro. O `origin` é opcional e só muda o texto da nota. A lista é fechada (`Rule::in`), então não aceita texto livre.
+3. **Status sincronizado no formulário da página:** o select de status do formulário principal é não controlado (`defaultValue`). Sem ajuste, mudar o estágio pela conversa e depois salvar o formulário gravaria o status antigo de volta. A `key={lead.status}` remonta **só esses dois selects**, então edições não salvas nos outros campos do formulário são preservadas.
+4. **Variável sem valor bloqueia o envio** em vez de ser removida silenciosamente.
+5. `router.post` manual no composer, em vez do `<Form>`: o Enter precisa da mesma trava de duplo envio que o clique, e o `<Form>` limpava/mantinha o texto de forma menos controlável.
+
+## Testes executados e resultados
+
+Ambiente: cópia do working tree na scratchpad, em containers `docker run --rm --network none`:
 
 - imagem `infra-abrasil-abrasilsistema`, com SQLite em memória e `APP_KEY` descartável;
 - `node:22-bookworm-slim`;
-- `vendor` e `node_modules` de uma execução anterior, com locks idênticos.
+- `vendor` e `node_modules` de execução anterior, com `composer.lock`/`package-lock.json` idênticos.
+
+**Novo arquivo `LeadWhatsappConversationCommercialTest.php` (9 testes, 65 assertions):**
+
+1. `leads/edit` entrega ao cabeçalho: nome, empresa, cidade, WhatsApp, status, responsável, `statuses`, `lostReasons` e destino normalizado;
+2. mudança de estágio pela conversa usa o endpoint existente e registra "pela conversa WhatsApp" com usuário e status;
+3. sem `origin` (ou `origin=kanban`) o texto continua "pelo Kanban";
+4. "Perdido" pela conversa exige motivo e registra o motivo;
+5. `origin` desconhecido/não-string e status inexistente → erro de validação, lead intacto (3 casos);
+6. sem login → login; `reader` → 403;
+7. a nota de mudança de estágio não aparece na conversa nem conta como não lida.
 
 | Validação | Resultado |
 |---|---|
-| `--filter=LeadWhatsappConversation` (novos + existentes) | **42 passed (188 assertions)** |
-| `--filter="WhatsappExternalOutbound\|WhatsappInbound\|WhatsappActivity\|WhatsappMessageStatus\|LeadWhatsapp"` | **228 passed (932 assertions)** |
-| Suíte completa | **354 passed, 1 failed**. A falha é `BlogTest > administrator can upload blog images` (`imagejpeg` indisponível na imagem). É pré-existente e já aparecia no CRM-WA-06 |
-| `pint --test` (controller, request, teste, rotas) | **PASS** |
+| `--filter=LeadWhatsappConversationCommercial` | **9 passed (65 assertions)** |
+| `--filter="Whatsapp\|LeadManagement"` (WhatsApp + fluxo de leads/Kanban) | **317 passed (1448 assertions)** |
+| Suíte completa | **363 passed, 1 failed**. A falha é `BlogTest > administrator can upload blog images` (`imagejpeg` indisponível na imagem). É pré-existente e igual à da Fase 1 |
+| `pint --test` (`LeadController`, teste novo) | **PASS** |
 | `wayfinder:generate --with-form` + `tsc --noEmit` | **0 erros** |
-| ESLint + Prettier (`lead-whatsapp-conversation.tsx`, `whatsapp-message-status.tsx`) | **OK**. O Prettier foi aplicado |
+| ESLint (4 arquivos TS alterados) | **OK** |
+| Prettier `--check` (componente, lib, `form.tsx`) | **OK** |
+
+Sobre o Prettier em `edit.tsx`: o arquivo já tinha trechos fora do padrão antes desta tarefa. Rodar `--write` reformataria cerca de 90 linhas não relacionadas, então apliquei só a mudança de props (4 linhas) e deixei a formatação antiga como estava.
+
+Não há test runner de frontend no projeto. Enter/Shift+Enter, trava de duplo envio e substituição de variáveis foram validados por tipo/lint e ficam no roteiro E2E abaixo.
 
 ## Migrations
 
@@ -170,26 +133,26 @@ O ambiente foi uma cópia do working tree na scratchpad, em containers `docker r
 
 ## Riscos e limitações
 
-1. **Índice:** o polling filtra por `lead_id` + `updated_at`, e não há índice em `updated_at`. O índice `lead_id` limita a varredura às atividades do lead, o que basta para o volume atual. Se um lead acumular milhares de atividades, avaliar o índice (`lead_id`, `updated_at`), que exigiria migration.
-2. **Relógio:** o cursor usa o relógio do app, e o `updated_at` também. Com vários containers web, uma diferença de relógio acima de 2 s poderia perder uma mudança. O `reset`/recarga por visibilidade atenua. Mitigação futura: cursor baseado em `max(updated_at)` do banco.
-3. **Carga:** 12 req/min por aba aberta. O throttle subiu para 120/min por usuário, o que comporta cerca de 10 abas.
-4. **Histórico e ACK:** mudanças de ACK em mensagens antigas carregadas via histórico são percebidas pelo incremental. Após um `reset`, mudanças anteriores a ele fora da página recente não são reaplicadas (caso raro).
-5. **Ordem:** segue `created_at` do CRM, não o `timestamp` do WhatsApp (limitação herdada do CRM-WA-06).
-6. **"Novas mensagens":** conta também outbound vinda do celular ou de outra aba, não só inbound.
-7. **Sem dono por lead:** a autorização é por papel (admin), como no restante do CRM.
+1. **Templates locais:** follow-up e primeiro contato estão no código. A edição de apresentação em Configurações fica no `localStorage` de cada navegador (limitação pré-existente). Compartilhar entre operadores exige a tabela de templates já prevista.
+2. **Variáveis limitadas** a nome, empresa e cidade. `{{produto}}` ou outras exigiriam só uma linha na lib, desde que o campo exista.
+3. **Recarga do lead ao mudar estágio/enviar:** o `only: ['lead']` reexecuta `LeadController@edit`, que marca as inbound pendentes como lidas. Isso já acontecia no envio desde o CRM-WA-05, então não é regressão.
+4. **Mesma página, dois lugares para o status:** o formulário principal e a conversa ficam sincronizados após salvar. Um status alterado mas **não salvo** no formulário principal é substituído quando o estágio muda pela conversa.
+5. **Texto com `{{...}}` legítimo** (ex.: o operador quer mandar chaves duplas) fica bloqueado. É um caso raro, e basta remover as chaves.
+6. **Autorização** continua por papel (admin), sem dono por lead (limitação herdada).
 
 ## Roteiro manual de validação E2E
 
 Validar após o deploy, que **não foi feito**.
 
-1. Abrir um lead com conversa. A conversa abre posicionada no fim, com separadores de data e direção em cada bolha.
-2. **Inbound:** o cliente envia uma mensagem. Em até cerca de 5 s, ela aparece à esquerda com "Nova", sem reload. No DevTools, só há chamadas `messages?since=…`.
-3. Em outra aba, a listagem de leads não mostra o badge desse lead depois do `markRead`. Com a aba da conversa oculta, a mensagem continua não lida até voltar à aba.
-4. **Envio pelo CRM:** enviar pelo card. A bolha aparece à direita como "Pendente" ou "Enviada" e evolui para "Entregue" e depois "Lida" sem reload. Deve haver uma única bolha.
-5. **Celular:** enviar pelo aparelho da sessão. A mensagem aparece à direita.
-6. **Scroll:** rolar para cima e receber uma mensagem. A posição se mantém e aparece "1 nova mensagem ↓". Clicar leva ao fim e o botão some.
-7. **Histórico:** em um lead com mais de 100 mensagens, clicar em "Carregar mensagens anteriores". As mensagens antigas entram no topo sem pular a leitura e sem duplicar. O botão some ao chegar ao início.
-8. **Vazio:** em um lead sem mensagens, aparece o estado vazio. Sem WhatsApp válido, o envio fica desabilitado.
-9. **Falha:** uma mensagem com ACK ERROR aparece como "Falhou".
-10. **Navegação:** sair da tela do lead. No DevTools, o polling para.
-11. **Acesso:** um usuário não admin recebe 403 em `leads/{id}/whatsapp/messages`.
+1. **Cabeçalho:** abrir um lead com contato, cidade e responsável. A conversa mostra nome, empresa · cidade, WhatsApp formatado, responsável e estágio atual. Em um lead sem nome: "Contato sem nome". Com número inválido: "(inválido)".
+2. **Enter/Shift+Enter:** digitar, usar Shift+Enter (quebra a linha) e depois Enter. Envia uma única vez, o campo limpa e a bolha aparece à direita.
+3. **Duplo envio:** pressionar Enter várias vezes rápido ou clicar repetidamente. Só uma mensagem chega ao cliente (conferir no celular e no DevTools: um único POST).
+4. **Falha:** desabilitar o WhatsApp em Configurações > Leads e enviar. O erro aparece e o texto continua no campo. Reabilitar e enviar de novo: sucesso e o campo limpa. Opcional: sem rede (DevTools offline) → mensagem de conexão, texto mantido.
+5. **Mensagens rápidas:** escolher "Primeiro contato". O texto aparece no campo com o nome da empresa e **não é enviado**. Editar e enviar manualmente.
+6. **Variável ausente:** em um lead sem contato, escolher "Follow-up após apresentação". O aviso "Complete antes de enviar: {{nome}}" aparece e o botão fica desabilitado. Substituir `{{nome}}` libera o envio.
+7. **Apresentação editada:** alterar o texto do VetorOS em Configurações > Leads e salvar. Na conversa, "Apresentação VetorOS" usa o texto editado.
+8. **Substituição:** com texto no campo, escolher um template. A tela pede confirmação. Cancelar mantém o texto.
+9. **Estágio:** mudar de Contatado para Interessado na conversa. Salva sem reload, o Histórico mostra "...pela conversa WhatsApp" e o select do formulário principal já mostra "Interessado". Salvar o formulário principal não reverte o status.
+10. **Perdido:** escolher "Perdido". Aparece o motivo e o botão Salvar só habilita com motivo. Depois de salvar, o Kanban mostra o lead em Perdido.
+11. **Kanban:** arrastar um card na listagem. O histórico continua dizendo "pelo Kanban".
+12. **Regressão da Fase 1:** receber inbound (aparece em até ~5 s com "Nova"), ver o ACK evoluir (Enviada → Entregue → Lida), enviar pelo celular (aparece à direita), rolar para cima e receber (indicador "1 nova mensagem ↓"), "Carregar mensagens anteriores" em lead com mais de 100 mensagens e sair da tela (polling para).

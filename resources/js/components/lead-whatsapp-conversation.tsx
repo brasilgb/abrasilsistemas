@@ -1,10 +1,21 @@
-import { Form } from '@inertiajs/react';
-import { ArrowDown, MessageCircle, Send } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import {
+    ArrowDown,
+    Building2,
+    ChevronDown,
+    MessageCircle,
+    MessageSquareText,
+    Phone,
+    Send,
+    UserRound,
+} from 'lucide-react';
+import type { KeyboardEvent } from 'react';
 import {
     Fragment,
     useCallback,
     useEffect,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
 } from 'react';
@@ -18,6 +29,14 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Spinner } from '@/components/ui/spinner';
 import WhatsappMessageStatus, {
     WhatsappMessageDirection,
@@ -26,7 +45,18 @@ import type {
     WhatsappMessageDirectionValue,
     WhatsappMessageStatusValue,
 } from '@/components/whatsapp-message-status';
+import {
+    fillWhatsappVariables,
+    readWhatsappMessages,
+    unresolvedWhatsappVariables,
+    whatsappQuickMessages,
+} from '@/lib/lead-whatsapp-messages';
+import type {
+    WhatsappMessageLead,
+    WhatsappQuickMessage,
+} from '@/lib/lead-whatsapp-messages';
 import { cn } from '@/lib/utils';
+import { status as leadStatusRoute } from '@/routes/leads';
 import {
     messages as messagesRoute,
     read as readRoute,
@@ -59,8 +89,19 @@ type ChangesResponse = {
     cursor: number;
 };
 
+/** Dados comerciais do lead já carregados na tela de edição. */
+export type ConversationLead = WhatsappMessageLead & {
+    id: number;
+    whatsapp: string | null;
+    status: string;
+    lost_reason: string | null;
+    user?: { id: number; name: string } | null;
+};
+
 type Props = {
-    leadId: number;
+    lead: ConversationLead;
+    statuses: Record<string, string>;
+    lostReasons: Record<string, string>;
     destination: string | null;
     /** Inbound que chegaram não lidas antes da abertura da página (a abertura já as marcou como lidas). */
     initialUnreadIds: number[];
@@ -134,15 +175,158 @@ async function fetchJson<T>(url: string): Promise<T> {
     return (await response.json()) as T;
 }
 
+function formatWhatsapp(value: string) {
+    const digits = value.replace(/\D+/g, '');
+    const local =
+        digits.length > 11 && digits.startsWith('55')
+            ? digits.slice(2)
+            : digits;
+
+    if (local.length === 11) {
+        return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+    }
+
+    if (local.length === 10) {
+        return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+    }
+
+    return value;
+}
+
+const statusSelectClass =
+    'h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50';
+
+/**
+ * Estágio do funil a partir da conversa. Reutiliza o PATCH leads/{lead}/status do Kanban
+ * (mesma validação, mesmo registro no histórico), só com a origem "whatsapp".
+ */
+function ConversationLeadStatus({
+    lead,
+    statuses,
+    lostReasons,
+}: {
+    lead: ConversationLead;
+    statuses: Record<string, string>;
+    lostReasons: Record<string, string>;
+}) {
+    const [status, setStatus] = useState(lead.status);
+    const [lostReason, setLostReason] = useState(lead.lost_reason ?? '');
+    const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const needsLostReason = status === 'lost';
+    const changed =
+        status !== lead.status ||
+        (needsLostReason && lostReason !== (lead.lost_reason ?? ''));
+
+    const save = (nextStatus: string, nextLostReason: string) => {
+        router.patch(
+            leadStatusRoute.url({ lead: lead.id }),
+            {
+                status: nextStatus,
+                lost_reason: nextStatus === 'lost' ? nextLostReason : null,
+                origin: 'whatsapp',
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['lead'],
+                onStart: () => setSaving(true),
+                onSuccess: () => setErrors({}),
+                onError: (validation) => setErrors(validation),
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
+
+    const onStatusChange = (nextStatus: string) => {
+        setStatus(nextStatus);
+        setErrors({});
+
+        // "Perdido" pede o motivo antes de salvar; os demais estágios salvam na hora.
+        if (nextStatus !== 'lost' && nextStatus !== lead.status) {
+            save(nextStatus, '');
+        }
+    };
+
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="whatsapp_conversation_status">
+                Estágio do lead
+            </label>
+            <select
+                id="whatsapp_conversation_status"
+                value={status}
+                disabled={saving}
+                onChange={(event) => onStatusChange(event.target.value)}
+                className={statusSelectClass}
+            >
+                {Object.entries(statuses).map(([value, label]) => (
+                    <option key={value} value={value}>
+                        {label}
+                    </option>
+                ))}
+            </select>
+            {needsLostReason && (
+                <>
+                    <label
+                        className="sr-only"
+                        htmlFor="whatsapp_conversation_lost_reason"
+                    >
+                        Motivo de perda
+                    </label>
+                    <select
+                        id="whatsapp_conversation_lost_reason"
+                        value={lostReason}
+                        disabled={saving}
+                        onChange={(event) => setLostReason(event.target.value)}
+                        className={statusSelectClass}
+                    >
+                        <option value="">Motivo de perda</option>
+                        {Object.entries(lostReasons).map(([value, label]) => (
+                            <option key={value} value={value}>
+                                {label}
+                            </option>
+                        ))}
+                    </select>
+                    {changed && (
+                        <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 text-xs"
+                            disabled={saving || lostReason === ''}
+                            onClick={() => save(status, lostReason)}
+                        >
+                            Salvar
+                        </Button>
+                    )}
+                </>
+            )}
+            {saving && <Spinner className="size-3.5" />}
+            <InputError message={errors.status ?? errors.lost_reason} />
+        </div>
+    );
+}
+
 export default function LeadWhatsappConversation({
-    leadId,
+    lead,
+    statuses,
+    lostReasons,
     destination,
     initialUnreadIds,
 }: Props) {
+    const leadId = lead.id;
     const [messages, setMessages] = useState<ConversationMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
+    const [sendErrors, setSendErrors] = useState<Record<string, string>>({});
+    // Textos de apresentação por produto (com a edição salva em Configurações > Leads).
+    const [presentations] = useState(readWhatsappMessages);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    // Trava síncrona contra duplo envio (Enter repetido antes do re-render).
+    const sendingRef = useRef(false);
     const [hasOlder, setHasOlder] = useState(false);
     const [loadingOlder, setLoadingOlder] = useState(false);
     // Mensagens que chegaram enquanto o usuário lia o histórico (sem rolar sozinho).
@@ -400,16 +584,156 @@ export default function LeadWhatsappConversation({
         }
     };
 
+    const quickMessages = useMemo(
+        () => whatsappQuickMessages(presentations),
+        [presentations],
+    );
+    const unresolved = useMemo(
+        () => unresolvedWhatsappVariables(message),
+        [message],
+    );
+    const canSend =
+        Boolean(destination) &&
+        !sending &&
+        message.trim() !== '' &&
+        unresolved.length === 0;
+
+    /** Coloca o texto pronto no campo para revisão. Nunca envia sozinho. */
+    const applyQuickMessage = (quick: WhatsappQuickMessage) => {
+        if (
+            message.trim() !== '' &&
+            !window.confirm('Substituir o texto que está sendo escrito?')
+        ) {
+            return;
+        }
+
+        setMessage(
+            fillWhatsappVariables(quick.text, lead).slice(
+                0,
+                MESSAGE_MAX_LENGTH,
+            ),
+        );
+        setSendErrors({});
+        window.requestAnimationFrame(() => textareaRef.current?.focus());
+    };
+
+    const send = () => {
+        if (!canSend || sendingRef.current) {
+            return;
+        }
+
+        sendingRef.current = true;
+        setSending(true);
+        setSendErrors({});
+
+        router.post(
+            sendLeadWhatsapp.url({ lead: leadId }),
+            { message },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['lead'],
+                onSuccess: () => {
+                    // Só limpa depois do envio confirmado; em erro o texto continua no campo.
+                    setMessage('');
+                    forceStickToBottom.current = true;
+                    void refresh();
+                },
+                onError: (validation) => setSendErrors(validation),
+                onHttpException: (response) => {
+                    setSendErrors({
+                        message:
+                            response.status === 429
+                                ? 'Muitos envios seguidos. Aguarde um instante e tente de novo.'
+                                : 'Não foi possível enviar a mensagem. O texto foi mantido; tente de novo.',
+                    });
+
+                    return false;
+                },
+                onNetworkError: () => {
+                    setSendErrors({
+                        message:
+                            'Sem conexão com o servidor. O texto foi mantido; tente de novo.',
+                    });
+
+                    return false;
+                },
+                onFinish: () => {
+                    sendingRef.current = false;
+                    setSending(false);
+                },
+            },
+        );
+    };
+
+    const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        // Enter envia; Shift+Enter quebra a linha. Ignora o Enter que confirma um IME.
+        if (
+            event.key !== 'Enter' ||
+            event.shiftKey ||
+            event.nativeEvent.isComposing
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+        send();
+    };
+
+    const contactName = lead.contact_name?.trim();
+
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="gap-3">
                 <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="size-5" />
                     Conversa WhatsApp
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="sr-only">
                     Mensagens enviadas e recebidas pela integração do CRM.
                 </CardDescription>
+                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                    <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                            <UserRound
+                                className="size-4 shrink-0 text-muted-foreground"
+                                aria-hidden="true"
+                            />
+                            {contactName || 'Contato sem nome'}
+                        </p>
+                        <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                            <Building2
+                                className="size-3.5 shrink-0"
+                                aria-hidden="true"
+                            />
+                            {lead.company_name}
+                            {lead.city ? ` · ${lead.city}` : ''}
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                            <Phone className="size-3.5" aria-hidden="true" />
+                            {lead.whatsapp
+                                ? formatWhatsapp(destination ?? lead.whatsapp)
+                                : 'Sem WhatsApp'}
+                            {lead.whatsapp && !destination && (
+                                <span className="text-destructive">
+                                    (inválido)
+                                </span>
+                            )}
+                        </span>
+                        <span>
+                            Responsável: {lead.user?.name ?? 'Sem responsável'}
+                        </span>
+                    </div>
+                    {/* key: o lead recarregado (aqui ou pelo formulário da página) reinicia o seletor. */}
+                    <ConversationLeadStatus
+                        key={`${lead.status}:${lead.lost_reason ?? ''}`}
+                        lead={lead}
+                        statuses={statuses}
+                        lostReasons={lostReasons}
+                    />
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="relative">
@@ -554,74 +878,121 @@ export default function LeadWhatsappConversation({
 
                 {error && <p className="text-xs text-destructive">{error}</p>}
 
-                <Form
-                    action={sendLeadWhatsapp({ lead: leadId })}
-                    method="post"
-                    options={{
-                        preserveScroll: true,
-                        preserveState: true,
-                        only: ['lead'],
+                <form
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        send();
                     }}
-                    onSuccess={() => {
-                        setMessage('');
-                        forceStickToBottom.current = true;
-                        void refresh();
-                    }}
-                    disableWhileProcessing
                     className="space-y-2"
+                    aria-busy={sending}
                 >
-                    {({ processing, errors }) => (
-                        <>
-                            <textarea
-                                id="whatsapp_conversation_message"
-                                name="message"
-                                aria-label="Mensagem"
-                                required
-                                disabled={!destination}
-                                maxLength={MESSAGE_MAX_LENGTH}
-                                value={message}
-                                onChange={(event) =>
-                                    setMessage(event.target.value)
-                                }
-                                placeholder={
-                                    destination
-                                        ? 'Escreva uma mensagem...'
-                                        : 'Cadastre um WhatsApp válido para enviar mensagens'
-                                }
-                                className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                            />
-                            <InputError message={errors.message} />
-                            <InputError message={errors.whatsapp} />
-                            <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs text-muted-foreground">
-                                    {destination
-                                        ? `${message.length}/${MESSAGE_MAX_LENGTH}`
-                                        : 'Cadastre um WhatsApp válido para enviar mensagens'}
-                                </p>
-                                <Button
-                                    type="submit"
-                                    disabled={
-                                        !destination ||
-                                        processing ||
-                                        message.trim() === ''
-                                    }
-                                >
-                                    {processing ? (
-                                        <>
-                                            <Spinner />
-                                            Enviando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="size-4" />
-                                            Enviar
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </>
+                    <textarea
+                        ref={textareaRef}
+                        id="whatsapp_conversation_message"
+                        name="message"
+                        aria-label="Mensagem"
+                        aria-describedby="whatsapp_conversation_hint"
+                        required
+                        disabled={!destination}
+                        readOnly={sending}
+                        maxLength={MESSAGE_MAX_LENGTH}
+                        value={message}
+                        onChange={(event) => {
+                            setMessage(event.target.value);
+
+                            if (Object.keys(sendErrors).length > 0) {
+                                setSendErrors({});
+                            }
+                        }}
+                        onKeyDown={onComposerKeyDown}
+                        placeholder={
+                            destination
+                                ? 'Escreva uma mensagem...'
+                                : 'Cadastre um WhatsApp válido para enviar mensagens'
+                        }
+                        className={cn(
+                            'min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+                            sending && 'opacity-70',
+                            (sendErrors.message || sendErrors.whatsapp) &&
+                                'border-destructive',
+                        )}
+                    />
+                    {unresolved.length > 0 && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                            Complete antes de enviar: {unresolved.join(', ')}{' '}
+                            (sem valor no lead).
+                        </p>
                     )}
-                </Form>
+                    <InputError message={sendErrors.message} />
+                    <InputError message={sendErrors.whatsapp} />
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={!destination || sending}
+                                    >
+                                        <MessageSquareText className="size-4" />
+                                        Mensagens rápidas
+                                        <ChevronDown className="size-3.5 opacity-60" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="start"
+                                    className="w-64"
+                                >
+                                    {quickMessages.map((quick, index) => (
+                                        <Fragment key={quick.key}>
+                                            {(index === 0 ||
+                                                quickMessages[index - 1]
+                                                    .group !== quick.group) && (
+                                                <>
+                                                    {index > 0 && (
+                                                        <DropdownMenuSeparator />
+                                                    )}
+                                                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                                        {quick.group}
+                                                    </DropdownMenuLabel>
+                                                </>
+                                            )}
+                                            <DropdownMenuItem
+                                                onSelect={() =>
+                                                    applyQuickMessage(quick)
+                                                }
+                                            >
+                                                {quick.label}
+                                            </DropdownMenuItem>
+                                        </Fragment>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <p
+                                id="whatsapp_conversation_hint"
+                                className="hidden text-xs text-muted-foreground sm:block"
+                            >
+                                {destination
+                                    ? `Enter envia · Shift+Enter quebra linha · ${message.length}/${MESSAGE_MAX_LENGTH}`
+                                    : 'Cadastre um WhatsApp válido para enviar mensagens'}
+                            </p>
+                        </div>
+                        <Button type="submit" disabled={!canSend}>
+                            {sending ? (
+                                <>
+                                    <Spinner />
+                                    Enviando...
+                                </>
+                            ) : (
+                                <>
+                                    <Send className="size-4" />
+                                    Enviar
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </form>
             </CardContent>
         </Card>
     );

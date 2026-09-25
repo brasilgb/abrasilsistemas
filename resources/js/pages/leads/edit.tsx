@@ -358,7 +358,9 @@ export default function EditLead({
                         </Card>
 
                         <LeadWhatsappConversation
-                            leadId={lead.id}
+                            lead={lead}
+                            statuses={statuses}
+                            lostReasons={lostReasons}
                             destination={whatsappDestination}
                             initialUnreadIds={(lead.activities ?? [])
                                 .filter(
