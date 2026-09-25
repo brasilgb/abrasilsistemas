@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LogWhatsappActivityRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 
 class WhatsappActivityController extends Controller
@@ -19,13 +20,35 @@ class WhatsappActivityController extends Controller
     {
         $data = $request->validated();
         $messageId = $data['message_id'] ?? null;
+
+        if ($messageId === null) {
+            return $this->record($lead, $data, null);
+        }
+
+        // O message.any fromMe da mesma mensagem pode chegar ao /outbound-external antes ou ao
+        // mesmo tempo: os dois endpoints usam o mesmo lock e a mesma checagem global por id.
+        try {
+            return LeadActivity::whatsappMessageLock($messageId)
+                ->block(5, fn () => $this->record($lead, $data, $messageId));
+        } catch (LockTimeoutException) {
+            return response()->json([
+                'success' => false,
+                'reason' => 'processing',
+                'message' => 'A mensagem ainda está sendo processada. Tente novamente.',
+            ], 409);
+        }
+    }
+
+    /**
+     * @param  array{message_id?: string|null, direction?: string|null, status?: string|null, message: string}  $data
+     */
+    private function record(Lead $lead, array $data, ?string $messageId): JsonResponse
+    {
         $direction = $data['direction'] ?? LeadActivity::DIRECTION_OUTBOUND;
         $inbound = $direction === LeadActivity::DIRECTION_INBOUND;
 
         if ($messageId !== null) {
-            $existing = $lead->activities()
-                ->where('provider_message_id', $messageId)
-                ->first();
+            $existing = LeadActivity::findWhatsappMessage($messageId);
 
             if ($existing !== null) {
                 return response()->json([

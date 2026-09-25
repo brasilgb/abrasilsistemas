@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'lead_id',
@@ -79,6 +81,32 @@ class LeadActivity extends Model
         ...self::MESSAGE_STATUS_PROGRESSION,
         self::MESSAGE_STATUS_ERROR,
     ];
+
+    /**
+     * Prefixo do lock por provider_message_id. É o mesmo usado pelo WhatsappInboundController,
+     * para que /inbound, /log e /outbound-external se serializem pela mesma mensagem.
+     */
+    public const WHATSAPP_MESSAGE_LOCK_PREFIX = 'whatsapp-inbound:';
+
+    /**
+     * Lock da mensagem WhatsApp: provider_message_id não é UNIQUE no banco, então a checagem de
+     * duplicidade e a inserção precisam rodar dentro dele.
+     */
+    public static function whatsappMessageLock(string $providerMessageId): Lock
+    {
+        return Cache::lock(self::WHATSAPP_MESSAGE_LOCK_PREFIX.sha1($providerMessageId), 10);
+    }
+
+    /**
+     * Atividade WhatsApp já registrada com o id do provedor, em qualquer lead.
+     */
+    public static function findWhatsappMessage(string $providerMessageId): ?self
+    {
+        return self::query()
+            ->where('type', 'whatsapp')
+            ->where('provider_message_id', $providerMessageId)
+            ->first();
+    }
 
     protected function casts(): array
     {

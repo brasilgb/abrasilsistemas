@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ProspectImportController;
 use App\Http\Controllers\Api\WhatsappActivityController;
+use App\Http\Controllers\Api\WhatsappExternalOutboundController;
 use App\Http\Controllers\Api\WhatsappInboundController;
 use App\Http\Controllers\Api\WhatsappMessageStatusController;
 use Illuminate\Support\Facades\Route;
@@ -21,3 +22,7 @@ Route::patch('whatsapp/messages/{providerMessageId}/status', [WhatsappMessageSta
 Route::post('whatsapp/inbound', [WhatsappInboundController::class, 'store'])
     ->middleware(['throttle:120,1', 'prospect.token'])
     ->name('api.whatsapp.inbound');
+
+Route::post('whatsapp/outbound-external', [WhatsappExternalOutboundController::class, 'store'])
+    ->middleware(['throttle:120,1', 'prospect.token'])
+    ->name('api.whatsapp.outbound-external');
