@@ -88,6 +88,7 @@ test('a valid token reads the automation state of a lead', function () {
                     'eligible' => false,
                     'automation_key' => null,
                     'message' => null,
+                    'last_execution' => null,
                 ],
             ],
         ]);

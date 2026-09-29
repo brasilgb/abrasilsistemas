@@ -47,6 +47,8 @@ class LeadAutomationStateController extends Controller
                     'eligible' => $lead->isTrialExpiredAutomationCandidate(),
                     'automation_key' => $trialExpiredKey,
                     'message' => $lead->trialExpirationMessage(),
+                    // CRM-WA-28: última execução, envio confirmado e resposta do cliente (ou null).
+                    'last_execution' => $lead->lastTrialExpiredExecution(),
                 ],
             ],
         ]);

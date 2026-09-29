@@ -137,6 +137,7 @@ test('the automation state exposes the expiration message and the real eligibili
             'eligible' => true,
             'automation_key' => 'trial_expired:2026-09-27',
             'message' => CANDIDATES_TEXT,
+            'last_execution' => null,
         ]);
 
     $this->product->update(['trial_expiration_text' => null]);
@@ -148,6 +149,7 @@ test('the automation state exposes the expiration message and the real eligibili
             'eligible' => false,
             'automation_key' => 'trial_expired:2026-09-27',
             'message' => null,
+            'last_execution' => null,
         ]);
 });
 

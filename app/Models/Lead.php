@@ -682,6 +682,55 @@ class Lead extends Model
     }
 
     /**
+     * Última execução da automação de teste vencido e a resposta do cliente a ela (CRM-WA-28),
+     * ou null sem execução trial_expired. Somente leitura; não olha o texto das mensagens.
+     * sent_at = mensagem vinculada pelo /whatsapp/log (sem vínculo: envio não confirmado, nunca
+     * respondida). Respondida = a mensagem seguinte da conversa, na ordem (created_at, id), é uma
+     * inbound: inbound anterior ao envio não conta e uma outbound posterior (manual, pelo CRM ou
+     * pelo celular) passa a ser a mensagem respondida. replied_at = essa primeira inbound.
+     *
+     * @return array{automation_key: string, executed_at: CarbonInterface, sent_at: ?CarbonInterface, replied: bool, replied_at: ?CarbonInterface}|null
+     */
+    public function lastTrialExpiredExecution(): ?array
+    {
+        // Prefixo trial_expired: por faixa (';' é o caractere seguinte a ':'), sem o curinga _ do LIKE.
+        $execution = LeadAutomationExecution::query()
+            ->where('lead_id', $this->id)
+            ->where('automation_key', '>=', 'trial_expired:')
+            ->where('automation_key', '<', 'trial_expired;')
+            ->with('activity')
+            ->orderByDesc('executed_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($execution === null) {
+            return null;
+        }
+
+        $sent = $execution->activity;
+        $next = $sent === null ? null : $this->activities()
+            ->conversation()
+            ->where(fn (Builder $later) => $later
+                ->where('created_at', '>', $sent->created_at)
+                ->orWhere(fn (Builder $sameSecond) => $sameSecond
+                    ->where('created_at', $sent->created_at)
+                    ->where('id', '>', $sent->id)))
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->first(['id', 'direction', 'created_at']);
+
+        $replied = $next?->direction === LeadActivity::DIRECTION_INBOUND;
+
+        return [
+            'automation_key' => $execution->automation_key,
+            'executed_at' => $execution->executed_at,
+            'sent_at' => $sent?->created_at,
+            'replied' => $replied,
+            'replied_at' => $replied ? $next->created_at : null,
+        ];
+    }
+
+    /**
      * Leads na situação de teste informada. Mesma regra de trial_state; situação desconhecida não filtra.
      *
      * @param  Builder<self>  $query
@@ -926,6 +975,7 @@ class Lead extends Model
         return $this->belongsTo(ProspectProduct::class);
     }
 
+    /** @return HasMany<LeadActivity, $this> */
     public function activities(): HasMany
     {
         return $this->hasMany(LeadActivity::class);

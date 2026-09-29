@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,8 +15,10 @@ use Illuminate\Database\UniqueConstraintViolationException;
  *
  * @property int $lead_id
  * @property string $automation_key
+ * @property int|null $lead_activity_id
+ * @property CarbonInterface $executed_at
  */
-#[Fillable(['lead_id', 'automation_key', 'executed_at'])]
+#[Fillable(['lead_id', 'automation_key', 'executed_at', 'lead_activity_id'])]
 class LeadAutomationExecution extends Model
 {
     public const KEY_MAX_LENGTH = 150;
@@ -39,6 +42,16 @@ class LeadAutomationExecution extends Model
     }
 
     /**
+     * Mensagem WhatsApp enviada por esta execução (CRM-WA-28), gravada pelo /whatsapp/log.
+     *
+     * @return BelongsTo<LeadActivity, $this>
+     */
+    public function activity(): BelongsTo
+    {
+        return $this->belongsTo(LeadActivity::class, 'lead_activity_id');
+    }
+
+    /**
      * Reserva atômica: true só para quem gravou a chave. Sem SELECT prévio; a colisão vem do
      * UNIQUE (lead_id, automation_key), então duas requisições simultâneas não reservam as duas.
      */
@@ -55,5 +68,30 @@ class LeadAutomationExecution extends Model
         }
 
         return true;
+    }
+
+    /**
+     * Vincula a mensagem outbound à execução (lead, chave) ainda sem mensagem (CRM-WA-28). O UPDATE
+     * condicional é atômico: nunca troca um vínculo existente, então repetições e a mesma mensagem
+     * registrada de novo não mudam nada. Sem execução reservada para a chave, não faz nada. Mensagem
+     * já vinculada a outra execução: o UNIQUE de lead_activity_id recusa e nada muda.
+     */
+    public static function linkActivity(Lead $lead, string $automationKey, LeadActivity $activity): bool
+    {
+        if ((int) $activity->lead_id !== (int) $lead->id
+            || $activity->type !== 'whatsapp'
+            || $activity->direction !== LeadActivity::DIRECTION_OUTBOUND) {
+            return false;
+        }
+
+        try {
+            return static::query()
+                ->where('lead_id', $lead->id)
+                ->where('automation_key', $automationKey)
+                ->whereNull('lead_activity_id')
+                ->update(['lead_activity_id' => $activity->id]) === 1;
+        } catch (UniqueConstraintViolationException) {
+            return false;
+        }
     }
 }
