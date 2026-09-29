@@ -10,10 +10,12 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { leadProductLabel } from '@/pages/leads/form';
 import { dashboard } from '@/routes';
-import { edit, index as leadsIndex } from '@/routes/leads';
+import { awaitingReply, edit, index as leadsIndex } from '@/routes/leads';
 import { Head, Link } from '@inertiajs/react';
 import {
+    AlertOctagon,
     AlertTriangle,
     ArrowRight,
     BarChart3,
@@ -22,6 +24,7 @@ import {
     CheckCircle2,
     CircleDollarSign,
     ListTodo,
+    MessageCircle,
     UsersRound,
 } from 'lucide-react';
 
@@ -30,6 +33,7 @@ type LeadSummary = {
     company_name: string;
     contact_name?: string | null;
     product: string;
+    prospect_product?: { name: string } | null;
     status: string;
     lead_score: number;
     priority: 'high' | 'medium' | 'low';
@@ -62,8 +66,10 @@ type Props = {
             overdue: number;
             today: number;
         };
+        awaiting_reply: number;
+        awaiting_reply_critical: number;
         by_status: Record<string, number>;
-        by_product: Record<string, number>;
+        by_product: { key: string; label: string; total: number }[];
     };
     recentLeads: LeadSummary[];
     priorityLeads: LeadSummary[];
@@ -246,6 +252,45 @@ export default function Dashboard({
                     <div className="grid gap-4">
                         <Card>
                             <CardHeader className="pb-2">
+                                <Link
+                                    href={awaitingReply()}
+                                    className="-m-2 grid gap-1.5 rounded-md p-2 transition hover:bg-muted/50"
+                                >
+                                    <CardDescription>
+                                        Aguardando resposta no WhatsApp
+                                    </CardDescription>
+                                    <CardTitle className="flex items-center gap-2 text-3xl">
+                                        <MessageCircle className="size-6 text-emerald-600" />
+                                        {metrics.awaiting_reply}
+                                    </CardTitle>
+                                </Link>
+                                <Link
+                                    href={awaitingReply({
+                                        query: { sla: 'critical' },
+                                    })}
+                                    className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:underline"
+                                >
+                                    <AlertOctagon
+                                        className={
+                                            metrics.awaiting_reply_critical
+                                                ? 'size-4 text-red-600'
+                                                : 'size-4'
+                                        }
+                                    />
+                                    <span>
+                                        <span className="font-medium text-foreground">
+                                            {metrics.awaiting_reply_critical}
+                                        </span>{' '}
+                                        {metrics.awaiting_reply_critical === 1
+                                            ? 'crítico'
+                                            : 'críticos'}{' '}
+                                        aguardando resposta
+                                    </span>
+                                </Link>
+                            </CardHeader>
+                        </Card>
+                        <Card>
+                            <CardHeader className="pb-2">
                                 <CardDescription>
                                     Follow-ups atrasados
                                 </CardDescription>
@@ -272,15 +317,13 @@ export default function Dashboard({
                                     Produtos em prospecção
                                 </CardDescription>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    {Object.entries(products).map(
-                                        ([product, label]) => (
+                                    {metrics.by_product.map(
+                                        ({ key, label, total }) => (
                                             <Badge
-                                                key={product}
+                                                key={key}
                                                 variant="secondary"
                                             >
-                                                {label}:{' '}
-                                                {metrics.by_product[product] ??
-                                                    0}
+                                                {label}: {total}
                                             </Badge>
                                         ),
                                     )}
@@ -397,8 +440,10 @@ export default function Dashboard({
                                                     {lead.company_name}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {products[lead.product] ??
-                                                        lead.product}{' '}
+                                                    {leadProductLabel(
+                                                        lead,
+                                                        products,
+                                                    )}{' '}
                                                     ·{' '}
                                                     {formatDate(
                                                         lead.created_at,

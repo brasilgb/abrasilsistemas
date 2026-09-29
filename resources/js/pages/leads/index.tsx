@@ -16,7 +16,11 @@ import AppPagination, { PaginationSummary } from '@/components/app-pagination';
 import type { PaginationData } from '@/components/app-pagination';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { LeadFollowUpSummary } from '@/components/lead-follow-up';
+import {
+    ActivityFollowUpField,
+    LeadFollowUpSummary,
+} from '@/components/lead-follow-up';
+import { LeadTrialBadge } from '@/components/lead-trial';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,12 +43,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WhatsappUnreadBadge } from '@/components/whatsapp-message-status';
 import {
+    leadWhatsappMessage,
     readWhatsappMessages,
     whatsappMessageTemplates,
 } from '@/lib/lead-whatsapp-messages';
 import { cn } from '@/lib/utils';
+import { leadProductLabel } from '@/pages/leads/form';
 import type { Lead } from '@/pages/leads/form';
-import { create, destroy, edit, index } from '@/routes/leads';
+import { awaitingReply, create, destroy, edit, index } from '@/routes/leads';
 
 type Paginated<T> = PaginationData & {
     data: T[];
@@ -61,6 +67,8 @@ type Props = {
         follow_up?: string;
         owner?: string;
     };
+    awaitingReplyTotal: number;
+    awaitingReplyCritical: number;
     kanbanLeads: Lead[];
     kanbanTotal: number;
     taskLeads: {
@@ -90,6 +98,9 @@ type Props = {
         by_status: Record<string, number>;
     };
     products: Record<string, string>;
+    productOptions: ProductFilterOption[];
+    /** Texto WhatsApp por ID de produto (CRM-WA-22), só dos produtos com texto. */
+    productWhatsappTexts: Record<number, string>;
     statuses: Record<string, string>;
     users: { id: number; name: string }[];
 };
@@ -100,14 +111,14 @@ function TaskColumn({
     leads,
     total,
     products,
-    whatsappMessages,
+    whatsappMessageFor,
 }: {
     title: string;
     description: string;
     leads: Lead[];
     total: number;
     products: Record<string, string>;
-    whatsappMessages: Record<string, string>;
+    whatsappMessageFor: (lead: Lead) => string;
 }) {
     return (
         <Card>
@@ -155,7 +166,7 @@ function TaskColumn({
                             <LeadActions
                                 lead={lead}
                                 products={products}
-                                whatsappMessages={whatsappMessages}
+                                whatsappMessageFor={whatsappMessageFor}
                             />
                         </div>
                     ))
@@ -208,7 +219,7 @@ function openWhatsapp(url: string) {
     whatsappWindow?.focus();
 }
 
-function statusClass(status: string) {
+export function statusClass(status: string) {
     return (
         {
             new: 'border-sky-200 bg-sky-50 text-sky-700',
@@ -253,14 +264,13 @@ function priorityClass(priority: string) {
 function LeadActions({
     lead,
     products,
-    whatsappMessages,
+    whatsappMessageFor,
 }: {
     lead: Lead;
     products: Record<string, string>;
-    whatsappMessages: Record<string, string>;
+    whatsappMessageFor: (lead: Lead) => string;
 }) {
-    const leadProduct = lead.product === 'vetorpet' ? 'vetorpet' : 'vetoros';
-    const whatsapp = whatsappUrl(lead.whatsapp, whatsappMessages[leadProduct]);
+    const whatsapp = whatsappUrl(lead.whatsapp, whatsappMessageFor(lead));
 
     return (
         <div className="flex justify-end gap-1">
@@ -269,7 +279,7 @@ function LeadActions({
                     type="button"
                     variant="outline"
                     size="icon"
-                    title={`Conversar sobre ${products[lead.product] ?? lead.product}`}
+                    title={`Conversar sobre ${leadProductLabel(lead, products)}`}
                     onClick={() => openWhatsapp(whatsapp)}
                 >
                     <MessageCircle className="size-4 text-emerald-600" />
@@ -304,16 +314,19 @@ function LeadKanbanCard({
     lostReasons,
     products,
     statuses,
-    whatsappMessages,
+    whatsappMessageFor,
     onDragStart,
 }: {
     lead: Lead;
     lostReasons: Record<string, string>;
     products: Record<string, string>;
     statuses: Record<string, string>;
-    whatsappMessages: Record<string, string>;
+    whatsappMessageFor: (lead: Lead) => string;
     onDragStart: (event: DragEvent<HTMLElement>, lead: Lead) => void;
 }) {
+    // Remonta o campo de próximo contato após salvar (volta para "Manter").
+    const [activityFormVersion, setActivityFormVersion] = useState(0);
+
     return (
         <article
             draggable
@@ -341,7 +354,7 @@ function LeadKanbanCard({
                     </p>
                 </div>
                 <Badge variant="secondary">
-                    {products[lead.product] ?? lead.product}
+                    {leadProductLabel(lead, products)}
                 </Badge>
             </div>
             <div className="mt-3 flex items-center gap-2">
@@ -370,13 +383,22 @@ function LeadKanbanCard({
                 )}
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
-                <Badge variant="outline" className={statusClass(lead.status)}>
-                    {statuses[lead.status] ?? lead.status}
-                </Badge>
+                <div className="flex min-w-0 flex-wrap items-center gap-1">
+                    <Badge
+                        variant="outline"
+                        className={statusClass(lead.status)}
+                    >
+                        {statuses[lead.status] ?? lead.status}
+                    </Badge>
+                    <LeadTrialBadge
+                        state={lead.trial_state}
+                        endsAt={lead.trial_ends_at}
+                    />
+                </div>
                 <LeadActions
                     lead={lead}
                     products={products}
-                    whatsappMessages={whatsappMessages}
+                    whatsappMessageFor={whatsappMessageFor}
                 />
             </div>
             <details className="mt-3 rounded-md border bg-muted/30 p-2">
@@ -386,6 +408,9 @@ function LeadKanbanCard({
                 <Form
                     action={`/leads/${lead.id}/activities`}
                     method="post"
+                    onSuccess={() =>
+                        setActivityFormVersion((version) => version + 1)
+                    }
                     className="mt-2 grid gap-2"
                 >
                     {({ processing, errors }) => (
@@ -429,11 +454,11 @@ function LeadKanbanCard({
                                     ),
                                 )}
                             </select>
-                            <Input
-                                name="next_follow_up_at"
-                                type="datetime-local"
-                                aria-label="Próximo contato"
-                                className="h-8 text-xs"
+                            <ActivityFollowUpField
+                                key={activityFormVersion}
+                                current={lead.next_follow_up_at}
+                                error={errors.next_follow_up_at}
+                                compact
                             />
                             <textarea
                                 name="description"
@@ -460,8 +485,11 @@ function LeadKanbanCard({
     );
 }
 
-const selectClass =
+export const selectClass =
     'flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none';
+
+/** Filtro Produto: id do catálogo, ou texto legado dos leads ainda sem vínculo. */
+export type ProductFilterOption = { value: string; label: string };
 
 type FilterFieldKey =
     | 'search'
@@ -477,18 +505,18 @@ type FilterFieldKey =
  * `fields` controls which inputs appear (each tab only needs a subset),
  * and `idPrefix` keeps element ids unique when a tab wants that.
  */
-function LeadFilterFields({
+export function LeadFilterFields({
     idPrefix = '',
     fields,
     filters,
-    products,
+    productOptions,
     statuses,
     users,
 }: {
     idPrefix?: string;
     fields: FilterFieldKey[];
     filters: Props['filters'];
-    products: Record<string, string>;
+    productOptions: ProductFilterOption[];
     statuses: Record<string, string>;
     users: { id: number; name: string }[];
 }) {
@@ -521,7 +549,7 @@ function LeadFilterFields({
                         className={selectClass}
                     >
                         <option value="">Todos</option>
-                        {Object.entries(products).map(([value, label]) => (
+                        {productOptions.map(({ value, label }) => (
                             <option key={value} value={value}>
                                 {label}
                             </option>
@@ -622,6 +650,8 @@ function LeadFilterFields({
 }
 
 export default function LeadsIndex({
+    awaitingReplyTotal,
+    awaitingReplyCritical,
     filters,
     kanbanLeads,
     kanbanTotal,
@@ -631,6 +661,8 @@ export default function LeadsIndex({
     lostReasons,
     metrics,
     products,
+    productOptions,
+    productWhatsappTexts,
     statuses,
     users,
 }: Props) {
@@ -644,6 +676,8 @@ export default function LeadsIndex({
     const [whatsappMessages, setWhatsappMessages] = useState(
         whatsappMessageTemplates,
     );
+    const whatsappMessageFor = (lead: Lead) =>
+        leadWhatsappMessage(lead, productWhatsappTexts, whatsappMessages);
     const [clearDialogOpen, setClearDialogOpen] = useState(false);
     const [clearConfirmText, setClearConfirmText] = useState('');
     const hasActiveFilters = Object.values(filters).some(Boolean);
@@ -928,18 +962,45 @@ export default function LeadsIndex({
                         description="Organize leads, contatos e follow-ups comerciais."
                     />
 
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        className="self-start"
-                        disabled={kanbanTotal === 0}
-                        onClick={() => setClearDialogOpen(true)}
-                    >
-                        <Trash2 className="size-4" />
-                        {hasActiveFilters
-                            ? 'Limpar prospects filtrados'
-                            : 'Limpar prospects'}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button asChild variant="outline">
+                            <Link href={awaitingReply()}>
+                                <MessageCircle className="size-4" />
+                                Aguardando resposta
+                                <Badge
+                                    variant={
+                                        awaitingReplyTotal
+                                            ? 'default'
+                                            : 'secondary'
+                                    }
+                                >
+                                    {awaitingReplyTotal}
+                                </Badge>
+                                {awaitingReplyCritical > 0 && (
+                                    <Badge
+                                        variant="outline"
+                                        className="border-red-400 text-red-700 dark:border-red-800 dark:text-red-400"
+                                    >
+                                        {awaitingReplyCritical}{' '}
+                                        {awaitingReplyCritical === 1
+                                            ? 'crítico'
+                                            : 'críticos'}
+                                    </Badge>
+                                )}
+                            </Link>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={kanbanTotal === 0}
+                            onClick={() => setClearDialogOpen(true)}
+                        >
+                            <Trash2 className="size-4" />
+                            {hasActiveFilters
+                                ? 'Limpar prospects filtrados'
+                                : 'Limpar prospects'}
+                        </Button>
+                    </div>
 
                     <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-4">
                         <button
@@ -1022,7 +1083,7 @@ export default function LeadsIndex({
                                         'owner',
                                     ]}
                                     filters={filters}
-                                    products={products}
+                                    productOptions={productOptions}
                                     statuses={statuses}
                                     users={users}
                                 />
@@ -1088,8 +1149,8 @@ export default function LeadsIndex({
                                                         }
                                                         products={products}
                                                         statuses={statuses}
-                                                        whatsappMessages={
-                                                            whatsappMessages
+                                                        whatsappMessageFor={
+                                                            whatsappMessageFor
                                                         }
                                                         onDragStart={
                                                             handleDragStart
@@ -1298,7 +1359,7 @@ export default function LeadsIndex({
                                 idPrefix="tasks-"
                                 fields={['search', 'product', 'owner']}
                                 filters={filters}
-                                products={products}
+                                productOptions={productOptions}
                                 statuses={statuses}
                                 users={users}
                             />
@@ -1316,7 +1377,7 @@ export default function LeadsIndex({
                                 leads={taskLeads.overdue}
                                 total={taskTotals.overdue}
                                 products={products}
-                                whatsappMessages={whatsappMessages}
+                                whatsappMessageFor={whatsappMessageFor}
                             />
                             <TaskColumn
                                 title="Para hoje"
@@ -1324,7 +1385,7 @@ export default function LeadsIndex({
                                 leads={taskLeads.today}
                                 total={taskTotals.today}
                                 products={products}
-                                whatsappMessages={whatsappMessages}
+                                whatsappMessageFor={whatsappMessageFor}
                             />
                             <TaskColumn
                                 title="Sem follow-up"
@@ -1332,7 +1393,7 @@ export default function LeadsIndex({
                                 leads={taskLeads.without_follow_up}
                                 total={taskTotals.without_follow_up}
                                 products={products}
-                                whatsappMessages={whatsappMessages}
+                                whatsappMessageFor={whatsappMessageFor}
                             />
                         </div>
                     </div>
@@ -1356,7 +1417,7 @@ export default function LeadsIndex({
                                         'owner',
                                     ]}
                                     filters={filters}
-                                    products={products}
+                                    productOptions={productOptions}
                                     statuses={statuses}
                                     users={users}
                                 />
@@ -1556,15 +1617,9 @@ export default function LeadsIndex({
                                             </tr>
                                         ) : (
                                             leads.data.map((lead) => {
-                                                const leadProduct =
-                                                    lead.product === 'vetorpet'
-                                                        ? 'vetorpet'
-                                                        : 'vetoros';
                                                 const whatsapp = whatsappUrl(
                                                     lead.whatsapp,
-                                                    whatsappMessages[
-                                                        leadProduct
-                                                    ],
+                                                    whatsappMessageFor(lead),
                                                 );
 
                                                 return (
@@ -1646,10 +1701,10 @@ export default function LeadsIndex({
                                                         </td>
                                                         <td className="max-w-40 px-3 py-2 text-muted-foreground">
                                                             <Badge variant="secondary">
-                                                                {products[
-                                                                    lead.product
-                                                                ] ??
-                                                                    lead.product}
+                                                                {leadProductLabel(
+                                                                    lead,
+                                                                    products,
+                                                                )}
                                                             </Badge>
                                                         </td>
                                                         <td className="max-w-40 px-3 py-2 text-muted-foreground">
@@ -1699,6 +1754,15 @@ export default function LeadsIndex({
                                                                 ] ??
                                                                     lead.status}
                                                             </Badge>
+                                                            <LeadTrialBadge
+                                                                state={
+                                                                    lead.trial_state
+                                                                }
+                                                                endsAt={
+                                                                    lead.trial_ends_at
+                                                                }
+                                                                className="mt-1 flex w-fit"
+                                                            />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Badge

@@ -32,7 +32,7 @@ class ContactFormReceived extends Mailable implements ShouldQueue
             markdown: 'emails.contact-form-received',
             with: [
                 'lead' => $this->lead,
-                'serviceLabel' => Lead::PRODUCTS[$this->lead->product] ?? $this->lead->product,
+                'serviceLabel' => $this->lead->prospectProduct->name ?? Lead::PRODUCTS[$this->lead->product] ?? $this->lead->product,
                 'adminUrl' => route('leads.index'),
             ],
         );

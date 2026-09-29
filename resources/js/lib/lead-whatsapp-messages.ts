@@ -52,6 +52,28 @@ export function writeWhatsappMessages(
     window.localStorage.setItem(messagesKey, JSON.stringify(messages));
 }
 
+/**
+ * Texto inicial do botão WhatsApp de um lead (CRM-WA-22): o `whatsapp_text` do produto vinculado,
+ * exatamente como cadastrado; sem texto no produto (ou sem vínculo), o template legado
+ * VetorOS/VetorPet escolhido por `lead.product`, como antes.
+ */
+export function leadWhatsappMessage(
+    lead: { product: string; prospect_product_id: number | null },
+    productTexts: Record<number, string>,
+    legacyMessages: Record<WhatsappProduct, string>,
+): string {
+    const productText =
+        lead.prospect_product_id === null
+            ? undefined
+            : productTexts[lead.prospect_product_id];
+
+    if (productText?.trim()) {
+        return productText;
+    }
+
+    return legacyMessages[lead.product === 'vetorpet' ? 'vetorpet' : 'vetoros'];
+}
+
 /** Campos do lead que podem entrar numa mensagem rápida como {{variavel}}. */
 export type WhatsappMessageLead = {
     contact_name: string | null;
@@ -70,6 +92,8 @@ export type WhatsappQuickMessage = {
     group: 'Primeiro contato' | 'Apresentação' | 'Follow-up';
     label: string;
     text: string;
+    /** Texto usado como está, sem substituir {{variáveis}} (texto do produto, CRM-WA-22). */
+    literal?: boolean;
 };
 
 const quickMessageTexts = {
@@ -86,10 +110,12 @@ Não quero ser inconveniente: se agora não for o momento para a {{empresa}}, se
 
 /**
  * Mensagens rápidas da conversa. As apresentações reutilizam os textos por produto
- * (os mesmos da listagem de leads, com a edição salva em Configurações > Leads).
+ * (os mesmos da listagem de leads, com a edição salva em Configurações > Leads) e, quando o
+ * produto vinculado tem texto WhatsApp, esse texto.
  */
 export function whatsappQuickMessages(
     presentations: Record<WhatsappProduct, string>,
+    product?: { name: string; text: string | null } | null,
 ): WhatsappQuickMessage[] {
     return [
         {
@@ -98,6 +124,18 @@ export function whatsappQuickMessages(
             label: 'Primeiro contato',
             text: quickMessageTexts.firstContact,
         },
+        // Texto do produto vinculado ao lead (CRM-WA-22), antes das apresentações legadas.
+        ...(product?.text?.trim()
+            ? [
+                  {
+                      key: 'presentation_product',
+                      group: 'Apresentação' as const,
+                      label: `Texto do produto: ${product.name}`,
+                      text: product.text,
+                      literal: true,
+                  },
+              ]
+            : []),
         {
             key: 'presentation_vetoros',
             group: 'Apresentação',

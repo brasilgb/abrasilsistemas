@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\WhatsappBusinessHours;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Uma leitura do horário de atendimento por request (fila, filtro e contadores reusam).
+        $this->app->scoped(WhatsappBusinessHours::class);
     }
 
     /**

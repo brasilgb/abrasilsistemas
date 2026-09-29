@@ -12,15 +12,23 @@ import {
 import type { User } from '@/types';
 import { create, index } from '@/routes/leads';
 import LeadForm from '@/pages/leads/form';
+import type { ProspectProductOption } from '@/pages/leads/form';
 
 type Props = {
     lostReasons: Record<string, string>;
     products: Record<string, string>;
+    prospectProducts: ProspectProductOption[];
     statuses: Record<string, string>;
     users: { id: number; name: string }[];
 };
 
-export default function CreateLead({ lostReasons, products, statuses, users }: Props) {
+export default function CreateLead({
+    lostReasons,
+    products,
+    prospectProducts,
+    statuses,
+    users,
+}: Props) {
     const { auth } = usePage<{ auth: { user: User } }>().props;
 
     return (
@@ -51,6 +59,7 @@ export default function CreateLead({ lostReasons, products, statuses, users }: P
                                 <>
                                     <LeadForm
                                         products={products}
+                                        prospectProducts={prospectProducts}
                                         lostReasons={lostReasons}
                                         statuses={statuses}
                                         users={users}

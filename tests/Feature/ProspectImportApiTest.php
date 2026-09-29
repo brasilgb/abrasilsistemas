@@ -43,7 +43,7 @@ test('the public API imports a Google Maps lead', function () {
         ->and($lead->captured_at)->not->toBeNull();
 });
 
-test('the public API updates a lead with the same Maps URL', function () {
+test('the public API reuses the lead with the same Maps URL', function () {
     $payload = [
         'name' => 'Assistência Técnica Exemplo',
         'hasWebsite' => false,
@@ -53,15 +53,19 @@ test('the public API updates a lead with the same Maps URL', function () {
 
     $this->postJson('/api/prospects/import', $payload, withProspectToken())->assertCreated();
 
+    // O nome já existe no CRM (pode ter sido corrigido pelo comercial): só dados vazios são completados.
     $payload['name'] = 'Nome atualizado';
+    $payload['address'] = 'Rua Exemplo, 100';
 
     $this->postJson('/api/prospects/import', $payload, withProspectToken())
         ->assertOk()
         ->assertJsonPath('created', 0)
-        ->assertJsonPath('updated', 1);
+        ->assertJsonPath('updated', 1)
+        ->assertJsonPath('unchanged', 0);
 
     expect(Lead::query()->count())->toBe(1)
-        ->and(Lead::query()->first()->company_name)->toBe('Nome atualizado');
+        ->and(Lead::query()->first()->company_name)->toBe('Assistência Técnica Exemplo')
+        ->and(Lead::query()->first()->address)->toBe('Rua Exemplo, 100');
 });
 
 test('the public API accepts a custom product destination', function () {

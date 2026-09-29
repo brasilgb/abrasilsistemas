@@ -12,8 +12,11 @@ class LeadActivityController extends Controller
     public function store(LeadActivityRequest $request, Lead $lead): RedirectResponse
     {
         $data = $request->validated();
+        $followUpAction = $request->followUpAction();
         $activityData = $data;
-        unset($activityData['lost_reason']);
+        unset($activityData['lost_reason'], $activityData['follow_up_action']);
+        // A atividade só guarda a data quando ela é o novo próximo contato.
+        $activityData['next_follow_up_at'] = $followUpAction === 'set' ? $data['next_follow_up_at'] : null;
 
         $activity = $lead->activities()->create([
             ...$activityData,
@@ -31,8 +34,11 @@ class LeadActivityController extends Controller
             $leadUpdates['last_contacted_at'] = $activity->contacted_at;
         }
 
-        if (array_key_exists('next_follow_up_at', $data)) {
+        // Manter (padrão) não toca no follow-up; removê-lo só com `clear` explícito.
+        if ($followUpAction === 'set') {
             $leadUpdates['next_follow_up_at'] = $activity->next_follow_up_at;
+        } elseif ($followUpAction === 'clear') {
+            $leadUpdates['next_follow_up_at'] = null;
         }
 
         if ($leadUpdates !== []) {

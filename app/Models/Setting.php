@@ -17,6 +17,12 @@ class Setting extends Model
 
     public const COMPANY_WHATSAPP_SESSION = 'company_whatsapp_session';
 
+    // Horário de atendimento do SLA da fila WhatsApp; ver App\Services\WhatsappBusinessHours.
+    public const WHATSAPP_SLA_TIMEZONE = 'whatsapp_sla_timezone';
+
+    // JSON por dia ISO (1 = segunda … 7 = domingo): {"1": {"active": true, "opens_at": "08:00", "closes_at": "18:00"}, …}
+    public const WHATSAPP_SLA_WEEK = 'whatsapp_sla_week';
+
     protected $fillable = [
         'key',
         'value',

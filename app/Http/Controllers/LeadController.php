@@ -6,8 +6,10 @@ use App\Http\Requests\Leads\LeadImportRequest;
 use App\Http\Requests\Leads\LeadRequest;
 use App\Models\Lead;
 use App\Models\LeadActivity;
+use App\Models\ProspectProduct;
 use App\Models\User;
 use App\Services\LeadWhatsappService;
+use App\Services\WhatsappBusinessHours;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,11 +28,20 @@ class LeadController extends Controller
         'whatsapp' => 'pela conversa WhatsApp',
     ];
 
+    /** Tamanho da página da fila "Aguardando resposta". */
+    public const AWAITING_REPLY_PER_PAGE = 25;
+
+    /** Trecho da última mensagem recebida exibido na fila. */
+    public const AWAITING_REPLY_EXCERPT_LENGTH = 160;
+
+    /** Dias de períodos de atendimento enviados à fila (o polling renova a cada 15 s). */
+    public const AWAITING_REPLY_CLOCK_DAYS = 14;
+
     public function index(Request $request): Response
     {
         $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up', 'owner']);
 
-        $baseQuery = $this->applyCommonFilters(Lead::query()->with('user:id,name'), $filters, $request);
+        $baseQuery = $this->applyCommonFilters(Lead::query()->with(['user:id,name', 'prospectProduct:id,name,active']), $filters, $request);
 
         $this->applyFollowUpFilter($baseQuery, $filters['follow_up'] ?? null);
 
@@ -56,6 +67,9 @@ class LeadController extends Controller
                 ->values(),
             'leads' => $leads,
             'metrics' => $this->metrics(clone $baseQuery),
+            // Contador global (sem os filtros da tela), o mesmo do Dashboard.
+            'awaitingReplyTotal' => Lead::query()->awaitingWhatsappReply()->count(),
+            'awaitingReplyCritical' => Lead::query()->whatsappReplySla('critical')->count(),
             'taskLeads' => [
                 'overdue' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->followUpState('overdue')->orderBy('next_follow_up_at')->limit(50)->get(),
                 'today' => (clone $taskQuery)->withCount('unreadWhatsappMessages')->followUpState('today')->orderBy('next_follow_up_at')->limit(50)->get(),
@@ -68,6 +82,95 @@ class LeadController extends Controller
             ],
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
+            'productOptions' => $this->productFilterOptions(),
+            // Texto do produto vinculado para o botão WhatsApp (CRM-WA-22), uma vez por produto.
+            'productWhatsappTexts' => ProspectProduct::manualWhatsappTexts(),
+            'statuses' => Lead::STATUSES,
+            'users' => User::query()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    /**
+     * Opções do filtro Produto: os produtos do catálogo (inclusive inativos, para consultar o
+     * histórico) e, para os leads ainda sem vínculo, cada texto legado de `leads.product`.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function productFilterOptions(): array
+    {
+        $catalog = ProspectProduct::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'active'])
+            ->map(fn (ProspectProduct $product) => [
+                'value' => (string) $product->id,
+                'label' => $product->active ? $product->name : "{$product->name} (inativo)",
+            ]);
+
+        $legacy = Lead::query()
+            ->whereNull('prospect_product_id')
+            ->distinct()
+            ->orderBy('product')
+            ->pluck('product')
+            ->map(fn (string $product) => [
+                'value' => $product,
+                'label' => (Lead::PRODUCTS[$product] ?? $product).' (sem vínculo)',
+            ]);
+
+        return array_values($catalog->concat($legacy)->all());
+    }
+
+    /**
+     * Fila "Aguardando resposta": leads cuja última mensagem WhatsApp veio do cliente, do que
+     * espera há mais tempo para o mais recente. Responder é na conversa do lead (tela de edição).
+     */
+    public function awaitingReply(Request $request, WhatsappBusinessHours $businessHours): Response
+    {
+        $filters = $request->only(['search', 'product', 'status', 'owner', 'sla']);
+        // Segundo cheio, como no cálculo da espera: o relógio da página e next_sla_at batem no limite.
+        $now = now()->startOfSecond();
+
+        // Filtro sla no banco, antes da paginação (não pagina a fila inteira para filtrar depois).
+        $leads = $this->applyCommonFilters(Lead::query()->with(['user:id,name', 'prospectProduct:id,name,active']), $filters, $request)
+            ->whatsappReplyQueue()
+            ->when($filters['sla'] ?? null, fn ($query, string $sla) => $query->whatsappReplySla($sla))
+            ->withCount('unreadWhatsappMessages')
+            ->paginate(self::AWAITING_REPLY_PER_PAGE)
+            ->withQueryString();
+
+        $leads->getCollection()->each(function (Lead $lead) use ($businessHours, $now): void {
+            $lead->setAttribute('last_inbound_message', Str::limit(
+                Str::squish((string) $lead->getAttribute('last_inbound_message')),
+                self::AWAITING_REPLY_EXCERPT_LENGTH,
+            ));
+            // Espera em tempo de atendimento até slaClock.now; a página soma o que passar dali em diante.
+            $seconds = $businessHours->elapsedSeconds($lead->getAttribute('awaiting_reply_since'), $now);
+            // Próxima mudança de nível: instante real em que a espera útil atinge o próximo limite
+            // (a página só formata). Null no Crítico e sem dias de atendimento.
+            $nextLevel = Lead::nextWhatsappReplySla($seconds);
+            $nextAt = $nextLevel === null ? null : $businessHours->addBusinessSeconds(
+                $now,
+                Lead::WHATSAPP_REPLY_SLA[$nextLevel]['from_minutes'] * 60 - $seconds,
+            );
+
+            $lead->setAttribute('awaiting_reply_business_seconds', $seconds);
+            $lead->setAttribute('next_sla_level', $nextAt === null ? null : $nextLevel);
+            $lead->setAttribute('next_sla_at', $nextAt?->toJSON());
+        });
+
+        return Inertia::render('leads/awaiting-reply', [
+            'filters' => $filters,
+            'leads' => $leads,
+            'slaClock' => [
+                'now' => $now->toJSON(),
+                // Próximos períodos de atendimento: o relógio da página só anda dentro deles.
+                'periods' => array_map(
+                    fn (array $period) => [$period[0]->toJSON(), $period[1]->toJSON()],
+                    $businessHours->periodsBetween($now, $now->addDays(self::AWAITING_REPLY_CLOCK_DAYS)),
+                ),
+                'schedule' => $businessHours->description(),
+            ],
+            'slaLevels' => Lead::WHATSAPP_REPLY_SLA,
+            'productOptions' => $this->productFilterOptions(),
             'statuses' => Lead::STATUSES,
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);
@@ -92,7 +195,10 @@ class LeadController extends Controller
                         ->orWhere('whatsapp', 'like', "%{$search}%");
                 });
             })
-            ->when($filters['product'] ?? null, fn ($query, string $product) => $query->where('product', $product))
+            // Número: produto do catálogo. Texto: lead ainda sem vínculo com esse valor legado.
+            ->when($filters['product'] ?? null, fn ($query, string $product) => ctype_digit($product)
+                ? $query->where('prospect_product_id', (int) $product)
+                : $query->whereNull('prospect_product_id')->where('product', $product))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['city'] ?? null, fn ($query, string $city) => $query->where('city', 'like', "%{$city}%"))
             ->when($filters['state'] ?? null, fn ($query, string $state) => $query->where('state', strtoupper($state)))
@@ -152,6 +258,7 @@ class LeadController extends Controller
         return Inertia::render('leads/create', [
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
+            'prospectProducts' => ProspectProduct::options(),
             'statuses' => Lead::STATUSES,
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);
@@ -159,7 +266,7 @@ class LeadController extends Controller
 
     public function store(LeadRequest $request): RedirectResponse
     {
-        $data = $request->validated();
+        $data = $request->leadData();
         $data['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? null) : null;
         $this->ensureLeadIsUnique($data);
 
@@ -255,6 +362,7 @@ class LeadController extends Controller
         $lead->load([
             'activities' => fn ($query) => $query->with('user:id,name')->latest(),
             'user:id,name',
+            'prospectProduct:id,name,active,whatsapp_text,trial_days',
         ]);
 
         // O ID da mensagem no provedor (WAHA) é de uso interno; o histórico só precisa do message_status.
@@ -269,7 +377,12 @@ class LeadController extends Controller
             'lead' => $lead,
             'lostReasons' => Lead::LOST_REASONS,
             'products' => Lead::PRODUCTS,
+            // Texto WhatsApp do produto vinculado ao lead (CRM-WA-22); null usa o template legado.
+            'productWhatsappText' => $lead->prospectProduct?->manualWhatsappText(),
+            'prospectProducts' => ProspectProduct::options($lead->prospect_product_id),
             'statuses' => Lead::STATUSES,
+            // Período de teste (CRM-WA-23): situação calculada e se "Iniciar" está disponível.
+            'trialPeriod' => $lead->trialPeriod(),
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
             // Destino já normalizado do envio manual (null quando o Lead não tem WhatsApp válido).
             'whatsappDestination' => LeadWhatsappService::normalizeNumber($lead->whatsapp),
@@ -279,7 +392,7 @@ class LeadController extends Controller
     public function update(LeadRequest $request, Lead $lead): RedirectResponse
     {
         $previousStatus = $lead->status;
-        $data = $request->validated();
+        $data = $request->leadData();
         $data['lost_reason'] = $data['status'] === 'lost' ? ($data['lost_reason'] ?? null) : null;
         $this->ensureLeadIsUnique($data, $lead);
 
@@ -389,6 +502,50 @@ class LeadController extends Controller
             'type' => 'success',
             'message' => $lead->next_follow_up_at ? 'Próximo contato agendado.' : 'Próximo contato removido.',
         ]);
+
+        return back();
+    }
+
+    /**
+     * "Assumir atendimento" (fila Aguardando resposta e tela do lead). O responsável vem só da
+     * sessão; um lead que já tem responsável nunca é tomado por aqui (transferir é pelo lote).
+     */
+    public function assignToMe(Request $request, Lead $lead): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($lead->assignTo($user)) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Atendimento assumido.']);
+
+            return back();
+        }
+
+        // Outro operador assumiu antes (ou o lead já era deste usuário): nada é sobrescrito.
+        $ownerId = $lead->fresh()?->user_id;
+
+        Inertia::flash('toast', $ownerId === $user->id
+            ? ['type' => 'success', 'message' => 'Este atendimento já é seu.']
+            : ['type' => 'error', 'message' => 'Este lead já foi assumido por '.(User::query()->whereKey($ownerId)->value('name') ?? 'outro usuário').'.']);
+
+        return back();
+    }
+
+    /**
+     * "Iniciar período de teste" (CRM-WA-23). O prazo vem só do produto vinculado ao lead; um
+     * teste já iniciado nunca é reiniciado ou recalculado por aqui, nem em cliques simultâneos.
+     */
+    public function startTrial(Request $request, Lead $lead): RedirectResponse
+    {
+        $blocker = $lead->trialStartBlocker();
+
+        if ($blocker === null && $lead->startTrial($request->user())) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Período de teste iniciado.']);
+
+            return back();
+        }
+
+        // Outra requisição iniciou antes (ou o vínculo mudou no meio): nada foi alterado.
+        Inertia::flash('toast', ['type' => 'error', 'message' => $blocker ?? $lead->fresh()?->trialStartBlocker() ?? 'Não foi possível iniciar o período de teste.']);
 
         return back();
     }

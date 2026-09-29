@@ -328,3 +328,72 @@ export function LeadFollowUpControl({
         </div>
     );
 }
+
+type ActivityFollowUpAction = 'keep' | 'set' | 'clear';
+
+/**
+ * Próximo contato ao registrar uma atividade. Por padrão mantém o atual; alterar e remover
+ * são escolhas explícitas, enviadas em follow_up_action (campo vazio nunca remove).
+ */
+export function ActivityFollowUpField({
+    current,
+    error,
+    id,
+    compact = false,
+}: {
+    current: string | null;
+    error?: string;
+    id?: string;
+    compact?: boolean;
+}) {
+    const [action, setAction] = useState<ActivityFollowUpAction>('keep');
+
+    return (
+        <div className={cn('grid', compact ? 'gap-1' : 'gap-2')}>
+            <select
+                id={id}
+                name="follow_up_action"
+                value={action}
+                onChange={(event) =>
+                    setAction(event.target.value as ActivityFollowUpAction)
+                }
+                aria-label="Próximo contato"
+                className={cn(
+                    'flex w-full rounded-md border border-input bg-background shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
+                    compact ? 'h-8 px-2 py-1 text-xs' : 'h-9 px-3 py-1 text-sm',
+                )}
+            >
+                <option value="keep">
+                    {current
+                        ? `Manter próximo contato (${formatFollowUp(current)})`
+                        : 'Sem próximo contato'}
+                </option>
+                <option value="set">
+                    {current
+                        ? 'Alterar próximo contato'
+                        : 'Agendar próximo contato'}
+                </option>
+                {current && (
+                    <option value="clear">Remover próximo contato</option>
+                )}
+            </select>
+            {action === 'set' && (
+                <Input
+                    name="next_follow_up_at"
+                    type="datetime-local"
+                    required
+                    aria-label="Data e hora do próximo contato"
+                    defaultValue={toDateTimeLocalValue(current)}
+                    className={compact ? 'h-8 text-xs' : undefined}
+                />
+            )}
+            {action === 'clear' && current && (
+                <p className="text-xs text-destructive">
+                    O próximo contato de {formatFollowUp(current)} será
+                    removido.
+                </p>
+            )}
+            <InputError message={error} />
+        </div>
+    );
+}

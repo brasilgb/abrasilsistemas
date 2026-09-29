@@ -16,6 +16,7 @@ use App\Http\Controllers\LeadActivityController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadWhatsappController;
 use App\Http\Controllers\LeadWhatsappConversationController;
+use App\Http\Controllers\ProspectProductController;
 use App\Http\Controllers\PublicBlogController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\UserController;
@@ -145,14 +146,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('leads/import', [LeadController::class, 'import'])->name('leads.import');
         Route::delete('leads/clear', [LeadController::class, 'clear'])->name('leads.clear');
         Route::patch('leads/bulk', [LeadController::class, 'bulkUpdate'])->name('leads.bulk');
+        Route::get('leads/awaiting-reply', [LeadController::class, 'awaitingReply'])->name('leads.awaiting-reply');
         Route::patch('leads/{lead}/status', [LeadController::class, 'status'])->name('leads.status');
         Route::patch('leads/{lead}/follow-up', [LeadController::class, 'followUp'])->name('leads.follow-up');
+        Route::patch('leads/{lead}/assign-to-me', [LeadController::class, 'assignToMe'])->name('leads.assign-to-me');
+        Route::post('leads/{lead}/trial', [LeadController::class, 'startTrial'])->name('leads.start-trial');
         Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
         Route::post('leads/{lead}/whatsapp', [LeadWhatsappController::class, 'store'])->middleware('throttle:10,1')->name('leads.whatsapp.store');
         Route::get('leads/{lead}/whatsapp/messages', [LeadWhatsappConversationController::class, 'index'])->middleware('throttle:120,1')->name('leads.whatsapp.messages');
         Route::post('leads/{lead}/whatsapp/read', [LeadWhatsappConversationController::class, 'markRead'])->middleware('throttle:60,1')->name('leads.whatsapp.read');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+        Route::patch('prospect-products/{prospect_product}/active', [ProspectProductController::class, 'active'])->name('prospect-products.active');
+        Route::resource('prospect-products', ProspectProductController::class)->only(['index', 'store', 'update']);
 
         Route::post('testimonials/images', TestimonialImageController::class)->name('testimonials.images.store');
         Route::resource('testimonials', TestimonialController::class)->except('show');

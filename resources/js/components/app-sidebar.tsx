@@ -2,8 +2,10 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Images,
     LayoutGrid,
+    MessageCircle,
     MessageSquareQuote,
     Newspaper,
+    Package,
     Settings,
     Target,
     Users,
@@ -21,8 +23,12 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { index as leadsIndex } from '@/routes/leads';
+import {
+    awaitingReply as leadsAwaitingReply,
+    index as leadsIndex,
+} from '@/routes/leads';
 import { edit as profileEdit } from '@/routes/profile';
+import { index as prospectProductsIndex } from '@/routes/prospect-products';
 import { index as usersIndex } from '@/routes/users';
 import type { NavItem, User } from '@/types';
 
@@ -41,6 +47,16 @@ const adminNavItems: NavItem[] = [
         title: 'Prospecção',
         href: leadsIndex(),
         icon: Target,
+    },
+    {
+        title: 'Aguardando resposta',
+        href: leadsAwaitingReply(),
+        icon: MessageCircle,
+    },
+    {
+        title: 'Produtos/Serviços',
+        href: prospectProductsIndex(),
+        icon: Package,
     },
     {
         title: 'Depoimentos',

@@ -506,7 +506,7 @@ test('dashboard priority leads include the commercial fields used by scoring', f
             ->where('metrics.high_priority', 1));
 });
 
-test('lead activity can clear an existing follow up', function () {
+test('lead activity clears an existing follow up only when explicitly asked', function () {
     $user = User::factory()->create();
     $lead = Lead::query()->create([
         'user_id' => $user->id,
@@ -519,7 +519,7 @@ test('lead activity can clear an existing follow up', function () {
     $this->actingAs($user)->post(route('leads.activities.store', $lead), [
         'type' => 'note',
         'description' => 'Follow-up cancelado.',
-        'next_follow_up_at' => null,
+        'follow_up_action' => 'clear',
     ])->assertRedirect();
 
     expect($lead->fresh()->next_follow_up_at)->toBeNull();

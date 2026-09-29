@@ -3,6 +3,7 @@ import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { toDateTimeLocalValue } from '@/components/lead-follow-up';
 import type { LeadFollowUpState } from '@/components/lead-follow-up';
+import type { LeadTrialState } from '@/components/lead-trial';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +14,17 @@ import type {
 } from '@/components/whatsapp-message-status';
 import { cn } from '@/lib/utils';
 
+export type ProspectProductOption = {
+    id: number;
+    name: string;
+    active: boolean;
+};
+
 export type Lead = {
     id: number;
     product: string;
+    prospect_product_id: number | null;
+    prospect_product?: ProspectProductOption | null;
     company_name: string;
     address: string | null;
     contact_name: string | null;
@@ -43,6 +52,9 @@ export type Lead = {
     priority: 'high' | 'medium' | 'low';
     next_follow_up_at: string | null;
     follow_up_state: LeadFollowUpState | null;
+    trial_started_at: string | null;
+    trial_ends_at: string | null;
+    trial_state: LeadTrialState;
     last_contacted_at: string | null;
     notes: string | null;
     created_at: string;
@@ -73,8 +85,21 @@ export type LeadActivity = {
     } | null;
 };
 
+/** Nome do produto do catálogo; sem vínculo, o rótulo do texto legado (`leads.product`). */
+export function leadProductLabel(
+    lead: Pick<Lead, 'product'> & {
+        prospect_product?: Pick<ProspectProductOption, 'name'> | null;
+    },
+    products: Record<string, string>,
+) {
+    return (
+        lead.prospect_product?.name ?? products[lead.product] ?? lead.product
+    );
+}
+
 type Props = {
     products: Record<string, string>;
+    prospectProducts: ProspectProductOption[];
     lostReasons: Record<string, string>;
     statuses: Record<string, string>;
     users: { id: number; name: string }[];
@@ -86,6 +111,7 @@ type Props = {
 
 export default function LeadForm({
     products,
+    prospectProducts,
     lostReasons,
     statuses,
     users,
@@ -94,6 +120,9 @@ export default function LeadForm({
     processing,
     errors,
 }: Props) {
+    // Lead ainda sem vínculo com o catálogo: o texto legado continua valendo até a troca.
+    const legacyProduct =
+        lead && lead.prospect_product_id === null ? lead.product : null;
     const [showCaptureFields, setShowCaptureFields] = useState(
         Boolean(
             lead?.address ||
@@ -126,21 +155,67 @@ export default function LeadForm({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="product">Destino (produto)</Label>
-                    <select
-                        id="product"
-                        name="product"
-                        required
-                        defaultValue={lead?.product ?? 'vetoros'}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                    >
-                        {Object.entries(products).map(([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
-                        ))}
-                    </select>
-                    <InputError message={errors.product} />
+                    <Label htmlFor="prospect_product_id">Produto/Serviço</Label>
+                    {prospectProducts.length > 0 ? (
+                        <>
+                            <select
+                                id="prospect_product_id"
+                                name="prospect_product_id"
+                                required={!legacyProduct}
+                                defaultValue={lead?.prospect_product_id ?? ''}
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                            >
+                                {legacyProduct ? (
+                                    <option value="">
+                                        {products[legacyProduct] ??
+                                            legacyProduct}{' '}
+                                        (sem vínculo)
+                                    </option>
+                                ) : (
+                                    <option value="" disabled>
+                                        Selecione
+                                    </option>
+                                )}
+                                {prospectProducts.map((product) => (
+                                    <option key={product.id} value={product.id}>
+                                        {product.name}
+                                        {product.active ? '' : ' (inativo)'}
+                                    </option>
+                                ))}
+                            </select>
+                            {/* Lead antigo sem vínculo: mantém o texto legado se nada for escolhido. */}
+                            {legacyProduct && (
+                                <input
+                                    type="hidden"
+                                    name="product"
+                                    value={legacyProduct}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        // Catálogo ainda vazio: o formulário segue com os produtos fixos de antes.
+                        <select
+                            id="prospect_product_id"
+                            name="product"
+                            required
+                            defaultValue={lead?.product ?? 'vetoros'}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                        >
+                            {Object.entries(products).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
+                            ))}
+                            {legacyProduct && !(legacyProduct in products) && (
+                                <option value={legacyProduct}>
+                                    {legacyProduct}
+                                </option>
+                            )}
+                        </select>
+                    )}
+                    <InputError
+                        message={errors.prospect_product_id ?? errors.product}
+                    />
                 </div>
 
                 <div className="grid gap-2">

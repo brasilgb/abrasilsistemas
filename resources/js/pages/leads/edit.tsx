@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import {
     CalendarClock,
     ExternalLink,
@@ -8,10 +8,19 @@ import {
     MessageSquarePlus,
     Star,
 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import LeadController from '@/actions/App/Http/Controllers/LeadController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { ActivityFollowUpField } from '@/components/lead-follow-up';
+import {
+    AssignToMeButton,
+    useOwnerLabel,
+} from '@/components/lead-owner-actions';
+import { LeadTrialPeriodCard } from '@/components/lead-trial';
+import type { LeadTrialPeriod } from '@/components/lead-trial';
 import LeadWhatsappConversation from '@/components/lead-whatsapp-conversation';
+import type { ConversationMessage } from '@/components/lead-whatsapp-conversation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +37,7 @@ import WhatsappMessageStatus, {
     WhatsappMessageDirection,
 } from '@/components/whatsapp-message-status';
 import LeadForm from '@/pages/leads/form';
-import type { Lead } from '@/pages/leads/form';
+import type { Lead, ProspectProductOption } from '@/pages/leads/form';
 import { index } from '@/routes/leads';
 import { store as storeLeadActivity } from '@/routes/leads/activities';
 
@@ -37,9 +46,12 @@ type Props = {
     lead: Lead;
     lostReasons: Record<string, string>;
     products: Record<string, string>;
+    prospectProducts: ProspectProductOption[];
     statuses: Record<string, string>;
+    trialPeriod: LeadTrialPeriod;
     users: { id: number; name: string }[];
     whatsappDestination: string | null;
+    productWhatsappText: string | null;
 };
 
 function formatDateTime(value: string | null) {
@@ -61,10 +73,89 @@ export default function EditLead({
     lead,
     lostReasons,
     products,
+    prospectProducts,
     statuses,
     users,
     whatsappDestination,
+    productWhatsappText,
+    trialPeriod,
 }: Props) {
+    const ownerLabel = useOwnerLabel();
+    const activities = useMemo(() => lead.activities ?? [], [lead.activities]);
+    // Inbound não lidas até a abertura (a abertura já as marcou como lidas no servidor).
+    const [initialUnreadIds] = useState(() =>
+        activities
+            .filter(
+                (activity) =>
+                    activity.type === 'whatsapp' &&
+                    activity.direction === 'inbound' &&
+                    !activity.read_at,
+            )
+            .map((activity) => activity.id),
+    );
+    // Mesmo critério do selo "Nova" da conversa: não lidas na abertura ou chegadas nesta visita.
+    const [newIds, setNewIds] = useState(() => new Set(initialUnreadIds));
+    // Última versão de cada mensagem vista pelo polling da conversa (ACK atualizado).
+    const [liveMessages, setLiveMessages] = useState<
+        Map<number, ConversationMessage>
+    >(() => new Map());
+    // Ids que já dispararam a recarga do Histórico: evita pedir de novo a cada ciclo.
+    const requestedIds = useRef(new Set<number>());
+    // Remonta o campo de próximo contato após registrar (volta para "Manter").
+    const [activityFormVersion, setActivityFormVersion] = useState(0);
+
+    const syncHistory = useCallback((items: ConversationMessage[]) => {
+        setLiveMessages((current) => {
+            const next = new Map(current);
+            items.forEach((item) => next.set(item.id, item));
+
+            return next;
+        });
+
+        const unread = items.filter(
+            (item) => item.direction === 'inbound' && !item.read_at,
+        );
+
+        if (unread.length > 0) {
+            setNewIds((current) => {
+                const next = new Set(current);
+                unread.forEach((item) => next.add(item.id));
+
+                return next;
+            });
+        }
+    }, []);
+
+    // Mensagem que a conversa já exibe e o Histórico ainda não tem: recarrega só a prop lead
+    // (recarga parcial assíncrona, com estado e rolagem preservados). Mudança só de ACK não recarrega.
+    useEffect(() => {
+        const known = new Set(activities.map((activity) => activity.id));
+        const missing = [...liveMessages.keys()].filter(
+            (id) => !known.has(id) && !requestedIds.current.has(id),
+        );
+
+        if (missing.length === 0) {
+            return;
+        }
+
+        missing.forEach((id) => requestedIds.current.add(id));
+
+        router.reload({
+            only: ['lead'],
+            onHttpException: () => {
+                // Tenta de novo no próximo ciclo com mudanças.
+                missing.forEach((id) => requestedIds.current.delete(id));
+
+                return false;
+            },
+            onNetworkError: () => {
+                missing.forEach((id) => requestedIds.current.delete(id));
+
+                return false;
+            },
+        });
+    }, [activities, liveMessages]);
+
     return (
         <>
             <Head title={`Editar ${lead.company_name}`} />
@@ -79,9 +170,17 @@ export default function EditLead({
                     <Card>
                         <CardHeader>
                             <CardTitle>{lead.company_name}</CardTitle>
-                            <CardDescription>
-                                Responsável:{' '}
-                                {lead.user?.name ?? 'Sem responsável'}
+                            <CardDescription className="flex flex-wrap items-center gap-2">
+                                <span>
+                                    Responsável: {ownerLabel(lead.user)}
+                                </span>
+                                {/* Mesma ação e endpoint da fila Aguardando resposta. */}
+                                {!lead.user && (
+                                    <AssignToMeButton
+                                        leadId={lead.id}
+                                        preserveState={false}
+                                    />
+                                )}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -97,6 +196,7 @@ export default function EditLead({
                                         <LeadForm
                                             lead={lead}
                                             products={products}
+                                            prospectProducts={prospectProducts}
                                             lostReasons={lostReasons}
                                             statuses={statuses}
                                             users={users}
@@ -117,6 +217,11 @@ export default function EditLead({
                     </Card>
 
                     <div className="space-y-6">
+                        <LeadTrialPeriodCard
+                            leadId={lead.id}
+                            trial={trialPeriod}
+                        />
+
                         <Card>
                             <CardHeader>
                                 <CardTitle>Dados da prospecção</CardTitle>
@@ -216,6 +321,11 @@ export default function EditLead({
                                         'description',
                                         'contacted_at',
                                     ]}
+                                    onSuccess={() =>
+                                        setActivityFormVersion(
+                                            (version) => version + 1,
+                                        )
+                                    }
                                     disableWhileProcessing
                                     className="space-y-4"
                                 >
@@ -304,17 +414,18 @@ export default function EditLead({
                                             </div>
 
                                             <div className="grid gap-2">
-                                                <Label htmlFor="next_follow_up_at_activity">
+                                                <Label htmlFor="follow_up_action_activity">
                                                     Próximo contato
                                                 </Label>
-                                                <Input
-                                                    id="next_follow_up_at_activity"
-                                                    type="datetime-local"
-                                                    name="next_follow_up_at"
-                                                />
-                                                <InputError
-                                                    message={
-                                                        errors.next_follow_up_at
+                                                <ActivityFollowUpField
+                                                    key={activityFormVersion}
+                                                    id="follow_up_action_activity"
+                                                    current={
+                                                        lead.next_follow_up_at
+                                                    }
+                                                    error={
+                                                        errors.next_follow_up_at ??
+                                                        errors.follow_up_action
                                                     }
                                                 />
                                             </div>
@@ -347,17 +458,12 @@ export default function EditLead({
 
                         <LeadWhatsappConversation
                             lead={lead}
+                            productWhatsappText={productWhatsappText}
                             statuses={statuses}
                             lostReasons={lostReasons}
                             destination={whatsappDestination}
-                            initialUnreadIds={(lead.activities ?? [])
-                                .filter(
-                                    (activity) =>
-                                        activity.type === 'whatsapp' &&
-                                        activity.direction === 'inbound' &&
-                                        !activity.read_at,
-                                )
-                                .map((activity) => activity.id)}
+                            initialUnreadIds={initialUnreadIds}
+                            onMessages={syncHistory}
                         />
 
                         <Card>
@@ -371,10 +477,9 @@ export default function EditLead({
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {lead.activities &&
-                                lead.activities.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {lead.activities.map((activity) => (
+                                {activities.length > 0 ? (
+                                    <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1 xl:max-h-[40rem]">
+                                        {activities.map((activity) => (
                                             <div
                                                 key={activity.id}
                                                 className="rounded-md border p-4"
@@ -410,10 +515,12 @@ export default function EditLead({
                                                                 activity.direction
                                                             }
                                                         />
-                                                        {/* Não lida até esta visita; a abertura do lead já a marcou como lida. */}
+                                                        {/* Não lida na abertura ou chegada nesta visita (igual à conversa). */}
                                                         {activity.direction ===
                                                             'inbound' &&
-                                                            !activity.read_at && (
+                                                            newIds.has(
+                                                                activity.id,
+                                                            ) && (
                                                                 <Badge className="bg-emerald-600 text-white dark:bg-emerald-500">
                                                                     Nova
                                                                 </Badge>
@@ -423,7 +530,13 @@ export default function EditLead({
                                                             'inbound' && (
                                                             <WhatsappMessageStatus
                                                                 status={
-                                                                    activity.message_status
+                                                                    (
+                                                                        liveMessages.get(
+                                                                            activity.id,
+                                                                        ) ??
+                                                                        activity
+                                                                    )
+                                                                        .message_status
                                                                 }
                                                             />
                                                         )}

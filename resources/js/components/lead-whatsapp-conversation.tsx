@@ -70,7 +70,7 @@ const MESSAGE_MAX_LENGTH = 4000;
 // Distância (px) do fim da conversa em que ainda consideramos o usuário "no final".
 const NEAR_BOTTOM_THRESHOLD = 80;
 
-type ConversationMessage = {
+export type ConversationMessage = {
     id: number;
     direction: WhatsappMessageDirectionValue;
     description: string;
@@ -100,15 +100,23 @@ export type ConversationLead = WhatsappMessageLead & {
     next_follow_up_at: string | null;
     follow_up_state: LeadFollowUpState | null;
     user?: { id: number; name: string } | null;
+    prospect_product?: { name: string } | null;
 };
 
 type Props = {
     lead: ConversationLead;
+    /** Texto WhatsApp do produto vinculado ao lead (CRM-WA-22); null quando não há. */
+    productWhatsappText?: string | null;
     statuses: Record<string, string>;
     lostReasons: Record<string, string>;
     destination: string | null;
     /** Inbound que chegaram não lidas antes da abertura da página (a abertura já as marcou como lidas). */
     initialUnreadIds: number[];
+    /**
+     * Mensagens trazidas pela abertura e por cada ciclo de polling (novas ou alteradas),
+     * para a página sincronizar o Histórico sem um segundo polling.
+     */
+    onMessages?: (items: ConversationMessage[]) => void;
 };
 
 function csrfHeaders(): Record<string, string> {
@@ -314,12 +322,18 @@ function ConversationLeadStatus({
 
 export default function LeadWhatsappConversation({
     lead,
+    productWhatsappText = null,
     statuses,
     lostReasons,
     destination,
     initialUnreadIds,
+    onMessages,
 }: Props) {
     const leadId = lead.id;
+    // Ref: trocar o callback não reinicia o polling.
+    const onMessagesRef = useRef(onMessages);
+    // Falso depois do unmount: um fetch que termina após sair do lead não notifica a página.
+    const active = useRef(false);
     const [messages, setMessages] = useState<ConversationMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -349,6 +363,10 @@ export default function LeadWhatsappConversation({
     const cursor = useRef<number | null>(null);
     const inFlight = useRef(false);
     const refreshQueued = useRef(false);
+
+    useLayoutEffect(() => {
+        onMessagesRef.current = onMessages;
+    });
 
     const markRead = useCallback(
         (upToId: number) =>
@@ -404,20 +422,22 @@ export default function LeadWhatsappConversation({
                 (item) => item.direction === 'inbound' && !item.read_at,
             );
 
-            if (unread.length === 0) {
-                return;
+            if (unread.length > 0) {
+                setNewIds((current) => {
+                    const next = new Set(current);
+                    unread.forEach((item) => next.add(item.id));
+
+                    return next;
+                });
+
+                // Só marca como lido o que foi exibido com a aba visível.
+                if (document.visibilityState === 'visible') {
+                    await markRead(Math.max(...unread.map((item) => item.id)));
+                }
             }
 
-            setNewIds((current) => {
-                const next = new Set(current);
-                unread.forEach((item) => next.add(item.id));
-
-                return next;
-            });
-
-            // Só marca como lido o que foi exibido com a aba visível.
-            if (document.visibilityState === 'visible') {
-                await markRead(Math.max(...unread.map((item) => item.id)));
+            if (active.current && items.length > 0) {
+                onMessagesRef.current?.(items);
             }
         },
         [markRead, merge],
@@ -519,6 +539,7 @@ export default function LeadWhatsappConversation({
     }, [leadId, loadingOlder, merge, messages]);
 
     useEffect(() => {
+        active.current = true;
         void refresh();
 
         const poll = window.setInterval(() => {
@@ -536,6 +557,7 @@ export default function LeadWhatsappConversation({
         document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () => {
+            active.current = false;
             window.clearInterval(poll);
             document.removeEventListener(
                 'visibilitychange',
@@ -588,9 +610,14 @@ export default function LeadWhatsappConversation({
         }
     };
 
+    const productName = lead.prospect_product?.name ?? '';
     const quickMessages = useMemo(
-        () => whatsappQuickMessages(presentations),
-        [presentations],
+        () =>
+            whatsappQuickMessages(presentations, {
+                name: productName,
+                text: productWhatsappText,
+            }),
+        [presentations, productName, productWhatsappText],
     );
     const unresolved = useMemo(
         () => unresolvedWhatsappVariables(message),
@@ -612,10 +639,10 @@ export default function LeadWhatsappConversation({
         }
 
         setMessage(
-            fillWhatsappVariables(quick.text, lead).slice(
-                0,
-                MESSAGE_MAX_LENGTH,
-            ),
+            (quick.literal
+                ? quick.text
+                : fillWhatsappVariables(quick.text, lead)
+            ).slice(0, MESSAGE_MAX_LENGTH),
         );
         setSendErrors({});
         window.requestAnimationFrame(() => textareaRef.current?.focus());
