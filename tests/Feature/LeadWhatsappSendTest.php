@@ -86,7 +86,7 @@ test('authorized user sends the WhatsApp through the n8n webhook', function () {
         && $request->data() === [
             'prospect_id' => $lead->id,
             'nome' => 'Assistência Técnica ABC',
-            'whatsapp' => '5551999998888',
+            'whatsapp' => '555199998888',
             'mensagem' => 'Olá, tudo bem? Somos da ABrasil Sistemas.',
         ]);
 });
@@ -166,7 +166,7 @@ test('prospect id, name and destination come from the route lead, not from the b
 
     Http::assertSent(fn (Request $request) => $request['prospect_id'] === $lead->id
         && $request['nome'] === 'Assistência Técnica ABC'
-        && $request['whatsapp'] === '5551999998888');
+        && $request['whatsapp'] === '555199998888');
 });
 
 test('WhatsApp numbers are normalized before sending', function (string $stored, string $expected) {
@@ -179,11 +179,17 @@ test('WhatsApp numbers are normalized before sending', function (string $stored,
 
     Http::assertSent(fn (Request $request) => $request['whatsapp'] === $expected);
 })->with([
-    'celular com DDD' => ['51999998888', '5551999998888'],
+    // DDD 31 em diante: o WhatsApp registra o celular sem o nono dígito (CRM-WA-25.2).
+    'celular com DDD' => ['51999998888', '555199998888'],
     'fixo com DDD' => ['5133334444', '555133334444'],
-    'já com 55' => ['5551999998888', '5551999998888'],
-    'com máscara' => ['+55 (51) 99999-8888', '5551999998888'],
-    'DDD 55 sem código do país' => ['55999998888', '5555999998888'],
+    'já com 55' => ['5551999998888', '555199998888'],
+    'já sem o nono dígito' => ['555199998888', '555199998888'],
+    'com máscara' => ['+55 (51) 99999-8888', '555199998888'],
+    'DDD 55 sem código do país' => ['55999998888', '555599998888'],
+    'DDD 31 (primeiro sem o 9)' => ['31999998888', '553199998888'],
+    // DDD 11 a 28: o nono dígito faz parte do número no WhatsApp.
+    'DDD 11 mantém o 9' => ['11999998888', '5511999998888'],
+    'DDD 28 mantém o 9' => ['5528999998888', '5528999998888'],
 ]);
 
 test('lead without WhatsApp does not call n8n', function (?string $whatsapp) {

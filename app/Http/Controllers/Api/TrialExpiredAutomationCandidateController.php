@@ -21,7 +21,7 @@ class TrialExpiredAutomationCandidateController extends Controller
             'data' => Lead::trialExpiredAutomationCandidates()->map(fn (Lead $lead) => [
                 'lead_id' => $lead->id,
                 'automation_key' => $lead->trialExpiredAutomationKey(),
-                'whatsapp' => LeadWhatsappService::normalizeNumber($lead->whatsapp),
+                'whatsapp' => LeadWhatsappService::recipientNumber($lead->whatsapp),
                 'message' => $lead->trialExpirationMessage(),
                 'trial_ends_at' => $lead->trial_ends_at,
             ])->all(),

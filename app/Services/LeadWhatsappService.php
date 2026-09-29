@@ -43,6 +43,23 @@ class LeadWhatsappService
     }
 
     /**
+     * Número de destino no WhatsApp (o id da conta, sem @c.us). O WhatsApp registra os celulares
+     * brasileiros de DDD 31 em diante sem o nono dígito (55 51 95179173); enviar para a forma com
+     * o 9 faz o WAHA não achar os aparelhos do contato e a mensagem fica sem ACK (CRM-WA-25.2).
+     * DDD 11 a 28 mantém o 9. Mesma equivalência de CompanyWhatsappConnection::sameNumber.
+     */
+    public static function recipientNumber(?string $value): ?string
+    {
+        $number = self::normalizeNumber($value);
+
+        if ($number !== null && strlen($number) === 13 && $number[4] === '9' && (int) substr($number, 2, 2) >= 31) {
+            return substr($number, 0, 4).substr($number, 5);
+        }
+
+        return $number;
+    }
+
+    /**
      * @return array{message_id: string|null, status: string|null, activity_id: int|null}
      *
      * @throws LeadWhatsappException
@@ -53,7 +70,7 @@ class LeadWhatsappService
             throw new LeadWhatsappException('Este prospect não possui WhatsApp cadastrado.');
         }
 
-        $number = self::normalizeNumber($lead->whatsapp);
+        $number = self::recipientNumber($lead->whatsapp);
 
         if ($number === null) {
             throw new LeadWhatsappException('O WhatsApp cadastrado neste prospect não é um número válido.');

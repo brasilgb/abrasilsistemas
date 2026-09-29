@@ -191,7 +191,7 @@ test('sending uses the configured company session and sender number', function (
     Http::assertSent(fn (Request $request) => $request->data() === [
         'prospect_id' => $lead->id,
         'nome' => 'Assistência Técnica ABC',
-        'whatsapp' => '5551999998888',
+        'whatsapp' => '555199998888',
         'mensagem' => 'Olá',
         'provider' => 'waha',
         'session' => 'sessao-configurada',

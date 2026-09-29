@@ -119,7 +119,8 @@ test('a candidate carries only what the execution needs', function () {
         'data' => [[
             'lead_id' => $lead->id,
             'automation_key' => 'trial_expired:2026-09-27',
-            'whatsapp' => '5551995179173',
+            // Destino no formato do WhatsApp: DDD 51 sem o nono dígito (CRM-WA-25.2).
+            'whatsapp' => '555195179173',
             'message' => CANDIDATES_TEXT,
             // 27/09 10:00 em São Paulo = 13:00 UTC.
             'trial_ends_at' => '2026-09-27T13:00:00.000000Z',

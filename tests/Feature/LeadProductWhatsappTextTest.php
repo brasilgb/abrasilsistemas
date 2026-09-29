@@ -162,7 +162,7 @@ test('sending the product text through the CRM keeps the n8n contract and the te
         && $request->data() === [
             'prospect_id' => $lead->id,
             'nome' => 'Empresa CRM-WA-22',
-            'whatsapp' => '5551999998888',
+            'whatsapp' => '555199998888',
             'mensagem' => $text,
         ]);
 });
