@@ -11,6 +11,9 @@ use Illuminate\Database\UniqueConstraintViolationException;
  * Reserva de execução de uma automação para um lead (CRM-WA-18). Só registra que a chave foi
  * reservada: não envia mensagem nem altera o lead. Regra comercial (lead encerrado, trial,
  * follow-up) fica com quem decide a elegibilidade, a partir do automation-state (CRM-WA-17).
+ *
+ * @property int $lead_id
+ * @property string $automation_key
  */
 #[Fillable(['lead_id', 'automation_key', 'executed_at'])]
 class LeadAutomationExecution extends Model

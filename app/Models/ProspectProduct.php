@@ -61,6 +61,15 @@ class ProspectProduct extends Model
     }
 
     /**
+     * Texto da mensagem automática de teste vencido (CRM-WA-24): o `trial_expiration_text`
+     * exatamente como foi gravado, ou null quando vazio ou só com espaços (sem texto, sem envio).
+     */
+    public function trialExpirationText(): ?string
+    {
+        return trim((string) $this->trial_expiration_text) === '' ? null : $this->trial_expiration_text;
+    }
+
+    /**
      * Textos do envio manual por ID de produto, inclusive inativos, só dos que têm texto.
      *
      * @return array<int, string>

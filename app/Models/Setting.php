@@ -23,6 +23,10 @@ class Setting extends Model
     // JSON por dia ISO (1 = segunda … 7 = domingo): {"1": {"active": true, "opens_at": "08:00", "closes_at": "18:00"}, …}
     public const WHATSAPP_SLA_WEEK = 'whatsapp_sla_week';
 
+    // Instante ISO 8601 a partir do qual a automação trial_expired vale (CRM-WA-24): só entram
+    // testes vencidos desde então. Ausente ou inválido: automação desligada. Ver Lead::trialExpiredAutomationSince().
+    public const TRIAL_EXPIRED_AUTOMATION_SINCE = 'trial_expired_automation_since';
+
     protected $fillable = [
         'key',
         'value',

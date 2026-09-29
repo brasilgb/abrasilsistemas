@@ -3,6 +3,7 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\ProspectProduct;
+use App\Models\Setting;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -379,19 +380,21 @@ test('the edit page receives the trial period', function () {
 });
 
 test('the automation state keeps its contract for a trial started here', function () {
-    $lead = trialStartLead(trialStartProduct(14), ['whatsapp' => '5551995179173']);
+    // CRM-WA-24: automação ligada e produto com texto de vencimento, para o eligible valer.
+    Setting::query()->create(['key' => Setting::TRIAL_EXPIRED_AUTOMATION_SINCE, 'value' => '2026-09-01T00:00:00Z']);
+    $lead = trialStartLead(trialStartProduct(14, ['trial_expiration_text' => 'Seu teste terminou.']), ['whatsapp' => '5551995179173']);
     trialStartPost($lead);
     $headers = ['Authorization' => 'Bearer '.config('services.ab_prospect.token')];
 
     $this->getJson(route('api.prospects.automation-state', $lead), $headers)
         ->assertJsonPath('trial', ['state' => 'active', 'started_at' => '2026-09-28', 'ends_at' => '2026-10-12'])
-        ->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null]);
+        ->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null, 'message' => 'Seu teste terminou.']);
 
     $this->travelTo(now('UTC')->setDate(2026, 10, 12)->setTime(20, 0, 0));
 
     $this->getJson(route('api.prospects.automation-state', $lead), $headers)
         ->assertJsonPath('trial', ['state' => 'expired', 'started_at' => '2026-09-28', 'ends_at' => '2026-10-12'])
-        ->assertJsonPath('automations.trial_expired', ['eligible' => true, 'automation_key' => 'trial_expired:2026-10-12']);
+        ->assertJsonPath('automations.trial_expired', ['eligible' => true, 'automation_key' => 'trial_expired:2026-10-12', 'message' => 'Seu teste terminou.']);
 });
 
 test('the migration keeps the CRM-WA-16 calendar dates with the same expiry', function () {
@@ -549,5 +552,5 @@ test('the automation state treats a closed lead as before', function (string $st
         ->assertOk()
         ->assertJsonPath('is_closed', true)
         ->assertJsonPath('trial', ['state' => 'none', 'started_at' => '2026-09-28', 'ends_at' => '2026-10-12'])
-        ->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null]);
+        ->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null, 'message' => null]);
 })->with(['converted', 'lost']);

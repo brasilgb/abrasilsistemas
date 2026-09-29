@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\LeadAutomationExecutionController;
 use App\Http\Controllers\Api\LeadAutomationStateController;
 use App\Http\Controllers\Api\ProspectImportController;
+use App\Http\Controllers\Api\TrialExpiredAutomationCandidateController;
 use App\Http\Controllers\Api\WhatsappActivityController;
 use App\Http\Controllers\Api\WhatsappExternalOutboundController;
 use App\Http\Controllers\Api\WhatsappInboundController;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Route;
 Route::post('prospects/import', ProspectImportController::class)
     ->middleware(['throttle:30,1', 'prospect.token'])
     ->name('api.prospects.import');
+
+Route::get('prospects/automation-candidates/trial-expired', [TrialExpiredAutomationCandidateController::class, 'index'])
+    ->middleware(['throttle:120,1', 'prospect.token'])
+    ->name('api.prospects.automation-candidates.trial-expired');
 
 Route::get('prospects/{lead}/automation-state', [LeadAutomationStateController::class, 'show'])
     ->middleware(['throttle:120,1', 'prospect.token'])

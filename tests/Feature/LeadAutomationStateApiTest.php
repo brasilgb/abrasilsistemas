@@ -87,6 +87,7 @@ test('a valid token reads the automation state of a lead', function () {
                 'trial_expired' => [
                     'eligible' => false,
                     'automation_key' => null,
+                    'message' => null,
                 ],
             ],
         ]);

@@ -40,10 +40,13 @@ class LeadAutomationStateController extends Controller
                 'last_inbound_at' => $lastMessages['inbound'],
             ],
             // Elegibilidade para o n8n consultar antes de reservar (automation-executions/reserve).
+            // eligible é a regra completa do CRM-WA-24 (a mesma da listagem de candidatos);
+            // automation_key continua sendo a chave do vencimento (CRM-WA-19), mesmo inelegível.
             'automations' => [
                 'trial_expired' => [
-                    'eligible' => $trialExpiredKey !== null,
+                    'eligible' => $lead->isTrialExpiredAutomationCandidate(),
                     'automation_key' => $trialExpiredKey,
+                    'message' => $lead->trialExpirationMessage(),
                 ],
             ],
         ]);

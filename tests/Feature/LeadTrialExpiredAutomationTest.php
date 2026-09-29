@@ -3,6 +3,9 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\LeadAutomationExecution;
+use App\Models\ProspectProduct;
+use App\Models\Setting;
+use App\Services\WhatsappBusinessHours;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -12,11 +15,23 @@ use Illuminate\Testing\TestResponse;
  * CRM-WA-19: elegibilidade da automação trial_expired no automation-state (CRM-WA-17).
  * Elegível = trial_state expired: prospect aberto, teste iniciado e término antes de hoje em
  * São Paulo. O término é o último dia do teste; o vencimento acontece à 00:00 do dia seguinte.
+ * CRM-WA-24 acrescentou condições ao eligible (texto do produto, horário, corte, conversa,
+ * reserva): aqui elas ficam sempre satisfeitas (produto com texto, atendimento 24h, corte antigo)
+ * para os testes continuarem medindo só a regra do teste; as condições novas têm o próprio arquivo.
  */
+
+const TRIAL_EXPIRED_TEXT = 'Seu período de teste terminou.';
 
 beforeEach(function () {
     // 28/09/2026 12:00 em São Paulo (15:00 UTC).
     $this->travelTo(now()->setDate(2026, 9, 28)->setTime(15, 0, 0));
+
+    Setting::query()->create(['key' => Setting::TRIAL_EXPIRED_AUTOMATION_SINCE, 'value' => '2026-01-01T00:00:00Z']);
+    app(WhatsappBusinessHours::class)->save([
+        'timezone' => Lead::FOLLOW_UP_TIMEZONE,
+        'days' => array_fill_keys(range(1, 7), ['active' => true, 'opens_at' => '00:00', 'closes_at' => '24:00']),
+    ]);
+    $this->product = ProspectProduct::query()->create(['name' => 'VetorOS', 'trial_days' => 7, 'trial_expiration_text' => TRIAL_EXPIRED_TEXT]);
 });
 
 /** @return array<string, string> */
@@ -33,6 +48,7 @@ function trialExpiredLead(array $attributes = []): Lead
         'product' => 'vetoros',
         'status' => 'meeting',
         'whatsapp' => '5551995179173',
+        'prospect_product_id' => test()->product->id,
         ...$attributes,
     ]);
 }
@@ -51,6 +67,7 @@ test('trial_expired eligibility follows the trial and the commercial status', fu
         ->assertJsonPath('automations.trial_expired', [
             'eligible' => $eligible,
             'automation_key' => $key,
+            'message' => TRIAL_EXPIRED_TEXT,
         ]);
 
     expect($lead->refresh()->trialExpiredAutomationKey())->toBe($key);
@@ -85,13 +102,13 @@ test('trial_expired becomes eligible exactly when the last trial day ends in Sã
     $this->travelTo(now()->setDate(2026, 10, 6)->setTime(2, 59, 59));
     trialExpiredState($lead)
         ->assertJsonPath('trial.state', 'active')
-        ->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null]);
+        ->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null, 'message' => TRIAL_EXPIRED_TEXT]);
 
     // 06/10 00:00:00 em São Paulo (03:00 UTC): agora == fim do teste, já vencido.
     $this->travelTo(now()->setDate(2026, 10, 6)->setTime(3, 0, 0));
     trialExpiredState($lead)
         ->assertJsonPath('trial.state', 'expired')
-        ->assertJsonPath('automations.trial_expired', ['eligible' => true, 'automation_key' => 'trial_expired:2026-10-05']);
+        ->assertJsonPath('automations.trial_expired', ['eligible' => true, 'automation_key' => 'trial_expired:2026-10-05', 'message' => TRIAL_EXPIRED_TEXT]);
 });
 
 test('the trial_expired key derives from trial_ends_at, not from the day of the query', function () {
@@ -113,7 +130,7 @@ test('a new trial end date produces a new key', function () {
 
     // Prorrogado para o futuro: volta a ativo, sem elegibilidade.
     $lead->update(['trial_ends_at' => '2026-10-10']);
-    trialExpiredState($lead)->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null]);
+    trialExpiredState($lead)->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => null, 'message' => TRIAL_EXPIRED_TEXT]);
 });
 
 test('a soft-deleted lead with an expired trial is not found', function () {
@@ -123,7 +140,7 @@ test('a soft-deleted lead with an expired trial is not found', function () {
     trialExpiredState($lead->id)->assertNotFound();
 });
 
-test('the trial_expired key is accepted by the CRM-WA-18 reservation and the reservation does not change eligibility', function () {
+test('the trial_expired key is accepted by the CRM-WA-18 reservation and the reserved lead is no longer eligible', function () {
     $lead = trialExpiredLead(['trial_started_at' => '2026-09-01', 'trial_ends_at' => '2026-09-15']);
     $key = trialExpiredState($lead)->json('automations.trial_expired.automation_key');
     $reserve = fn () => $this->postJson(
@@ -135,8 +152,8 @@ test('the trial_expired key is accepted by the CRM-WA-18 reservation and the res
     $reserve()->assertCreated()->assertExactJson(['reserved' => true]);
     $reserve()->assertOk()->assertExactJson(['reserved' => false]);
 
-    // Quem decide se executa é a reserva; o estado continua informando a mesma elegibilidade e chave.
-    trialExpiredState($lead)->assertJsonPath('automations.trial_expired', ['eligible' => true, 'automation_key' => $key]);
+    // CRM-WA-24: chave reservada deixa de ser elegível; a chave do vencimento continua informada.
+    trialExpiredState($lead)->assertJsonPath('automations.trial_expired', ['eligible' => false, 'automation_key' => $key, 'message' => TRIAL_EXPIRED_TEXT]);
     expect(LeadAutomationExecution::query()->where('lead_id', $lead->id)->pluck('automation_key')->all())->toBe([$key]);
 });
 

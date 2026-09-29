@@ -10,6 +10,7 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 #[Fillable([
     'user_id',
@@ -593,6 +595,90 @@ class Lead extends Model
         }
 
         return 'trial_expired:'.$this->trialLastDay();
+    }
+
+    /** Texto da mensagem de teste vencido (CRM-WA-24): trial_expiration_text do produto vinculado. */
+    public function trialExpirationMessage(): ?string
+    {
+        return $this->prospectProduct?->trialExpirationText();
+    }
+
+    /**
+     * Corte da automação trial_expired (CRM-WA-24): só testes vencidos a partir deste instante
+     * entram, para não enviar retroativamente a quem já estava vencido quando a automação foi
+     * ligada. Setting ausente ou inválido: nulo, e a automação fica desligada (nenhum candidato).
+     */
+    public static function trialExpiredAutomationSince(): ?CarbonInterface
+    {
+        $value = Setting::valueFor(Setting::TRIAL_EXPIRED_AUTOMATION_SINCE);
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->setTimezone(config('app.timezone'));
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Candidatos à mensagem automática de teste vencido (CRM-WA-24), neste instante. Fonte única
+     * da regra: a listagem do n8n e o eligible do automation-state vêm daqui. Todos valem:
+     * automação ligada e vencimento a partir do corte; horário de atendimento aberto
+     * (WhatsappBusinessHours); trial_state expired (aberto, iniciado, vencimento alcançado);
+     * produto com trial_expiration_text; WhatsApp válido; sem cliente aguardando resposta
+     * (awaitingWhatsappReply, bloqueio temporário); chave trial_expired ainda não reservada.
+     * Somente leitura. Ordem: vencimento mais antigo primeiro.
+     *
+     * @return Collection<int, self>
+     */
+    public static function trialExpiredAutomationCandidates(?int $leadId = null): Collection
+    {
+        $since = self::trialExpiredAutomationSince();
+
+        if ($since === null || ! app(WhatsappBusinessHours::class)->isOpen(now())) {
+            return new Collection;
+        }
+
+        $leads = self::query()
+            ->when($leadId !== null, fn (Builder $query) => $query->whereKey($leadId))
+            ->trialState('expired')
+            ->where('trial_ends_at', '>=', $since)
+            ->whereNotNull('whatsapp')
+            ->whereHas('prospectProduct', fn (Builder $product) => $product->whereNotNull('trial_expiration_text'))
+            ->whereNot(fn (Builder $query) => $query->awaitingWhatsappReply())
+            ->with('prospectProduct')
+            ->orderBy('trial_ends_at')
+            ->orderBy('id')
+            ->get()
+            // Espaços e número válido seguem as regras em PHP (trialExpirationText, normalizeNumber).
+            ->filter(fn (self $lead) => $lead->trialExpirationMessage() !== null
+                && LeadWhatsappService::normalizeNumber($lead->whatsapp) !== null);
+
+        if ($leads->isEmpty()) {
+            return $leads->values();
+        }
+
+        // A chave depende do último dia em São Paulo, então a reserva é conferida aqui, numa consulta.
+        $reserved = LeadAutomationExecution::query()
+            ->whereIn('lead_id', $leads->modelKeys())
+            ->whereIn('automation_key', $leads->map(fn (self $lead) => $lead->trialExpiredAutomationKey())->unique()->values()->all())
+            ->get(['lead_id', 'automation_key'])
+            ->map(fn (LeadAutomationExecution $execution) => $execution->lead_id.'|'.$execution->automation_key)
+            ->all();
+
+        return $leads
+            ->reject(fn (self $lead) => in_array($lead->id.'|'.$lead->trialExpiredAutomationKey(), $reserved, true))
+            ->values();
+    }
+
+    /** Este lead é candidato agora à mensagem de teste vencido: mesma regra da listagem. */
+    public function isTrialExpiredAutomationCandidate(): bool
+    {
+        return $this->trialExpiredAutomationKey() !== null
+            && self::trialExpiredAutomationCandidates($this->id)->isNotEmpty();
     }
 
     /**
