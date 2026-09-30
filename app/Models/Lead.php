@@ -116,6 +116,35 @@ class Lead extends Model
     ];
 
     /**
+     * Resultado da última verificação de cadastro pela API do produto (CRM-WA-29). Não é status
+     * comercial: cadastro confirmado vira o trial (startTrial) e os erros não mudam nada no lead.
+     */
+    public const REGISTRATION_CHECK_STATUSES = [
+        'registered' => 'Cadastrado',
+        'not_registered' => 'Não cadastrado',
+        'error' => 'Erro na consulta',
+    ];
+
+    /** Códigos de erro da verificação (ver ProductRegistrationChecker). Nunca contêm segredo. */
+    public const REGISTRATION_CHECK_ERRORS = [
+        'not_configured' => 'API do produto não configurada',
+        'missing_identifier' => 'Lead sem o identificador usado pela API',
+        'blocked_url' => 'URL da API recusada (não é HTTPS pública)',
+        'connection_failed' => 'Falha de conexão',
+        'timeout' => 'Tempo esgotado',
+        'redirect' => 'A API respondeu com redirecionamento',
+        'unauthorized' => 'Token recusado (401/403)',
+        'not_found' => 'Endereço não encontrado (404)',
+        'unprocessable' => 'Consulta recusada (422)',
+        'rate_limited' => 'Limite de consultas da API (429)',
+        'server_error' => 'Erro no servidor da API (5xx)',
+        'unexpected_status' => 'Resposta HTTP inesperada',
+        'invalid_json' => 'Resposta não é JSON válido',
+        'invalid_response' => 'Resposta fora do contrato',
+        'invalid_registered_at' => 'Data de cadastro ausente ou inválida',
+    ];
+
+    /**
      * Relógio da equipe comercial. O app grava em UTC; "hoje" e as datas digitadas sem fuso
      * (formulários, CSV) seguem este fuso.
      */
@@ -185,6 +214,7 @@ class Lead extends Model
             'trial_started_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'last_contacted_at' => 'datetime',
+            'registration_checked_at' => 'datetime',
         ];
     }
 
@@ -300,8 +330,11 @@ class Lead extends Model
      * cliques ou requisições simultâneas, só a primeira grava as datas e a nota do histórico; as
      * outras recebem false e nada muda. Nunca recalcula um teste já iniciado. Lead Convertido/
      * Perdido não inicia (CRM-WA-23.1), inclusive se mudou para encerrado depois de carregado.
+     *
+     * Cadastro confirmado pela API do produto (CRM-WA-29): mesma regra, com o início no instante
+     * do cadastro informado pela API (registeredAt, nunca depois de agora) e sem usuário na nota.
      */
-    public function startTrial(User $user): bool
+    public function startTrial(?User $user, ?CarbonInterface $registeredAt = null): bool
     {
         $product = $this->prospectProduct;
 
@@ -310,6 +343,11 @@ class Lead extends Model
         }
 
         $startedAt = now()->startOfSecond();
+
+        if ($registeredAt !== null && $registeredAt->lt($startedAt)) {
+            $startedAt = $registeredAt->toImmutable()->setTimezone($startedAt->getTimezone())->startOfSecond();
+        }
+
         $endsAt = $startedAt->addDays($product->trial_days);
 
         // Prazo além do que o banco guarda (trial_days não tem máximo no cadastro).
@@ -317,7 +355,7 @@ class Lead extends Model
             return false;
         }
 
-        return DB::transaction(function () use ($user, $product, $startedAt, $endsAt): bool {
+        return DB::transaction(function () use ($user, $product, $startedAt, $endsAt, $registeredAt): bool {
             $started = self::query()
                 ->whereKey($this->getKey())
                 ->where('prospect_product_id', $product->id)
@@ -329,16 +367,25 @@ class Lead extends Model
                 return false;
             }
 
+            $description = sprintf(
+                'Período de teste iniciado (%s, %d %s). Vencimento: %s.',
+                $product->name,
+                $product->trial_days,
+                $product->trial_days === 1 ? 'dia' : 'dias',
+                Carbon::instance($endsAt)->setTimezone(self::FOLLOW_UP_TIMEZONE)->format('d/m/Y H:i'),
+            );
+
+            if ($registeredAt !== null) {
+                $description .= sprintf(
+                    ' Cadastro confirmado pela API do produto em %s.',
+                    Carbon::instance($startedAt)->setTimezone(self::FOLLOW_UP_TIMEZONE)->format('d/m/Y H:i'),
+                );
+            }
+
             $this->activities()->create([
-                'user_id' => $user->id,
+                'user_id' => $user?->id,
                 'type' => 'note',
-                'description' => sprintf(
-                    'Período de teste iniciado (%s, %d %s). Vencimento: %s.',
-                    $product->name,
-                    $product->trial_days,
-                    $product->trial_days === 1 ? 'dia' : 'dias',
-                    Carbon::instance($endsAt)->setTimezone(self::FOLLOW_UP_TIMEZONE)->format('d/m/Y H:i'),
-                ),
+                'description' => $description,
             ]);
 
             return true;
@@ -421,6 +468,67 @@ class Lead extends Model
     public function trialLastDay(): ?string
     {
         return $this->trial_ends_at?->toImmutable()->subSecond()->setTimezone(self::FOLLOW_UP_TIMEZONE)->toDateString();
+    }
+
+    /**
+     * Verificação de cadastro na tela do lead (CRM-WA-29), só para produto em modo API; null no
+     * modo manual (a tela continua como antes). A ação manual de início não muda em nenhum modo.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function registrationCheck(): ?array
+    {
+        $product = $this->prospectProduct;
+
+        if ($product === null || ! $product->usesRegistrationApi()) {
+            return null;
+        }
+
+        $status = $this->registration_check_status;
+        $error = $this->registration_check_error;
+        /** @var CarbonInterface|null $checkedAt */
+        $checkedAt = $this->registration_checked_at;
+
+        return [
+            'mode' => 'api',
+            'configured' => $product->hasRegistrationApiConfigured(),
+            'lookup_field' => $product->registration_lookup_field,
+            'status' => $status,
+            'status_label' => $status === null ? 'Ainda não verificado' : (self::REGISTRATION_CHECK_STATUSES[$status] ?? $status),
+            'error' => $error,
+            'error_label' => $error === null ? null : (self::REGISTRATION_CHECK_ERRORS[$error] ?? $error),
+            'checked_at' => $checkedAt?->toIso8601String(),
+            'can_check' => $this->awaitsRegistrationCheck(),
+        ];
+    }
+
+    /**
+     * Lead que ainda precisa da verificação de cadastro: prospect aberto, teste não iniciado e
+     * produto ativo, com prazo de teste, em modo API. Mesma regra do scope awaitingRegistrationCheck.
+     */
+    public function awaitsRegistrationCheck(): bool
+    {
+        return ! $this->isClosed()
+            && $this->trial_started_at === null
+            && $this->prospectProduct?->active === true
+            && $this->prospectProduct->trial_days !== null
+            && $this->prospectProduct->usesRegistrationApi();
+    }
+
+    /**
+     * Leads aguardando cadastro no produto (CRM-WA-29): mesma regra de awaitsRegistrationCheck.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function awaitingRegistrationCheck(Builder $query): void
+    {
+        $query->whereNotIn('status', self::CLOSED_STATUSES)
+            ->whereNull('trial_started_at')
+            ->whereHas('prospectProduct', fn (Builder $product) => $product
+                ->where('active', true)
+                ->whereNotNull('trial_days')
+                ->where('registration_check_mode', 'api'));
     }
 
     /**
@@ -629,7 +737,10 @@ class Lead extends Model
      * automação ligada e vencimento a partir do corte; horário de atendimento aberto
      * (WhatsappBusinessHours); trial_state expired (aberto, iniciado, vencimento alcançado);
      * produto com trial_expiration_text; WhatsApp válido; sem cliente aguardando resposta
-     * (awaitingWhatsappReply, bloqueio temporário); chave trial_expired ainda não reservada.
+     * (awaitingWhatsappReply, bloqueio temporário); chave trial_expired ainda não reservada; teste
+     * que não estava vencido quando a API do produto confirmou o cadastro (CRM-WA-30.2,
+     * alternativa 4: cadastro antigo descoberto tarde já nasce vencido e fica para contato manual;
+     * o check que confirma é o último, então registration_checked_at é o instante da descoberta).
      * Somente leitura. Ordem: vencimento mais antigo primeiro.
      *
      * @return Collection<int, self>
@@ -649,6 +760,11 @@ class Lead extends Model
             ->whereNotNull('whatsapp')
             ->whereHas('prospectProduct', fn (Builder $product) => $product->whereNotNull('trial_expiration_text'))
             ->whereNot(fn (Builder $query) => $query->awaitingWhatsappReply())
+            ->where(fn (Builder $query) => $query
+                ->whereNull('registration_check_status')
+                ->orWhere('registration_check_status', '!=', 'registered')
+                ->orWhereNull('registration_checked_at')
+                ->orWhereColumn('trial_ends_at', '>', 'registration_checked_at'))
             ->with('prospectProduct')
             ->orderBy('trial_ends_at')
             ->orderBy('id')

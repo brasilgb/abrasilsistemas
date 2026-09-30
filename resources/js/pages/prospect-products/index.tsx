@@ -37,10 +37,19 @@ type ProspectProduct = {
     trial_days: number | null;
     trial_expiration_text: string | null;
     active: boolean;
+    registration_check_mode: RegistrationCheckMode;
+    registration_api_url: string | null;
+    registration_lookup_field: string | null;
+    /** O token nunca vem do servidor: só se há um salvo. */
+    registration_api_token_set: boolean;
 };
+
+type RegistrationCheckMode = 'manual' | 'api';
 
 type Props = {
     products: ProspectProduct[];
+    registrationCheckModes: Record<RegistrationCheckMode, string>;
+    registrationLookupFields: Record<string, string>;
 };
 
 const textareaClassName =
@@ -54,14 +63,21 @@ function formatTrial(days: number | null) {
     return days === 1 ? '1 dia' : `${days} dias`;
 }
 
+const selectClassName =
+    'h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none';
+
 function ProductDialog({
     product,
     open,
     onOpenChange,
+    modes,
+    lookupFields,
 }: {
     product: ProspectProduct | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    modes: Props['registrationCheckModes'];
+    lookupFields: Props['registrationLookupFields'];
 }) {
     const form = useForm({
         name: product?.name ?? '',
@@ -69,7 +85,14 @@ function ProductDialog({
         whatsapp_text: product?.whatsapp_text ?? '',
         trial_expiration_text: product?.trial_expiration_text ?? '',
         active: product?.active ?? true,
+        registration_check_mode: (product?.registration_check_mode ??
+            'manual') as RegistrationCheckMode,
+        registration_api_url: product?.registration_api_url ?? '',
+        registration_lookup_field: product?.registration_lookup_field ?? '',
+        registration_api_token: '',
+        registration_api_token_clear: false,
     });
+    const tokenSet = product?.registration_api_token_set ?? false;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,6 +191,140 @@ function ProductDialog({
                         />
                     </div>
 
+                    <div className="grid gap-2">
+                        <Label htmlFor="product-registration-mode">
+                            Acompanhamento de cadastro
+                        </Label>
+                        <select
+                            id="product-registration-mode"
+                            className={selectClassName}
+                            value={form.data.registration_check_mode}
+                            onChange={(event) =>
+                                form.setData(
+                                    'registration_check_mode',
+                                    event.target.value as RegistrationCheckMode,
+                                )
+                            }
+                        >
+                            {Object.entries(modes).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                            {form.data.registration_check_mode === 'api'
+                                ? 'O CRM consulta a API do produto e inicia o teste quando ela confirmar o cadastro. O início manual continua disponível.'
+                                : 'O início do teste é informado pela tela do lead.'}
+                        </p>
+                        <InputError
+                            message={form.errors.registration_check_mode}
+                        />
+                    </div>
+
+                    {form.data.registration_check_mode === 'api' && (
+                        <div className="space-y-4 rounded-md border p-3">
+                            <div className="grid gap-2">
+                                <Label htmlFor="product-registration-url">
+                                    URL da API (HTTPS)
+                                </Label>
+                                <Input
+                                    id="product-registration-url"
+                                    type="url"
+                                    value={form.data.registration_api_url}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'registration_api_url',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="https://produto.com.br/api/crm/registration"
+                                    maxLength={2048}
+                                />
+                                <InputError
+                                    message={form.errors.registration_api_url}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="product-registration-lookup">
+                                    Identificador enviado
+                                </Label>
+                                <select
+                                    id="product-registration-lookup"
+                                    className={selectClassName}
+                                    value={form.data.registration_lookup_field}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'registration_lookup_field',
+                                            event.target.value,
+                                        )
+                                    }
+                                >
+                                    <option value="">Selecione</option>
+                                    {Object.entries(lookupFields).map(
+                                        ([value, label]) => (
+                                            <option key={value} value={value}>
+                                                {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                                <InputError
+                                    message={
+                                        form.errors.registration_lookup_field
+                                    }
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="product-registration-token">
+                                    Token da API
+                                </Label>
+                                <Input
+                                    id="product-registration-token"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    value={form.data.registration_api_token}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'registration_api_token',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder={
+                                        tokenSet
+                                            ? 'Token salvo. Deixe vazio para manter.'
+                                            : 'Enviado como Bearer'
+                                    }
+                                />
+                                {tokenSet && (
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="product-registration-token-clear"
+                                            checked={
+                                                form.data
+                                                    .registration_api_token_clear
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                form.setData(
+                                                    'registration_api_token_clear',
+                                                    checked === true,
+                                                )
+                                            }
+                                        />
+                                        <Label htmlFor="product-registration-token-clear">
+                                            Remover o token salvo
+                                        </Label>
+                                    </div>
+                                )}
+                                <InputError
+                                    message={form.errors.registration_api_token}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                         <Checkbox
                             id="product-active"
@@ -198,7 +355,11 @@ function ProductDialog({
     );
 }
 
-export default function ProspectProductsIndex({ products }: Props) {
+export default function ProspectProductsIndex({
+    products,
+    registrationCheckModes,
+    registrationLookupFields,
+}: Props) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<ProspectProduct | null>(null);
     const [dialogKey, setDialogKey] = useState(0);
@@ -273,6 +434,9 @@ export default function ProspectProductsIndex({ products }: Props) {
                                                 {formatTrial(
                                                     product.trial_days,
                                                 )}
+                                                {product.registration_check_mode ===
+                                                    'api' &&
+                                                    ' · Cadastro via API'}
                                             </p>
 
                                             <div>
@@ -327,6 +491,8 @@ export default function ProspectProductsIndex({ products }: Props) {
                 product={editing}
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
+                modes={registrationCheckModes}
+                lookupFields={registrationLookupFields}
             />
         </>
     );

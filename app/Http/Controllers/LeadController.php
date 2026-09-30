@@ -9,6 +9,7 @@ use App\Models\LeadActivity;
 use App\Models\ProspectProduct;
 use App\Models\User;
 use App\Services\LeadWhatsappService;
+use App\Services\ProductRegistrationChecker;
 use App\Services\WhatsappBusinessHours;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -362,7 +363,7 @@ class LeadController extends Controller
         $lead->load([
             'activities' => fn ($query) => $query->with('user:id,name')->latest(),
             'user:id,name',
-            'prospectProduct:id,name,active,whatsapp_text,trial_days',
+            'prospectProduct:id,name,active,whatsapp_text,trial_days,registration_check_mode,registration_api_url,registration_lookup_field,registration_api_token',
         ]);
 
         // O ID da mensagem no provedor (WAHA) é de uso interno; o histórico só precisa do message_status.
@@ -383,6 +384,8 @@ class LeadController extends Controller
             'statuses' => Lead::STATUSES,
             // Período de teste (CRM-WA-23): situação calculada e se "Iniciar" está disponível.
             'trialPeriod' => $lead->trialPeriod(),
+            // Verificação de cadastro pela API do produto (CRM-WA-29); null no modo manual.
+            'registrationCheck' => $lead->registrationCheck(),
             'users' => User::query()->orderBy('name')->get(['id', 'name']),
             // Destino já normalizado do envio manual (null quando o Lead não tem WhatsApp válido).
             'whatsappDestination' => LeadWhatsappService::normalizeNumber($lead->whatsapp),
@@ -546,6 +549,27 @@ class LeadController extends Controller
 
         // Outra requisição iniciou antes (ou o vínculo mudou no meio): nada foi alterado.
         Inertia::flash('toast', ['type' => 'error', 'message' => $blocker ?? $lead->fresh()?->trialStartBlocker() ?? 'Não foi possível iniciar o período de teste.']);
+
+        return back();
+    }
+
+    /**
+     * "Verificar cadastro agora" (CRM-WA-29): a mesma consulta do agendamento, para um lead.
+     * Cadastro confirmado inicia o teste pela regra de sempre; erro não muda nada no lead.
+     */
+    public function checkRegistration(Lead $lead, ProductRegistrationChecker $checker): RedirectResponse
+    {
+        $result = $checker->checkAndRecord($lead);
+
+        [$type, $message] = match (true) {
+            $result === null => ['error', 'Este lead não está aguardando verificação de cadastro.'],
+            $result->isRegistered() && $result->trialStarted => ['success', 'Cadastro confirmado pela API. Período de teste iniciado.'],
+            $result->isRegistered() => ['success', 'Cadastro confirmado pela API. O período de teste não foi iniciado: '.($lead->fresh()?->trialStartBlocker() ?? 'o lead mudou durante a consulta.')],
+            $result->status === 'not_registered' => ['info', 'A API do produto informou que o prospect ainda não se cadastrou.'],
+            default => ['error', 'Não foi possível verificar o cadastro: '.(Lead::REGISTRATION_CHECK_ERRORS[$result->error] ?? $result->error).'. Nada foi alterado.'],
+        };
+
+        Inertia::flash('toast', ['type' => $type, 'message' => $message]);
 
         return back();
     }

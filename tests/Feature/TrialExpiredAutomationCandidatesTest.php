@@ -62,6 +62,14 @@ function candidatesLead(array $attributes = []): Lead
     ]);
 }
 
+/** Resultado da verificação de cadastro (CRM-WA-29) gravado direto, como o checker faz. Instante em UTC. */
+function candidatesRegistrationCheck(Lead $lead, string $status, string $checkedAt): Lead
+{
+    $lead->forceFill(['registration_check_status' => $status, 'registration_checked_at' => $checkedAt])->saveQuietly();
+
+    return $lead;
+}
+
 /** Mensagem da conversa gravada no instante informado (UTC; created_at define a ordem). */
 function candidatesMessage(Lead $lead, string $direction, string $at): LeadActivity
 {
@@ -175,7 +183,23 @@ test('eligibility follows each condition of the rule', function (Closure $setup,
     'teste não iniciado' => [fn (Lead $lead) => tap($lead)->update(['trial_started_at' => null, 'trial_ends_at' => null]), false],
     'chave reservada' => [fn (Lead $lead) => tap($lead, fn () => LeadAutomationExecution::reserve($lead, 'trial_expired:2026-09-27')), false],
     'outra chave reservada' => [fn (Lead $lead) => tap($lead, fn () => LeadAutomationExecution::reserve($lead, 'trial_expired:2026-09-20')), true],
+    // CRM-WA-30.2 (alternativa 4): cadastro confirmado pela API quando o teste já estava vencido.
+    'cadastro descoberto já vencido' => [fn (Lead $lead) => candidatesRegistrationCheck($lead, 'registered', '2026-09-27 14:00'), false],
+    'cadastro descoberto no instante do vencimento' => [fn (Lead $lead) => candidatesRegistrationCheck($lead, 'registered', '2026-09-27 13:00'), false],
+    'cadastro descoberto antes do vencimento' => [fn (Lead $lead) => candidatesRegistrationCheck($lead, 'registered', '2026-09-27 12:59:59'), true],
+    'verificação com erro depois do vencimento' => [fn (Lead $lead) => candidatesRegistrationCheck($lead, 'error', '2026-09-27 14:00'), true],
+    'verificação sem cadastro depois do vencimento' => [fn (Lead $lead) => candidatesRegistrationCheck($lead, 'not_registered', '2026-09-27 14:00'), true],
 ]);
+
+test('only the discovery of an already expired trial blocks the automation, in the list and in the state', function () {
+    $late = candidatesRegistrationCheck(candidatesLead(), 'registered', '2026-09-28 14:00');
+    $inTime = candidatesRegistrationCheck(candidatesLead(), 'registered', '2026-09-21 14:00');
+    $manual = candidatesLead();
+
+    expect(candidatesIds())->toBe([$inTime->id, $manual->id])
+        ->and(candidatesEligible($late))->toBeFalse()
+        ->and(candidatesEligible($inTime))->toBeTrue();
+});
 
 test('a soft-deleted lead is never a candidate', function () {
     $lead = candidatesLead();

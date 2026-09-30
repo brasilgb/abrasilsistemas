@@ -17,13 +17,21 @@ class ProspectProductController extends Controller
             'products' => ProspectProduct::query()
                 ->orderByDesc('active')
                 ->orderBy('name')
-                ->get(['id', 'name', 'whatsapp_text', 'trial_days', 'trial_expiration_text', 'active']),
+                ->get()
+                // O token da API de cadastro nunca vai para a tela: só se há um salvo (CRM-WA-29).
+                ->map(fn (ProspectProduct $product) => [
+                    ...$product->only(['id', 'name', 'whatsapp_text', 'trial_days', 'trial_expiration_text', 'active']),
+                    ...$product->only(['registration_check_mode', 'registration_api_url', 'registration_lookup_field']),
+                    'registration_api_token_set' => filled($product->registration_api_token),
+                ]),
+            'registrationCheckModes' => ProspectProduct::REGISTRATION_CHECK_MODES,
+            'registrationLookupFields' => ProspectProduct::REGISTRATION_LOOKUP_FIELDS,
         ]);
     }
 
     public function store(ProspectProductRequest $request): RedirectResponse
     {
-        ProspectProduct::query()->create($request->validated());
+        ProspectProduct::query()->create($request->productData());
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Produto criado.']);
 
         return to_route('prospect-products.index');
@@ -31,7 +39,7 @@ class ProspectProductController extends Controller
 
     public function update(ProspectProductRequest $request, ProspectProduct $prospectProduct): RedirectResponse
     {
-        $prospectProduct->update($request->validated());
+        $prospectProduct->update($request->productData());
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Produto atualizado.']);
 
         return to_route('prospect-products.index');

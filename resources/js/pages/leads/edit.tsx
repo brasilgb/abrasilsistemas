@@ -18,7 +18,10 @@ import {
     useOwnerLabel,
 } from '@/components/lead-owner-actions';
 import { LeadTrialPeriodCard } from '@/components/lead-trial';
-import type { LeadTrialPeriod } from '@/components/lead-trial';
+import type {
+    LeadRegistrationCheck,
+    LeadTrialPeriod,
+} from '@/components/lead-trial';
 import LeadWhatsappConversation from '@/components/lead-whatsapp-conversation';
 import type { ConversationMessage } from '@/components/lead-whatsapp-conversation';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +52,7 @@ type Props = {
     prospectProducts: ProspectProductOption[];
     statuses: Record<string, string>;
     trialPeriod: LeadTrialPeriod;
+    registrationCheck: LeadRegistrationCheck | null;
     users: { id: number; name: string }[];
     whatsappDestination: string | null;
     productWhatsappText: string | null;
@@ -79,6 +83,7 @@ export default function EditLead({
     whatsappDestination,
     productWhatsappText,
     trialPeriod,
+    registrationCheck,
 }: Props) {
     const ownerLabel = useOwnerLabel();
     const activities = useMemo(() => lead.activities ?? [], [lead.activities]);
@@ -220,6 +225,7 @@ export default function EditLead({
                         <LeadTrialPeriodCard
                             leadId={lead.id}
                             trial={trialPeriod}
+                            registration={registrationCheck}
                         />
 
                         <Card>

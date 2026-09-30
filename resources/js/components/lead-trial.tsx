@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { FlaskConical, Play } from 'lucide-react';
+import { FlaskConical, Play, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,10 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { startTrial } from '@/routes/leads';
+import {
+    registrationCheck as registrationCheckRoute,
+    startTrial,
+} from '@/routes/leads';
 
 /** Situação calculada no servidor (Lead::TRIAL_STATES); Convertido/Perdido é sempre none. */
 export type LeadTrialState = 'none' | 'active' | 'expired';
@@ -31,6 +34,22 @@ export type LeadTrialPeriod = {
     can_start: boolean;
     /** Lead Convertido/Perdido: o teste não pode ser iniciado (datas existentes continuam). */
     closed: boolean;
+};
+
+/**
+ * Verificação de cadastro pela API do produto (Lead::registrationCheck, CRM-WA-29). Só vem para
+ * produto em modo API; no modo manual a tela fica como antes.
+ */
+export type LeadRegistrationCheck = {
+    mode: 'api';
+    configured: boolean;
+    lookup_field: string | null;
+    status: 'registered' | 'not_registered' | 'error' | null;
+    status_label: string;
+    error: string | null;
+    error_label: string | null;
+    checked_at: string | null;
+    can_check: boolean;
 };
 
 /** As datas do teste seguem o dia de São Paulo, como no servidor. */
@@ -121,11 +140,14 @@ function TrialRow({ label, value }: { label: string; value: string }) {
 export function LeadTrialPeriodCard({
     leadId,
     trial,
+    registration = null,
 }: {
     leadId: number;
     trial: LeadTrialPeriod;
+    registration?: LeadRegistrationCheck | null;
 }) {
     const [processing, setProcessing] = useState(false);
+    const [checking, setChecking] = useState(false);
     const started = trial.started_at !== null;
 
     return (
@@ -176,6 +198,62 @@ export function LeadTrialPeriodCard({
                         {trial.status_label}
                     </Badge>
                 </div>
+
+                {registration && (
+                    <div className="space-y-2 border-t pt-2">
+                        <TrialRow
+                            label="Cadastro"
+                            value="Acompanhado via API"
+                        />
+                        <TrialRow
+                            label="Última verificação"
+                            value={
+                                registration.checked_at
+                                    ? `${formatTrialDateTime(registration.checked_at)} · ${registration.status_label}`
+                                    : registration.status_label
+                            }
+                        />
+                        {registration.error_label && (
+                            <p className="text-xs text-muted-foreground">
+                                {registration.error_label}. Nada foi alterado no
+                                lead.
+                            </p>
+                        )}
+                        {!registration.configured && (
+                            <p className="text-xs text-muted-foreground">
+                                A API do produto ainda não está configurada.
+                            </p>
+                        )}
+                        {registration.can_check && registration.configured && (
+                            <div className="flex justify-end">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={checking}
+                                    onClick={() =>
+                                        router.post(
+                                            registrationCheckRoute.url({
+                                                lead: leadId,
+                                            }),
+                                            {},
+                                            {
+                                                preserveScroll: true,
+                                                onStart: () =>
+                                                    setChecking(true),
+                                                onFinish: () =>
+                                                    setChecking(false),
+                                            },
+                                        )
+                                    }
+                                >
+                                    <RefreshCw className="size-4" />
+                                    Verificar cadastro agora
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {trial.status === 'not_started' && trial.closed && (
                     <p className="pt-2 text-xs text-muted-foreground">

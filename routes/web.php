@@ -151,6 +151,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('leads/{lead}/follow-up', [LeadController::class, 'followUp'])->name('leads.follow-up');
         Route::patch('leads/{lead}/assign-to-me', [LeadController::class, 'assignToMe'])->name('leads.assign-to-me');
         Route::post('leads/{lead}/trial', [LeadController::class, 'startTrial'])->name('leads.start-trial');
+        Route::post('leads/{lead}/registration-check', [LeadController::class, 'checkRegistration'])->middleware('throttle:10,1')->name('leads.registration-check');
         Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
         Route::post('leads/{lead}/whatsapp', [LeadWhatsappController::class, 'store'])->middleware('throttle:10,1')->name('leads.whatsapp.store');

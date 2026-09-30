@@ -44,6 +44,16 @@ return [
         'token' => env('AB_PROSPECT_API_TOKEN'),
     ],
 
+    // Verificação de cadastro pela API de cada produto (CRM-WA-29). O agendamento só é registrado
+    // com enabled=true; sem isso, só a verificação pela tela do lead (e o comando manual).
+    'prospect_registration_check' => [
+        'enabled' => (bool) env('PROSPECT_REGISTRATION_CHECK_ENABLED', false),
+        // Um mesmo lead é consultado no máximo uma vez por intervalo; cada execução tem um teto.
+        'interval_minutes' => (int) env('PROSPECT_REGISTRATION_CHECK_INTERVAL_MINUTES', 360),
+        'batch_limit' => (int) env('PROSPECT_REGISTRATION_CHECK_BATCH_LIMIT', 50),
+        'timeout' => (int) env('PROSPECT_REGISTRATION_CHECK_TIMEOUT', 10),
+    ],
+
     'n8n' => [
         // Webhook do workflow que envia a mensagem pelo WAHA e registra a LeadActivity no CRM.
         'whatsapp_webhook_url' => env('N8N_WHATSAPP_WEBHOOK_URL'),

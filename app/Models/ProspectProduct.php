@@ -15,19 +15,67 @@ use Illuminate\Support\Str;
  * @property int|null $trial_days
  * @property string|null $trial_expiration_text
  * @property bool $active
+ * @property string $registration_check_mode
+ * @property string|null $registration_api_url
+ * @property string|null $registration_lookup_field
+ * @property string|null $registration_api_token
  */
 class ProspectProduct extends Model
 {
-    protected $fillable = ['name', 'whatsapp_text', 'trial_days', 'trial_expiration_text', 'active'];
+    /** Como o CRM sabe que o prospect se cadastrou no produto (CRM-WA-29). */
+    public const REGISTRATION_CHECK_MODES = [
+        'manual' => 'Manual',
+        'api' => 'API',
+    ];
 
-    protected $attributes = ['active' => true];
+    /** Identificador do lead enviado à API de cadastro: só os que o CRM já guarda. */
+    public const REGISTRATION_LOOKUP_FIELDS = [
+        'whatsapp' => 'WhatsApp',
+        'email' => 'E-mail',
+    ];
+
+    protected $fillable = [
+        'name',
+        'whatsapp_text',
+        'trial_days',
+        'trial_expiration_text',
+        'active',
+        'registration_check_mode',
+        'registration_api_url',
+        'registration_lookup_field',
+        'registration_api_token',
+    ];
+
+    protected $attributes = ['active' => true, 'registration_check_mode' => 'manual'];
+
+    /** O token da API de cadastro nunca sai do servidor (props, JSON, logs). */
+    protected $hidden = ['registration_api_token'];
 
     protected function casts(): array
     {
         return [
             'trial_days' => 'integer',
             'active' => 'boolean',
+            'registration_api_token' => 'encrypted',
         ];
+    }
+
+    /** Produto acompanhado pela API de cadastro, configurado ou não. */
+    public function usesRegistrationApi(): bool
+    {
+        return $this->registration_check_mode === 'api';
+    }
+
+    /**
+     * Modo API com tudo o que a consulta exige: URL, identificador conhecido e token. Sem isso
+     * nenhuma chamada é feita (a URL ainda passa por RegistrationApiUrl antes de cada chamada).
+     */
+    public function hasRegistrationApiConfigured(): bool
+    {
+        return $this->usesRegistrationApi()
+            && filled($this->registration_api_url)
+            && array_key_exists((string) $this->registration_lookup_field, self::REGISTRATION_LOOKUP_FIELDS)
+            && filled($this->registration_api_token);
     }
 
     /** @return HasMany<Lead, $this> */
