@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
+use App\Services\BrazilianPhone;
 use App\Services\CompanyWhatsappConnection;
 use App\Services\LeadWhatsappService;
+use App\Services\MapsPlace;
+use App\Services\WebsiteKind;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,14 +35,37 @@ class ProspectImportController extends Controller
     ];
 
     /**
-     * Resultado da análise do site pela extensão. Vale em grupo e só enquanto o lead nunca foi
-     * analisado (site_status vazio): uma captura sem análise não desfaz a anterior.
+     * Resultado da análise do site pela extensão. Vale em grupo e só enquanto o lead ainda não tem
+     * análise (situação vazia ou "ainda não analisado", ou sem site até agora e a captura achou
+     * um): uma captura sem análise não desfaz a anterior.
      */
     private const SITE_ANALYSIS = [
         'site_status' => 'situação do site',
         'has_website' => 'tem site',
         'can_improve' => 'pode melhorar',
+        'website_checks' => 'checagens do site',
     ];
+
+    /** Situação que a extensão envia antes de analisar um site: não é análise. */
+    private const SITE_NOT_ANALYZED = 'Com site - ainda não analisado';
+
+    /** Oportunidade padrão da extensão enquanto o site não foi analisado: a análise a substitui. */
+    private const PENDING_OPPORTUNITY = 'Possui site. Recomenda-se analisar oportunidades de modernização e integração com a AB Sistemas.';
+
+    /** Checagens do site-analyzer da extensão; chaves desconhecidas são ignoradas. */
+    private const WEBSITE_CHECKS = ['accessible', 'https', 'viewport', 'metaDescription', 'whatsapp', 'contactForm', 'clientArea', 'quote'];
+
+    /** Situação gravada quando o "site" do Maps não é site próprio (rede social, link na bio, WhatsApp). */
+    private const NOT_OWN_SITE_STATUS = [
+        WebsiteKind::SOCIAL => 'Sem site próprio - só rede social',
+        WebsiteKind::LINK_BIO => 'Sem site próprio - só link na bio',
+        WebsiteKind::WHATSAPP => 'Sem site próprio - só link de WhatsApp',
+    ];
+
+    private const NOT_OWN_SITE_OPPORTUNITY = 'O perfil no Maps aponta só para rede social, link na bio ou WhatsApp. Oportunidade para oferecer site próprio e soluções da AB Sistemas.';
+
+    /** Identidade do lugar: completada quando falta, sem nota no Histórico (é dado técnico). */
+    private const MAPS_IDENTITY = ['google_place_id', 'maps_feature_id', 'latitude', 'longitude'];
 
     /** Métricas do Maps: retrato da última captura, atualizadas sem nota no Histórico. */
     private const MAPS_SNAPSHOT = ['rating', 'reviews', 'captured_at'];
@@ -75,17 +101,25 @@ class ProspectImportController extends Controller
             'prospects.*.rating' => ['nullable', 'numeric', 'between:0,5'],
             'prospects.*.reviews' => ['nullable', 'integer', 'min:0'],
             'prospects.*.capturedAt' => ['nullable', 'date'],
+            // Opcionais da extensão 1.4+; a 1.3 não envia e continua funcionando.
+            'prospects.*.placeId' => ['nullable', 'string', 'max:255'],
+            'prospects.*.latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'prospects.*.longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'prospects.*.websiteChecks' => ['nullable', 'array'],
+            'prospects.*.websiteChecks.*' => ['nullable', 'boolean'],
         ]);
 
         $result = DB::transaction(function () use ($validated): array {
             $created = 0;
             $updated = 0;
             $unchanged = 0;
+            $restored = 0;
             $ids = [];
 
             foreach ($validated['prospects'] as $prospect) {
                 $attributes = $this->captureAttributes($prospect);
                 $lead = $this->findExistingLead($attributes);
+                $wasTrashed = $lead?->trashed() ?? false;
 
                 if ($lead === null) {
                     // Status, produto e origem só na criação: depois são dados do comercial.
@@ -102,7 +136,12 @@ class ProspectImportController extends Controller
                     // "updated" continua sendo "já existia no CRM" (a extensão exibe esse total).
                     $updated++;
 
-                    if (! $this->mergeCapture($lead, $attributes, $validated['source'])) {
+                    if ($wasTrashed) {
+                        $this->restoreLead($lead, $validated['source']);
+                        $restored++;
+                    }
+
+                    if (! $this->mergeCapture($lead, $attributes, $validated['source']) && ! $wasTrashed) {
                         $unchanged++;
                     }
                 }
@@ -110,7 +149,7 @@ class ProspectImportController extends Controller
                 $ids[] = $lead->id;
             }
 
-            return compact('created', 'updated', 'unchanged', 'ids');
+            return compact('created', 'updated', 'unchanged', 'restored', 'ids');
         });
 
         return response()->json([
@@ -125,23 +164,38 @@ class ProspectImportController extends Controller
      */
     private function captureAttributes(array $prospect): array
     {
+        $phone = $prospect['phone'] ?? null;
         $whatsapp = trim((string) ($prospect['whatsapp'] ?? ''));
 
+        // O telefone do Maps só vira WhatsApp quando tem cara de celular: fixo não é presumido.
         if ($whatsapp === '') {
-            $whatsapp = $prospect['phone'] ?? null;
+            $whatsapp = BrazilianPhone::isProbableMobile($phone) ? $phone : null;
         }
 
-        return [
+        $mapsUrl = $prospect['mapsUrl'] ?? null;
+        $place = MapsPlace::fromUrl($mapsUrl)->orElse(MapsPlace::fromValues(
+            $prospect['placeId'] ?? null,
+            $prospect['latitude'] ?? null,
+            $prospect['longitude'] ?? null,
+        ));
+
+        $checks = is_array($prospect['websiteChecks'] ?? null)
+            ? array_intersect_key($prospect['websiteChecks'], array_flip(self::WEBSITE_CHECKS))
+            : [];
+
+        $attributes = [
             'company_name' => $prospect['name'],
             'address' => $prospect['address'] ?? null,
-            'phone' => $prospect['phone'] ?? null,
+            'phone' => $phone,
             'whatsapp' => $whatsapp,
             'website' => $prospect['website'] ?? null,
             'has_website' => $prospect['hasWebsite'],
             'site_status' => $prospect['siteStatus'] ?? null,
+            'website_checks' => $checks === [] ? null : array_map(fn ($value) => $value === null ? null : (bool) $value, $checks),
             'can_improve' => $prospect['canImprove'],
             'opportunity' => $prospect['opportunity'] ?? null,
-            'maps_url' => $prospect['mapsUrl'] ?? null,
+            'maps_url' => $mapsUrl,
+            ...$place->toAttributes(),
             'city' => $prospect['city'] ?? null,
             'state' => isset($prospect['state']) ? strtoupper($prospect['state']) : null,
             'category' => $prospect['category'] ?? null,
@@ -150,24 +204,59 @@ class ProspectImportController extends Controller
             'reviews' => $prospect['reviews'] ?? null,
             'captured_at' => $prospect['capturedAt'] ?? null,
         ];
+
+        // Instagram, Facebook, link na bio ou wa.me no campo "site" não é site próprio (a extensão
+        // 1.3 marcava como site e até analisava a página da rede social).
+        $kind = WebsiteKind::of($attributes['website']);
+
+        if ($kind !== null && $kind !== WebsiteKind::OWN) {
+            $attributes['has_website'] = false;
+            $attributes['can_improve'] = true;
+            $attributes['site_status'] = self::NOT_OWN_SITE_STATUS[$kind];
+            $attributes['website_checks'] = null;
+            $attributes['opportunity'] = self::NOT_OWN_SITE_OPPORTUNITY;
+            $attributes['instagram'] = WebsiteKind::isInstagram($attributes['website']) ? $attributes['website'] : null;
+        }
+
+        return $attributes;
     }
 
     /**
-     * Lead que já representa o prospect: mesmo lugar do Maps; sem isso, mesmo telefone ou mesma
-     * empresa na mesma cidade/UF, desde que não seja outro lugar do Maps.
+     * Lead que já representa o prospect, nesta ordem:
+     *  1. mesmo lugar do Maps (Place ID, depois FTID), inclusive lead excluído (é restaurado);
+     *  2. mesmo link do Maps (sem identificador), só entre os ativos;
+     *  3. mesmo telefone ou mesma empresa na mesma cidade/UF, entre os ativos e desde que não seja
+     *     outro lugar do Maps. Telefone ou nome nunca restauram um lead excluído.
      *
      * @param  array<string, mixed>  $attributes
      */
     private function findExistingLead(array $attributes): ?Lead
     {
         $mapsUrl = $attributes['maps_url'];
-        $placeKey = self::mapsPlaceKey($mapsUrl);
+        $place = new MapsPlace(
+            $attributes['google_place_id'],
+            $attributes['maps_feature_id'],
+        );
+
+        foreach ([new MapsPlace(placeId: $place->placeId), new MapsPlace(featureId: $place->featureId)] as $key) {
+            if (! $key->hasIdentity()) {
+                continue;
+            }
+
+            // Ativo primeiro; entre os excluídos, o mais antigo (o que tem o histórico).
+            $lead = Lead::withTrashed()
+                ->samePlace($key)
+                ->orderByRaw('CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END')
+                ->oldest('id')
+                ->first();
+
+            if ($lead !== null) {
+                return $lead;
+            }
+        }
 
         if ($mapsUrl !== null) {
-            $lead = Lead::query()->where('maps_url', $mapsUrl)->oldest('id')->first()
-                ?? ($placeKey !== null
-                    ? Lead::query()->where('maps_url', 'like', '%'.$placeKey.'%')->oldest('id')->first()
-                    : null);
+            $lead = Lead::query()->where('maps_url', $mapsUrl)->oldest('id')->first();
 
             if ($lead !== null) {
                 return $lead;
@@ -175,9 +264,10 @@ class ProspectImportController extends Controller
         }
 
         return $this->leadsWithSamePhone($attributes['whatsapp'])
+            ->merge($this->leadsWithSamePhone($attributes['phone']))
             ->merge($this->leadsWithSameCompany($attributes))
             ->sortBy('id')
-            ->first(fn (Lead $lead) => ! self::differentMapsPlace($lead->maps_url, $mapsUrl));
+            ->first(fn (Lead $lead) => ! self::differentMapsPlace($lead, $mapsUrl, $place));
     }
 
     /**
@@ -227,6 +317,17 @@ class ProspectImportController extends Controller
             ->get();
     }
 
+    /** Lead excluído recapturado no mesmo lugar do Maps: volta com o histórico e os dados comerciais. */
+    private function restoreLead(Lead $lead, string $source): void
+    {
+        $lead->restore();
+
+        $lead->activities()->create([
+            'type' => 'note',
+            'description' => "Lead restaurado pela reimportação ({$source}): mesmo lugar do Google Maps.",
+        ]);
+    }
+
     /**
      * Aplica a nova captura a um lead existente sem tocar nos dados comerciais (status, responsável,
      * produto, origem, follow-up, perda, contato, observações). Retorna se algo mudou.
@@ -235,14 +336,33 @@ class ProspectImportController extends Controller
      */
     private function mergeCapture(Lead $lead, array $attributes, string $source): bool
     {
+        // Decidido antes de completar os vazios: depende do site e da oportunidade que o CRM tinha.
+        $applyAnalysis = $this->replacesSiteAnalysis($lead, $attributes);
+        $replaceOpportunity = $applyAnalysis && filled($attributes['opportunity'])
+            && (blank($lead->opportunity) || $lead->opportunity === self::PENDING_OPPORTUNITY);
+
         foreach (array_keys(self::FILL_IF_EMPTY) as $field) {
             if (blank($lead->{$field}) && filled($attributes[$field])) {
                 $lead->{$field} = $attributes[$field];
             }
         }
 
-        if (blank($lead->site_status) && filled($attributes['site_status'])) {
+        if (blank($lead->instagram) && filled($attributes['instagram'] ?? null)) {
+            $lead->instagram = $attributes['instagram'];
+        }
+
+        if ($applyAnalysis) {
             foreach (array_keys(self::SITE_ANALYSIS) as $field) {
+                $lead->{$field} = $attributes[$field];
+            }
+
+            if ($replaceOpportunity) {
+                $lead->opportunity = $attributes['opportunity'];
+            }
+        }
+
+        foreach (self::MAPS_IDENTITY as $field) {
+            if ($lead->{$field} === null && $attributes[$field] !== null) {
                 $lead->{$field} = $attributes[$field];
             }
         }
@@ -258,7 +378,7 @@ class ProspectImportController extends Controller
         }
 
         $labels = array_values(array_intersect_key(
-            self::FILL_IF_EMPTY + self::SITE_ANALYSIS,
+            self::FILL_IF_EMPTY + self::SITE_ANALYSIS + ['instagram' => 'Instagram'],
             $lead->getDirty(),
         ));
 
@@ -275,26 +395,35 @@ class ProspectImportController extends Controller
     }
 
     /**
-     * Identificador do lugar no Google Maps (!1s0x…:0x… ou ftid=), igual em qualquer busca; a URL
-     * inteira muda com o zoom/coordenadas (@lat,lng,z) e os parâmetros da busca.
+     * A análise do site recebida substitui a do CRM quando o CRM ainda não tem análise: situação
+     * vazia, "ainda não analisado" (e a captura traz análise de fato) ou lead sem site nenhum até
+     * agora e a captura achou um.
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    private static function mapsPlaceKey(?string $url): ?string
+    private function replacesSiteAnalysis(Lead $lead, array $attributes): bool
     {
-        if ($url === null || preg_match('/(?:!1s|ftid=)(0x[0-9a-f]+:0x[0-9a-f]+)/i', $url, $match) !== 1) {
-            return null;
-        }
+        $incoming = $attributes['site_status'];
 
-        return strtolower($match[1]);
-    }
-
-    private static function differentMapsPlace(?string $a, ?string $b): bool
-    {
-        if (blank($a) || blank($b) || $a === $b) {
+        if (blank($incoming) || $incoming === $lead->site_status) {
             return false;
         }
 
-        $key = self::mapsPlaceKey($a);
+        return blank($lead->site_status)
+            || ($lead->site_status === self::SITE_NOT_ANALYZED && $incoming !== self::SITE_NOT_ANALYZED)
+            || (! $lead->has_website && blank($lead->website) && (bool) $attributes['has_website'] && filled($attributes['website']));
+    }
 
-        return $key === null || $key !== self::mapsPlaceKey($b);
+    /**
+     * Outro lugar do Maps: os dois lados têm link e são lugares diferentes pelos identificadores.
+     * Link sem identificador comparável (ex.: URL de busca) também conta como outro lugar.
+     */
+    private static function differentMapsPlace(Lead $lead, ?string $mapsUrl, MapsPlace $place): bool
+    {
+        if (blank($lead->maps_url) || blank($mapsUrl) || $lead->maps_url === $mapsUrl) {
+            return false;
+        }
+
+        return MapsPlace::fromUrl($lead->maps_url)->orElse($lead->mapsPlace())->samePlaceAs($place) !== true;
     }
 }

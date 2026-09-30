@@ -20,6 +20,10 @@ export type ProspectProductOption = {
     active: boolean;
 };
 
+export type LeadPhoneLineType = 'mobile' | 'landline' | 'unknown';
+
+export type LeadWebsiteType = 'own' | 'social' | 'link_bio' | 'whatsapp';
+
 export type Lead = {
     id: number;
     product: string;
@@ -41,6 +45,14 @@ export type Lead = {
     can_improve: boolean;
     opportunity: string | null;
     maps_url: string | null;
+    google_place_id: string | null;
+    maps_feature_id: string | null;
+    latitude: string | null;
+    longitude: string | null;
+    website_checks: Record<string, boolean | null> | null;
+    phone_line_type: LeadPhoneLineType | null;
+    whatsapp_line_type: LeadPhoneLineType | null;
+    website_type: LeadWebsiteType | null;
     rating: string | null;
     reviews: number | null;
     captured_at: string | null;

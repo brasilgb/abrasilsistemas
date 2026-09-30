@@ -848,7 +848,7 @@ class LeadController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'company_name' => 'Já existe um lead com o mesmo e-mail, WhatsApp ou empresa e localização.',
+            'company_name' => 'Já existe um lead com o mesmo lugar do Google Maps, e-mail, WhatsApp ou empresa e localização.',
         ]);
     }
 

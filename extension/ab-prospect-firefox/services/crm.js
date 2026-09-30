@@ -19,9 +19,22 @@ export function buildPayload(prospects, settings) {
       category: item.category || '',
       rating: item.rating == null || item.rating === '' ? null : Number(item.rating),
       reviews: item.reviews == null || item.reviews === '' ? null : Number(item.reviews),
-      capturedAt: item.capturedAt || new Date().toISOString()
+      capturedAt: item.capturedAt || new Date().toISOString(),
+      // Opcionais (1.4.0+): o CRM também os tira da mapsUrl, então a 1.3.0 continua compatível.
+      ...optionalFields(item)
     }))
   };
+}
+
+function optionalFields(item) {
+  const fields = {};
+  if (item.placeId) fields.placeId = item.placeId;
+  if (Number.isFinite(item.latitude) && Number.isFinite(item.longitude)) {
+    fields.latitude = item.latitude;
+    fields.longitude = item.longitude;
+  }
+  if (item.websiteChecks && Object.keys(item.websiteChecks).length) fields.websiteChecks = item.websiteChecks;
+  return fields;
 }
 
 export async function sendToCrm(prospects, settings) {

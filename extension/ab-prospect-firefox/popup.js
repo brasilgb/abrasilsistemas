@@ -60,7 +60,9 @@ async function capture(mode) {
 
 function merge(items) {
   for (const item of items) {
-    const index = prospects.findIndex((current) => current.id === item.id || (current.name === item.name && current.address === item.address));
+    const index = prospects.findIndex((current) => current.id === item.id
+      || (item.placeId && current.placeId === item.placeId)
+      || (current.name === item.name && current.address === item.address));
     if (index >= 0) prospects[index] = { ...prospects[index], ...item, selected: prospects[index].selected ?? true, sentAt: prospects[index].sentAt || null };
     else prospects.unshift(item);
   }
@@ -129,8 +131,14 @@ async function analyzeSelected() {
   status(`Analisando ${selected.length} site(s)...`);
   let completed = 0;
   for (const item of selected) {
+    if (item.website && item.websiteType && item.websiteType !== 'own') {
+      // Rede social, link na bio ou WhatsApp: não é site próprio, não há o que analisar.
+      completed += 1;
+      continue;
+    }
     if (!item.website) {
       item.hasWebsite = false;
+      item.websiteChecks = null;
       item.canImprove = true;
       item.siteStatus = 'Sem site';
       item.opportunity = 'Não foi encontrado site público no perfil. Oportunidade para oferecer criação de site e soluções da AB Sistemas.';
@@ -157,6 +165,7 @@ async function sendSelected() {
 
   let totalCreated = 0;
   let totalUpdated = 0;
+  let totalRestored = 0;
   let sentBatches = 0;
 
   try {
@@ -177,11 +186,13 @@ async function sendSelected() {
       });
       totalCreated += Number(response?.created ?? 0);
       totalUpdated += Number(response?.updated ?? 0);
+      totalRestored += Number(response?.restored ?? 0);
       sentBatches += 1;
       await saveProspects(prospects);
       render();
     }
-    status(`Envio concluído. Novos: ${totalCreated}. Atualizados: ${totalUpdated}.`, 'success');
+    const restoredNote = totalRestored ? ` Restaurados: ${totalRestored}.` : '';
+    status(`Envio concluído. Novos: ${totalCreated}. Atualizados: ${totalUpdated}.${restoredNote}`, 'success');
   } catch (error) {
     const failedAt = new Date().toISOString();
     const failedBatch = batches[sentBatches] || [];

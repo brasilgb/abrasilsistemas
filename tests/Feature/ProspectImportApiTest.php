@@ -33,7 +33,9 @@ test('the public API imports a Google Maps lead', function () {
     $lead = Lead::query()->firstOrFail();
 
     expect($lead->company_name)->toBe('Assistência Técnica Exemplo')
-        ->and($lead->whatsapp)->toBe('(43) 0000-0000')
+        ->and($lead->phone)->toBe('(43) 0000-0000')
+        // Não tem cara de celular: não é presumido como WhatsApp (CRM-LEAD-02).
+        ->and($lead->whatsapp)->toBeNull()
         ->and($lead->source)->toBe('AB Prospect - Google Maps')
         ->and($lead->product)->toBe('vetoros')
         ->and($lead->state)->toBe('PR')

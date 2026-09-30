@@ -40,7 +40,12 @@ import WhatsappMessageStatus, {
     WhatsappMessageDirection,
 } from '@/components/whatsapp-message-status';
 import LeadForm from '@/pages/leads/form';
-import type { Lead, ProspectProductOption } from '@/pages/leads/form';
+import type {
+    Lead,
+    LeadPhoneLineType,
+    LeadWebsiteType,
+    ProspectProductOption,
+} from '@/pages/leads/form';
 import { index } from '@/routes/leads';
 import { store as storeLeadActivity } from '@/routes/leads/activities';
 
@@ -56,6 +61,30 @@ type Props = {
     users: { id: number; name: string }[];
     whatsappDestination: string | null;
     productWhatsappText: string | null;
+};
+
+const PHONE_LINE_TYPES: Record<LeadPhoneLineType, string> = {
+    mobile: 'Celular provável',
+    landline: 'Telefone fixo',
+    unknown: 'Formato não reconhecido',
+};
+
+const WEBSITE_TYPES: Record<LeadWebsiteType, string> = {
+    own: 'Site próprio',
+    social: 'Rede social',
+    link_bio: 'Link na bio',
+    whatsapp: 'Link de WhatsApp',
+};
+
+const WEBSITE_CHECKS: Record<string, string> = {
+    accessible: 'Acessível',
+    https: 'HTTPS',
+    viewport: 'Responsivo',
+    metaDescription: 'Descrição SEO',
+    whatsapp: 'WhatsApp no site',
+    contactForm: 'Formulário',
+    quote: 'Orçamento',
+    clientArea: 'Área do cliente',
 };
 
 function formatDateTime(value: string | null) {
@@ -259,6 +288,35 @@ export default function EditLead({
                                     </p>
                                 </div>
 
+                                {(lead.phone || lead.whatsapp) && (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        {lead.phone && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Telefone</p>
+                                                <p className="flex flex-wrap items-center gap-2 font-medium">
+                                                    {lead.phone}
+                                                    {lead.phone_line_type && (
+                                                        <Badge variant="outline">{PHONE_LINE_TYPES[lead.phone_line_type]}</Badge>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {lead.whatsapp && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">WhatsApp</p>
+                                                <p className="flex flex-wrap items-center gap-2 font-medium">
+                                                    {lead.whatsapp}
+                                                    {lead.whatsapp_line_type && lead.whatsapp_line_type !== 'mobile' && (
+                                                        <Badge variant="outline" className="border-amber-300 text-amber-700">
+                                                            {PHONE_LINE_TYPES[lead.whatsapp_line_type]}: WhatsApp não confirmado
+                                                        </Badge>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <div>
                                         <p className="text-xs text-muted-foreground">Possui site</p>
@@ -277,6 +335,21 @@ export default function EditLead({
                                     </div>
                                 )}
 
+                                {lead.website_checks && (
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Checagens do site</p>
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {Object.entries(WEBSITE_CHECKS).map(([key, label]) =>
+                                                typeof lead.website_checks?.[key] === 'boolean' ? (
+                                                    <Badge key={key} variant={lead.website_checks[key] ? 'secondary' : 'outline'}>
+                                                        {lead.website_checks[key] ? '✓' : '✗'} {label}
+                                                    </Badge>
+                                                ) : null,
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {lead.opportunity && (
                                     <div>
                                         <p className="text-xs text-muted-foreground">Oportunidade</p>
@@ -288,7 +361,8 @@ export default function EditLead({
                                     {lead.website && (
                                         <Button asChild size="sm" variant="outline">
                                             <a href={lead.website} target="_blank" rel="noreferrer">
-                                                <Globe className="size-4" /> Site
+                                                <Globe className="size-4" />{' '}
+                                                {lead.website_type ? WEBSITE_TYPES[lead.website_type] : 'Site'}
                                             </a>
                                         </Button>
                                     )}
@@ -303,6 +377,10 @@ export default function EditLead({
 
                                 <p className="text-xs text-muted-foreground">
                                     Capturado em: {formatDateTime(lead.captured_at)}
+                                    {lead.maps_url &&
+                                        (lead.google_place_id || lead.maps_feature_id
+                                            ? ' · Lugar identificado no Google Maps'
+                                            : ' · Link do Maps sem identificador do lugar')}
                                 </p>
                             </CardContent>
                         </Card>

@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\BrazilianPhone;
 use App\Services\CompanyWhatsappConnection;
 use App\Services\LeadWhatsappService;
+use App\Services\MapsPlace;
+use App\Services\WebsiteKind;
 use App\Services\WhatsappBusinessHours;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
@@ -42,6 +45,11 @@ use Throwable;
     'can_improve',
     'opportunity',
     'maps_url',
+    'google_place_id',
+    'maps_feature_id',
+    'latitude',
+    'longitude',
+    'website_checks',
     'rating',
     'reviews',
     'captured_at',
@@ -64,6 +72,9 @@ class Lead extends Model
         'priority',
         'follow_up_state',
         'trial_state',
+        'phone_line_type',
+        'whatsapp_line_type',
+        'website_type',
     ];
 
     public const STATUSES = [
@@ -207,6 +218,9 @@ class Lead extends Model
         return [
             'has_website' => 'boolean',
             'can_improve' => 'boolean',
+            'website_checks' => 'array',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
             'rating' => 'decimal:2',
             'reviews' => 'integer',
             'captured_at' => 'datetime',
@@ -250,6 +264,20 @@ class Lead extends Model
 
             if ($lead->isDirty('product')) {
                 $lead->setAttribute('prospect_product_id', ProspectProduct::resolveLegacyProduct($lead->product)?->id);
+            }
+        });
+
+        // Identidade do lugar no Maps (CRM-LEAD-02): sempre derivada do link, venha de qualquer tela.
+        // Valor informado junto (importação com placeId/lat/lng da extensão) tem precedência.
+        static::saving(function (self $lead): void {
+            if (! $lead->isDirty('maps_url')) {
+                return;
+            }
+
+            foreach (MapsPlace::fromUrl($lead->maps_url)->toAttributes() as $column => $value) {
+                if (! $lead->isDirty($column)) {
+                    $lead->setAttribute($column, $value);
+                }
             }
         });
 
@@ -1067,6 +1095,24 @@ class Lead extends Model
         return min($score, 100);
     }
 
+    /** Celular provável, fixo ou formato não reconhecido (CRM-LEAD-02); null sem número. */
+    public function getPhoneLineTypeAttribute(): ?string
+    {
+        return BrazilianPhone::lineType($this->phone);
+    }
+
+    /** Mesmo sinal para o WhatsApp: leads antigos da extensão podem ter um fixo copiado aqui. */
+    public function getWhatsappLineTypeAttribute(): ?string
+    {
+        return BrazilianPhone::lineType($this->whatsapp);
+    }
+
+    /** Site próprio, rede social, link na bio ou link de WhatsApp (CRM-LEAD-02); null sem link. */
+    public function getWebsiteTypeAttribute(): ?string
+    {
+        return WebsiteKind::of($this->website);
+    }
+
     public function getPriorityAttribute(): string
     {
         if ($this->lead_score >= 70) {
@@ -1078,6 +1124,41 @@ class Lead extends Model
         }
 
         return 'low';
+    }
+
+    /**
+     * Leads do mesmo lugar do Maps: mesmo Place ID ou mesmo FTID (colunas indexadas).
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function samePlace(Builder $query, MapsPlace $place): void
+    {
+        if (! $place->hasIdentity()) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where(function (Builder $query) use ($place) {
+            if ($place->placeId !== null) {
+                $query->orWhere('google_place_id', $place->placeId);
+            }
+
+            if ($place->featureId !== null) {
+                $query->orWhere('maps_feature_id', $place->featureId);
+            }
+        });
+    }
+
+    public function mapsPlace(): MapsPlace
+    {
+        return new MapsPlace(
+            $this->google_place_id,
+            $this->maps_feature_id,
+            $this->latitude === null ? null : (float) $this->latitude,
+            $this->longitude === null ? null : (float) $this->longitude,
+        );
     }
 
     public function user(): BelongsTo
@@ -1155,6 +1236,21 @@ class Lead extends Model
      */
     public static function findDuplicate(array $data, ?self $except = null): ?self
     {
+        // O mesmo lugar do Google Maps vem antes de qualquer outro critério (CRM-LEAD-02).
+        $place = MapsPlace::fromUrl(isset($data['maps_url']) ? (string) $data['maps_url'] : null);
+
+        if ($place->hasIdentity()) {
+            $samePlace = self::query()
+                ->when($except, fn ($query) => $query->whereKeyNot($except->getKey()))
+                ->samePlace($place)
+                ->oldest('id')
+                ->first();
+
+            if ($samePlace !== null) {
+                return $samePlace;
+            }
+        }
+
         $email = isset($data['email']) ? strtolower(trim((string) $data['email'])) : null;
         $whatsapp = isset($data['whatsapp']) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
         $company = trim((string) ($data['company_name'] ?? ''));
