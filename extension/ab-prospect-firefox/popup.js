@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from './config.js';
 import { loadState, saveProspects, saveSettings } from './services/storage.js';
 import { extractFromMaps } from './services/maps.js';
+import { mergeProspects } from './services/prospects.js';
 import { analyzeWebsite } from './services/site-analyzer.js';
 import { sendToCrm, buildPayload, MAX_PROSPECTS_PER_REQUEST } from './services/crm.js';
 
@@ -47,7 +48,7 @@ async function capture(mode) {
   try {
     const items = await extractFromMaps(mode);
     if (!items.length) throw new Error(mode === 'selected' ? 'Selecione uma empresa no Google Maps.' : 'Nenhum resultado visível foi encontrado.');
-    merge(items);
+    prospects = mergeProspects(prospects, items);
     await saveProspects(prospects);
     render();
     status(`${items.length} prospect(s) adicionado(s) ou atualizado(s).`, 'success');
@@ -55,16 +56,6 @@ async function capture(mode) {
     status(error.message || 'Falha na captura.', 'error');
   } finally {
     setBusy(button, false);
-  }
-}
-
-function merge(items) {
-  for (const item of items) {
-    const index = prospects.findIndex((current) => current.id === item.id
-      || (item.placeId && current.placeId === item.placeId)
-      || (current.name === item.name && current.address === item.address));
-    if (index >= 0) prospects[index] = { ...prospects[index], ...item, selected: prospects[index].selected ?? true, sentAt: prospects[index].sentAt || null };
-    else prospects.unshift(item);
   }
 }
 

@@ -746,7 +746,7 @@ export default function LeadWhatsappConversation({
                             <Phone className="size-3.5" aria-hidden="true" />
                             {lead.whatsapp
                                 ? formatWhatsapp(destination ?? lead.whatsapp)
-                                : 'Sem WhatsApp'}
+                                : 'WhatsApp não informado'}
                             {lead.whatsapp && !destination && (
                                 <span className="text-destructive">
                                     (inválido)

@@ -74,6 +74,7 @@ class Lead extends Model
         'trial_state',
         'phone_line_type',
         'whatsapp_line_type',
+        'whatsapp_status',
         'website_type',
     ];
 
@@ -1101,10 +1102,33 @@ class Lead extends Model
         return BrazilianPhone::lineType($this->phone);
     }
 
-    /** Mesmo sinal para o WhatsApp: leads antigos da extensão podem ter um fixo copiado aqui. */
+    /** Mesmo sinal estrutural para o WhatsApp: fixo aqui é válido (WhatsApp Business), não um erro. */
     public function getWhatsappLineTypeAttribute(): ?string
     {
         return BrazilianPhone::lineType($this->whatsapp);
+    }
+
+    /**
+     * O que se sabe do WhatsApp sem nenhuma verificação real (CRM-LEAD-02.2), independente do tipo
+     * da linha: fixo pode ter WhatsApp Business. probable = celular provável (o próprio campo
+     * WhatsApp copiado do telefone, ou o telefone com o campo vazio); informed = número gravado no
+     * campo WhatsApp (fixo, desconhecido ou outro número); unverified = só um telefone que não é
+     * celular, sem nada que diga se tem ou não WhatsApp. null sem nenhum número.
+     */
+    public function getWhatsappStatusAttribute(): ?string
+    {
+        if (filled($this->whatsapp)) {
+            $number = LeadWhatsappService::normalizeNumber($this->whatsapp);
+
+            return $number !== null && $number === LeadWhatsappService::normalizeNumber($this->phone)
+                && $this->whatsapp_line_type === BrazilianPhone::MOBILE ? 'probable' : 'informed';
+        }
+
+        if (blank($this->phone)) {
+            return null;
+        }
+
+        return $this->phone_line_type === BrazilianPhone::MOBILE ? 'probable' : 'unverified';
     }
 
     /** Site próprio, rede social, link na bio ou link de WhatsApp (CRM-LEAD-02); null sem link. */

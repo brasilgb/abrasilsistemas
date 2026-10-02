@@ -167,7 +167,8 @@ class ProspectImportController extends Controller
         $phone = $prospect['phone'] ?? null;
         $whatsapp = trim((string) ($prospect['whatsapp'] ?? ''));
 
-        // O telefone do Maps só vira WhatsApp quando tem cara de celular: fixo não é presumido.
+        // O telefone do Maps só é copiado para o WhatsApp quando tem cara de celular. Fixo fica fora
+        // do campo, mas como "WhatsApp não verificado", não como "sem WhatsApp" (CRM-LEAD-02.2).
         if ($whatsapp === '') {
             $whatsapp = BrazilianPhone::isProbableMobile($phone) ? $phone : null;
         }

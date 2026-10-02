@@ -19,8 +19,10 @@ npx web-ext sign \
   --ignore-files=package-lock.json \
   --ignore-files=README.md \
   --ignore-files="scripts/**" \
+  --ignore-files="tests/**" \
   --ignore-files="artifacts/**" \
-  --ignore-files=scripts
+  --ignore-files=scripts \
+  --ignore-files=tests
 
 version=$(node -p "require('./manifest.json').version")
 xpi=$(find artifacts -maxdepth 1 -name '*.xpi' | head -n1)

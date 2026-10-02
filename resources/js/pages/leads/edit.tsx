@@ -44,6 +44,7 @@ import type {
     Lead,
     LeadPhoneLineType,
     LeadWebsiteType,
+    LeadWhatsappStatus,
     ProspectProductOption,
 } from '@/pages/leads/form';
 import { index } from '@/routes/leads';
@@ -67,6 +68,13 @@ const PHONE_LINE_TYPES: Record<LeadPhoneLineType, string> = {
     mobile: 'Celular provável',
     landline: 'Telefone fixo',
     unknown: 'Formato não reconhecido',
+};
+
+// Nenhum deles é "confirmado": não há verificação real do número no WhatsApp (CRM-LEAD-02.2).
+const WHATSAPP_STATUSES: Record<LeadWhatsappStatus, string> = {
+    probable: 'WhatsApp provável',
+    informed: 'WhatsApp informado',
+    unverified: 'WhatsApp não verificado',
 };
 
 const WEBSITE_TYPES: Record<LeadWebsiteType, string> = {
@@ -296,7 +304,11 @@ export default function EditLead({
                                                 <p className="flex flex-wrap items-center gap-2 font-medium">
                                                     {lead.phone}
                                                     {lead.phone_line_type && (
-                                                        <Badge variant="outline">{PHONE_LINE_TYPES[lead.phone_line_type]}</Badge>
+                                                        <Badge variant="outline">
+                                                            {PHONE_LINE_TYPES[lead.phone_line_type]}
+                                                            {/* Sem campo WhatsApp, o telefone diz o que se sabe dele (fixo não é "sem WhatsApp"). */}
+                                                            {!lead.whatsapp && lead.whatsapp_status && ` · ${WHATSAPP_STATUSES[lead.whatsapp_status]}`}
+                                                        </Badge>
                                                     )}
                                                 </p>
                                             </div>
@@ -306,9 +318,10 @@ export default function EditLead({
                                                 <p className="text-xs text-muted-foreground">WhatsApp</p>
                                                 <p className="flex flex-wrap items-center gap-2 font-medium">
                                                     {lead.whatsapp}
-                                                    {lead.whatsapp_line_type && lead.whatsapp_line_type !== 'mobile' && (
-                                                        <Badge variant="outline" className="border-amber-300 text-amber-700">
-                                                            {PHONE_LINE_TYPES[lead.whatsapp_line_type]}: WhatsApp não confirmado
+                                                    {lead.whatsapp_status && (
+                                                        <Badge variant="outline">
+                                                            {lead.whatsapp_line_type && `${PHONE_LINE_TYPES[lead.whatsapp_line_type]} · `}
+                                                            {WHATSAPP_STATUSES[lead.whatsapp_status]}
                                                         </Badge>
                                                     )}
                                                 </p>

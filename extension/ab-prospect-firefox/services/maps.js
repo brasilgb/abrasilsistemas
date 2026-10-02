@@ -37,7 +37,7 @@ export function mapsExtractor(mode) {
   // "avaliações"/"reviews". Nunca o primeiro número do texto, que é a nota (bug da 1.3.0).
   const parseReviews = (value) => {
     const text = clean(value);
-    const match = text.match(/\((\d[\d.,\s]*)\)/) || text.match(/(\d[\d.,]*)\s*(?:avalia|review|opini)/i);
+    const match = text.match(/\((\d[\d.,\s]*)\)/) || text.match(/(\d[\d.,]*)\s*(?:avalia|review|opini|coment)/i);
     if (!match) return null;
     const digits = match[1].replace(/\D/g, '');
     return digits ? Number(digits) : null;
@@ -72,11 +72,13 @@ export function mapsExtractor(mode) {
   const parsePlace = (url) => {
     const text = String(url || '');
     const placeId = text.match(/(?:!19s|[?&](?:query_)?place_?id=|place_id:)([A-Za-z0-9_-]{4,255})/)?.[1] || '';
+    // FTID: id interno do lugar no Maps. Vem também na URL do painel, que às vezes não tem Place ID.
+    const featureId = (text.match(/(?:!1s|ftid=)(0x[0-9a-f]{1,16}:0x[0-9a-f]{1,16})/i)?.[1] || '').toLowerCase();
     const coords = text.match(/!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/);
     const latitude = coords ? Number(coords[1]) : null;
     const longitude = coords ? Number(coords[2]) : null;
     const valid = latitude !== null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 && !(latitude === 0 && longitude === 0);
-    return { placeId, latitude: valid ? latitude : null, longitude: valid ? longitude : null };
+    return { placeId, featureId, latitude: valid ? latitude : null, longitude: valid ? longitude : null };
   };
 
   // Card da lista de resultados: as linhas de texto do card, na ordem em que aparecem.
@@ -90,6 +92,8 @@ export function mapsExtractor(mode) {
     for (const line of lines.map(clean).filter(Boolean)) {
       if (line.toLowerCase() === cleanName) continue;
       if (!reviewsText && /^\d[,.]\d\s*\(/.test(line)) reviewsText = line;
+      // Linha só com a nota ("4,8" ou "4,8(123)"): "4,8" casaria com o padrão de endereço.
+      if (/^\d[,.]\d(?:\s*\([\d.,\s]+\))?$/.test(line)) continue;
       if (hoursPattern.test(line) || phonePattern.test(line.replace(/^\d[,.]\d\s*\([\d.,\s]+\)/, ''))) continue;
       // Só a linha "Categoria · Endereço" (ou um endereço sozinho): botões ("Site", "Rotas") e
       // trechos de avaliação nunca viram categoria.
@@ -100,7 +104,7 @@ export function mapsExtractor(mode) {
         .split(/\s*[·⋅]\s*/)
         .map(clean)
         // Ícones (acessibilidade etc.), faixa de preço e partes vazias.
-        .filter((part) => part && /[\p{L}\d]/u.test(part) && !/^(?:[$€£]+|R\$\s*[\d–-]+.*)$/u.test(part));
+        .filter((part) => part && /[\p{L}\d]/u.test(part) && !/^(?:[$€£]+|\+?R\$\s*[\d–-]+.*)$/u.test(part));
 
       for (const part of parts) {
         if (part.toLowerCase() === cleanName) continue;
@@ -173,6 +177,7 @@ export function mapsExtractor(mode) {
           : 'Não foi encontrado site público no perfil. Oportunidade para oferecer criação de site e soluções da AB Sistemas.',
       mapsUrl,
       placeId: place.placeId,
+      featureId: place.featureId,
       latitude: place.latitude,
       longitude: place.longitude,
       city: clean(raw.city || locationInfo.city || fallbackLocation.city),
@@ -187,7 +192,11 @@ export function mapsExtractor(mode) {
   };
 
   if (mode === 'selected') {
-    const main = document.querySelector('main[role="main"]') || document.body;
+    // Painel da empresa: o [role="main"] com h1 que não é a lista de resultados (a lista também é
+    // um [role="main"], com o h1 "Resultados" e as notas dos outros lugares).
+    const main = [...document.querySelectorAll('[role="main"]')].find((el) => !el.querySelector('[role="feed"]') && clean(el.querySelector('h1')?.textContent || ''))
+      || document.querySelector('main[role="main"]')
+      || document.body;
     const name = clean(main.querySelector('h1')?.textContent || '');
     if (!name) return [];
     const text = clean(main.innerText || '');
@@ -198,8 +207,9 @@ export function mapsExtractor(mode) {
     // Botão da categoria no painel do lugar; sem ele, fica vazia (nunca o nome da empresa).
     const category = clean(main.querySelector('button[jsaction*="category"]')?.textContent || '');
     const ratingLabel = clean(main.querySelector('[role="img"][aria-label*="estrela"], [role="img"][aria-label*="star"]')?.getAttribute('aria-label') || '');
+    // O primeiro rótulo com "avaliações" pode ser um link sem número ("… avaliações públicas…").
     const reviewsText = clean(
-      main.querySelector('[aria-label*="avaliaç"], [aria-label*="review"]')?.getAttribute('aria-label')
+      [...main.querySelectorAll('[aria-label*="avaliaç"], [aria-label*="review"]')].map((el) => el.getAttribute('aria-label')).find((label) => parseReviews(label) != null)
       || [...main.querySelectorAll('button, span')].find((el) => /\(\d[\d.]*\)|\d[\d.]*\s*(?:avaliaç|review)/i.test(clean(el.textContent)))?.textContent
       || ''
     );
@@ -221,7 +231,7 @@ export function mapsExtractor(mode) {
     const website = websiteFromAnchor(root);
     const card = parseCard({ name, lines });
     const ratingLabel = clean(root.querySelector('[role="img"][aria-label*="estrela"], [role="img"][aria-label*="star"]')?.getAttribute('aria-label') || '');
-    const reviewsLabel = clean(root.querySelector('[role="img"][aria-label*="avaliaç"], [role="img"][aria-label*="review"]')?.getAttribute('aria-label') || '');
+    const reviewsLabel = clean(root.querySelector('[role="img"][aria-label*="avaliaç"], [role="img"][aria-label*="review"], [role="img"][aria-label*="comentário"]')?.getAttribute('aria-label') || '');
     leads.push(normalizeLead({
       name,
       address: card.address,

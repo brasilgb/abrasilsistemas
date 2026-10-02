@@ -3,8 +3,9 @@
 namespace App\Services;
 
 /**
- * Tipo provável de linha de um telefone brasileiro, só pelo formato (CRM-LEAD-02). É um sinal,
- * não prova: celular não garante WhatsApp, mas fixo não deve ser presumido como WhatsApp.
+ * Tipo provável de linha de um telefone brasileiro, só pelo formato (CRM-LEAD-02). É um sinal
+ * estrutural, não diz se o número usa WhatsApp: celular não garante WhatsApp e fixo não prova a
+ * ausência (WhatsApp Business em fixo existe). A semântica do WhatsApp fica em Lead::whatsapp_status.
  */
 final class BrazilianPhone
 {

@@ -22,6 +22,9 @@ export type ProspectProductOption = {
 
 export type LeadPhoneLineType = 'mobile' | 'landline' | 'unknown';
 
+/** Sem verificação real no WhatsApp: provável (celular), informado (no campo) ou não verificado. */
+export type LeadWhatsappStatus = 'probable' | 'informed' | 'unverified';
+
 export type LeadWebsiteType = 'own' | 'social' | 'link_bio' | 'whatsapp';
 
 export type Lead = {
@@ -52,6 +55,7 @@ export type Lead = {
     website_checks: Record<string, boolean | null> | null;
     phone_line_type: LeadPhoneLineType | null;
     whatsapp_line_type: LeadPhoneLineType | null;
+    whatsapp_status: LeadWhatsappStatus | null;
     website_type: LeadWebsiteType | null;
     rating: string | null;
     reviews: number | null;
