@@ -108,6 +108,26 @@ class WahaService
     }
 
     /**
+     * POST /api/sendText: envia texto para um chat. Devolve o id da mensagem no WhatsApp, o
+     * mesmo que chega depois nos eventos message.any/message.ack (null se o WAHA não informar).
+     *
+     * @throws WahaException
+     */
+    public function sendText(string $session, string $chatId, string $text): ?string
+    {
+        $response = $this->send($session, 'send_text', fn (PendingRequest $client) => $client
+            ->acceptJson()
+            ->post('/api/sendText', ['session' => $session, 'chatId' => $chatId, 'text' => $text]));
+
+        $data = $this->json($session, 'send_text', $response);
+
+        // Formatos conhecidos: {"id": "true_…"}, {"id": {"_serialized": "true_…"}} e {"key": {"id": …}}.
+        $id = data_get($data, 'id._serialized') ?? data_get($data, 'id') ?? data_get($data, 'key.id');
+
+        return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    /**
      * @param  Closure(PendingRequest): Response  $call
      *
      * @throws WahaException

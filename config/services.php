@@ -58,6 +58,9 @@ return [
         'base_url' => env('WAHA_BASE_URL'),
         'api_key' => env('WAHA_API_KEY'),
         'timeout' => (int) env('WAHA_TIMEOUT', 15),
+        // Chave HMAC do webhook do atendimento (config "hmac.key" do webhook na sessão do WAHA).
+        // Vazia = endpoint /api/whatsapp/waha/webhook desligado.
+        'webhook_hmac_key' => env('WAHA_WEBHOOK_HMAC_KEY'),
     ],
 
 ];

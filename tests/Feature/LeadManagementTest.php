@@ -128,18 +128,6 @@ test('authenticated admin users can delete a prospect', function () {
     expect(Lead::query()->whereKey($lead->id)->exists())->toBeFalse();
 });
 
-test('authenticated admin users can clear all prospects', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-    Lead::query()->create(['company_name' => 'Prospect A', 'status' => 'new']);
-    Lead::query()->create(['company_name' => 'Prospect B', 'status' => 'new']);
-
-    $this->actingAs($user)
-        ->delete(route('leads.clear'))
-        ->assertRedirect(route('leads.index', absolute: false));
-
-    expect(Lead::query()->count())->toBe(0);
-});
-
 test('authenticated users can update lead status from kanban', function () {
     $user = User::factory()->create([
         'email_verified_at' => now(),

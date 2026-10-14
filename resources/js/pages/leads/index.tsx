@@ -637,9 +637,6 @@ export default function LeadsIndex({
     const [whatsappMessages, setWhatsappMessages] = useState(
         whatsappMessageTemplates,
     );
-    const [clearDialogOpen, setClearDialogOpen] = useState(false);
-    const [clearConfirmText, setClearConfirmText] = useState('');
-    const hasActiveFilters = Object.values(filters).some(Boolean);
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [bulkStatus, setBulkStatus] = useState('');
@@ -849,71 +846,6 @@ export default function LeadsIndex({
                 </DialogContent>
             </Dialog>
 
-            <Dialog
-                open={clearDialogOpen}
-                onOpenChange={(open) => {
-                    setClearDialogOpen(open);
-
-                    if (!open) {
-                        setClearConfirmText('');
-                    }
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Remover prospects</DialogTitle>
-                        <DialogDescription>
-                            {hasActiveFilters
-                                ? `Isso remove os ${kanbanTotal} prospect(s) que correspondem aos filtros atuais, junto com seus históricos. Para confirmar, digite EXCLUIR abaixo.`
-                                : `Isso remove todos os ${kanbanTotal} prospect(s) cadastrados, junto com seus históricos. Para confirmar, digite EXCLUIR abaixo.`}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-2">
-                        <Label htmlFor="clear-confirm-text">
-                            Digite EXCLUIR para confirmar
-                        </Label>
-                        <Input
-                            id="clear-confirm-text"
-                            value={clearConfirmText}
-                            onChange={(event) =>
-                                setClearConfirmText(event.target.value)
-                            }
-                            placeholder="EXCLUIR"
-                            autoComplete="off"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                                setClearDialogOpen(false);
-                                setClearConfirmText('');
-                            }}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            disabled={
-                                clearConfirmText.trim().toUpperCase() !==
-                                'EXCLUIR'
-                            }
-                            onClick={() => {
-                                router.delete('/leads/clear', {
-                                    data: filters,
-                                });
-                                setClearDialogOpen(false);
-                                setClearConfirmText('');
-                            }}
-                        >
-                            Remover
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
             <div className="space-y-6 p-4">
                 <div className="flex flex-col gap-4">
                     <Heading
@@ -921,18 +853,6 @@ export default function LeadsIndex({
                         description="Organize leads, contatos e follow-ups comerciais."
                     />
 
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        className="self-start"
-                        disabled={kanbanTotal === 0}
-                        onClick={() => setClearDialogOpen(true)}
-                    >
-                        <Trash2 className="size-4" />
-                        {hasActiveFilters
-                            ? 'Limpar prospects filtrados'
-                            : 'Limpar prospects'}
-                    </Button>
 
                     <div className="grid w-full gap-2 rounded-lg border bg-muted p-1 sm:inline-grid sm:w-auto sm:grid-cols-4">
                         <button

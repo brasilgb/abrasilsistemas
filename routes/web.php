@@ -16,59 +16,28 @@ use App\Http\Controllers\LeadActivityController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadWhatsappController;
 use App\Http\Controllers\PublicBlogController;
+use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\UserController;
-use App\Models\BlogPost;
-use App\Models\PortfolioItem;
-use App\Models\Testimonial;
+use App\Http\Controllers\WhatsappInboxController;
+use App\Support\PublicPages;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('welcome', [
-        'blogPosts' => BlogPost::query()->published()->with('category:id,name,slug')->latest('published_at')->limit(3)->get(['id', 'blog_category_id', 'title', 'slug', 'excerpt', 'published_at']),
-        'testimonials' => Testimonial::query()->published()->orderBy('sort_order')->latest()->limit(9)->get(['id', 'author_name', 'author_role', 'photo_url', 'quote']),
-        'portfolioItems' => PortfolioItem::query()->published()->orderBy('sort_order')->latest()->limit(6)->get(['id', 'title', 'description', 'screenshot_url', 'site_url']),
-        'seo' => Seo::tags([
-            'title' => 'Sistemas, sites e software sob medida | ABrasil Sistemas',
-            'description' => 'A ABrasil Sistemas desenvolve o VetorOS, o VetorPet, sistemas sob medida e sites profissionais para empresas.',
-            'canonical' => url('/'),
-            'ogTitle' => 'ABrasil Sistemas — Produtos digitais e desenvolvimento',
-            'ogDescription' => 'VetorOS, VetorPet, desenvolvimento de sistemas sob medida e criação de sites profissionais.',
-        ]),
-    ]);
-})->name('home');
-Route::get('produtos', function () {
-    return Inertia::render('produtos', [
-        'seo' => Seo::tags([
-            'title' => 'Produtos ABrasil — VetorOS, VetorPet e sistemas sob medida',
-            'description' => 'Conheça o VetorOS, o VetorPet e os projetos sob medida da ABrasil: o problema real de cada operação e como cada solução resolve.',
-            'canonical' => url('/produtos'),
-            'ogTitle' => 'Produtos ABrasil — VetorOS, VetorPet e sistemas sob medida',
-            'ogDescription' => 'O problema real de cada operação e a solução da ABrasil para ela: VetorOS, VetorPet e desenvolvimento sob medida.',
-        ]),
-    ]);
-})->name('produtos');
-Route::get('servicos', function () {
-    return Inertia::render('servicos', [
-        'seo' => Seo::tags([
-            'title' => 'Serviços — Sites, sistemas, apps e integrações | ABrasil Sistemas',
-            'description' => 'Criação de sites, landing pages, sistemas sob medida, aplicativos, integrações e automação de processos.',
-            'canonical' => url('/servicos'),
-        ]),
-    ]);
-})->name('servicos');
-Route::get('sobre', function () {
-    return Inertia::render('sobre', [
-        'seo' => Seo::tags([
-            'title' => 'Sobre a ABrasil Sistemas',
-            'description' => 'A ABrasil Sistemas desenvolve soluções digitais pensando na rotina real das empresas: sites, sistemas, aplicativos e produtos próprios.',
-            'canonical' => url('/sobre'),
-        ]),
-    ]);
-})->name('sobre');
+Route::get('/', [SiteController::class, 'home'])->name('home');
+Route::get('sistemas', [SiteController::class, 'systems'])->name('sistemas');
+Route::get('sistemas/{product}', [SiteController::class, 'system'])
+    ->whereIn('product', array_keys(PublicPages::PRODUCTS))
+    ->name('sistemas.show');
+Route::redirect('produtos', '/sistemas', 301);
+Route::get('servicos', [SiteController::class, 'services'])->name('servicos');
+foreach (array_keys(PublicPages::SERVICES) as $serviceSlug) {
+    Route::get($serviceSlug, [SiteController::class, 'service'])
+        ->name($serviceSlug === 'desenvolvimento-de-sites-para-empresas' ? 'company-websites' : 'servicos.'.$serviceSlug);
+}
+Route::get('sobre', [SiteController::class, 'about'])->name('sobre');
 Route::get('contato', [ContactController::class, 'create'])->name('contato');
 Route::post('contato', [ContactController::class, 'store'])->middleware('throttle:5,1')->name('contato.store');
 Route::get('politica-de-privacidade', function () {
@@ -101,17 +70,6 @@ Route::get('politica-de-cookies', function () {
         ]),
     ]);
 })->name('legal.cookies');
-Route::get('desenvolvimento-de-sites-para-empresas', function () {
-    return Inertia::render('company-websites', [
-        'seo' => Seo::tags([
-            'title' => 'Desenvolvimento de sites para empresas | ABrasil Sistemas',
-            'description' => 'Desenvolvimento de sites profissionais para empresas. Sites rápidos, responsivos, preparados para o Google e focados em gerar novos contatos.',
-            'canonical' => url('/desenvolvimento-de-sites-para-empresas'),
-            'ogTitle' => 'Desenvolvimento de sites para empresas | ABrasil Sistemas',
-            'ogDescription' => 'Um site rápido, profissional e feito para gerar oportunidades para sua empresa.',
-        ]),
-    ]);
-})->name('company-websites');
 Route::get('sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('blog', [PublicBlogController::class, 'index'])->name('blog.index');
 Route::get('blog/{post:slug}', [PublicBlogController::class, 'show'])->name('blog.show');
@@ -142,12 +100,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('dashboard', DashboardController::class)->name('dashboard');
         Route::redirect('admin', '/dashboard')->name('admin');
         Route::post('leads/import', [LeadController::class, 'import'])->name('leads.import');
-        Route::delete('leads/clear', [LeadController::class, 'clear'])->name('leads.clear');
         Route::patch('leads/bulk', [LeadController::class, 'bulkUpdate'])->name('leads.bulk');
         Route::patch('leads/{lead}/status', [LeadController::class, 'status'])->name('leads.status');
         Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
         Route::post('leads/{lead}/whatsapp', [LeadWhatsappController::class, 'store'])->middleware('throttle:10,1')->name('leads.whatsapp.store');
+        Route::get('atendimento', [WhatsappInboxController::class, 'index'])->name('atendimento.index');
+        Route::post('atendimento/{conversation}/mensagens', [WhatsappInboxController::class, 'reply'])->middleware('throttle:30,1')->name('atendimento.reply');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
 
         Route::post('testimonials/images', TestimonialImageController::class)->name('testimonials.images.store');

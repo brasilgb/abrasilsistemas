@@ -9,12 +9,12 @@ import SettingsLayout from '@/layouts/settings/layout';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
+    // Títulos do site público já trazem a marca ("… | ABrasil Sistemas"); não repetir.
+    title: (title) => (!title ? appName : title.includes('ABrasil') ? title : `${title} - ${appName}`),
     layout: (name) => {
         switch (true) {
             case name === 'welcome' ||
-                name === 'company-websites' ||
-                name === 'produtos' ||
+                name.startsWith('site/') ||
                 name === 'servicos' ||
                 name === 'sobre' ||
                 name === 'contato' ||

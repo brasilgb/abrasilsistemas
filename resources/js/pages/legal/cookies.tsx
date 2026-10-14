@@ -1,21 +1,18 @@
-import { Head } from '@inertiajs/react';
 import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
-import { SecondaryPageHeader } from '@/components/secondary-page-header';
+import { SeoHead } from '@/components/site/seo-head';
+import { SiteHeader } from '@/components/site/site-header';
 import { WhatsAppFloat } from '@/components/whatsapp-float';
 
 export default function PoliticaDeCookies() {
     return (
         <>
-            <Head title="Política de Cookies | ABrasil Sistemas">
-                <meta name="robots" content="noindex, follow" />
-                <meta name="theme-color" content="#08111f" />
-            </Head>
+            <SeoHead />
 
             <div className="ab-public-site ab-static-light min-h-screen overflow-x-hidden bg-white text-slate-900">
-                <SecondaryPageHeader />
+                <SiteHeader />
 
-                <main className="mx-auto max-w-3xl px-5 pt-36 pb-24 sm:px-8 sm:pt-44">
+                <main className="mx-auto max-w-3xl px-4 pt-28 pb-24 sm:px-6 sm:pt-32">
                     <p className="text-xs font-extrabold tracking-[0.18em] text-blue-700 uppercase">Legal</p>
                     <h1 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950">Política de Cookies</h1>
                     <p className="mt-3 text-sm text-slate-500">Última atualização: {new Date().toLocaleDateString('pt-BR')}.</p>

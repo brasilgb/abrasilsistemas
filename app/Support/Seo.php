@@ -14,7 +14,7 @@ class Seo
     {
         $defaults = [
             'title' => config('app.name'),
-            'description' => 'A ABrasil Sistemas desenvolve o VetorOS, o VetorPet, sistemas sob medida e sites profissionais para empresas.',
+            'description' => 'Empresa de tecnologia que desenvolve sistemas, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS e VetorPet.',
             'canonical' => url('/'),
             'robots' => 'index, follow, max-image-preview:large',
             'ogType' => 'website',

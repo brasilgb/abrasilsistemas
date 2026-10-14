@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PublicContactRequest;
 use App\Mail\ContactFormReceived;
 use App\Models\Lead;
+use App\Support\PublicPages;
 use App\Support\Seo;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -14,14 +16,22 @@ use Inertia\Response;
 
 class ContactController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        // ?tipo=automacao pré-seleciona o tipo de projeto (links das páginas de serviço).
+        $selected = $request->query('tipo');
+
         return Inertia::render('contato', [
-            'products' => Lead::PRODUCTS,
+            'projectTypes' => Lead::CONTACT_PROJECT_TYPES,
+            'selectedType' => is_string($selected) && isset(Lead::CONTACT_PROJECT_TYPES[$selected]) ? $selected : null,
             'seo' => Seo::tags([
-                'title' => 'Contato | ABrasil Sistemas',
-                'description' => 'Fale com a ABrasil Sistemas sobre um site, um sistema sob medida, o VetorOS ou o VetorPet.',
+                'title' => 'Fale sobre o seu projeto | ABrasil Sistemas',
+                'description' => 'Conte o que sua empresa precisa: sistema pronto ou sob medida, site, landing page, aplicativo, automação ou integração. Resposta direta da equipe.',
                 'canonical' => url('/contato'),
+                'jsonLd' => [
+                    '@context' => 'https://schema.org',
+                    '@graph' => [PublicPages::organization(), ['@type' => 'ContactPage', 'url' => url('/contato')]],
+                ],
             ]),
         ]);
     }

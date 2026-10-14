@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ProspectImportController;
+use App\Http\Controllers\Api\WahaWebhookController;
 use App\Http\Controllers\Api\WhatsappActivityController;
 use App\Http\Controllers\Api\WhatsappMessageStatusController;
 use Illuminate\Support\Facades\Route;
@@ -16,3 +17,7 @@ Route::post('prospects/{lead}/whatsapp/log', [WhatsappActivityController::class,
 Route::patch('whatsapp/messages/{providerMessageId}/status', [WhatsappMessageStatusController::class, 'update'])
     ->middleware(['throttle:120,1', 'prospect.token'])
     ->name('api.whatsapp.messages.status');
+
+Route::post('whatsapp/waha/webhook', WahaWebhookController::class)
+    ->middleware('throttle:600,1')
+    ->name('api.whatsapp.waha.webhook');

@@ -30,7 +30,7 @@ class PublicContactRequest extends FormRequest
             'company_name' => ['required', 'string', 'max:255'],
             'whatsapp' => ['nullable', 'string', 'max:40'],
             'email' => ['nullable', 'email', 'max:255'],
-            'product' => ['required', 'string', Rule::in(array_keys(Lead::PRODUCTS))],
+            'product' => ['required', 'string', Rule::in(array_keys(Lead::CONTACT_PROJECT_TYPES))],
             'notes' => ['required', 'string', 'max:5000'],
             // Honeypot: real visitors never fill this hidden field.
             'website_hp' => ['prohibited'],
@@ -42,8 +42,8 @@ class PublicContactRequest extends FormRequest
         return [
             'contact_name.required' => 'Informe seu nome.',
             'company_name.required' => 'Informe o nome da empresa.',
-            'product.required' => 'Selecione o serviço de interesse.',
-            'notes.required' => 'Escreva uma mensagem.',
+            'product.required' => 'Selecione o tipo de projeto.',
+            'notes.required' => 'Descreva a necessidade da sua empresa.',
         ];
     }
 

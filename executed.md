@@ -1,3 +1,416 @@
+# Execução de `correio.md`: ABRASIL-WEB-02, separação de responsabilidades e atendimento WhatsApp
+
+Data: 2026-10-14.
+
+## Resumo
+
+**Auditoria feita. O módulo de Atendimento WhatsApp foi implementado e testado localmente. A retirada do CRM ficou só como plano e aguarda sua decisão.** Não houve push, deploy nem commit. Nada foi alterado no WAHA, no n8n, no `docker-compose.yml` nem no banco de produção. Nenhum dado de leads ou conversas foi excluído.
+
+- **Implementado (só acrescenta, sem risco aos dados):** caixa de entrada em `/atendimento` com conversas à esquerda, mensagens no centro, contato à direita e campo de resposta; não lidas, busca, status de entrega, página de origem e atualização a cada 5 s. O recebimento usa um webhook direto do WAHA, assinado por HMAC e filtrado pela sessão do WhatsApp da empresa; o envio sai pelo WAHA. São 2 tabelas novas, com migration reversível.
+- **Não implementado de propósito:** a remoção das telas de CRM (prospecção, funil, importação, follow-up), porque ela muda fluxos que hoje podem estar sendo usados pelo n8n e pela extensão. Também não configurei o webhook na sessão do WAHA de produção (o correio exige validação). O plano para os dois está nas seções 6 e 7.
+- **Testes:** 229/229 (15 novos do atendimento + 214 existentes), build ok, TypeScript sem erros no código do projeto, ESLint, Prettier e Pint limpos nos arquivos alterados.
+
+> Observação: o working tree já continha a entrega anterior (ABRASIL-WEB-01, sem commit). Ela foi preservada, e esta etapa foi construída em cima dela.
+
+## 1. Auditoria: o que já existe e funciona
+
+| Área | Peças | Situação |
+|---|---|---|
+| **Envio de WhatsApp para lead** | `LeadWhatsappController` → `LeadWhatsappService` → webhook n8n (`crm/send-whatsapp`, Header Auth) → WAHA | Funciona (deploy validado em 24/09). Só envia; não recebe |
+| **Registro do envio** | `POST /api/prospects/{lead}/whatsapp/log` (n8n → Laravel), grava em `lead_activities` (`type=whatsapp`) | Funciona |
+| **ACK** | `PATCH /api/whatsapp/messages/{id}/status` (n8n → Laravel), regra de progressão em `LeadActivity` | Funciona |
+| **WhatsApp da empresa** | `CompanyWhatsappSettings` (tabela `settings`: número, provider, sessão) | Funciona. Sessão configurada em produção: `vetoros1-1` |
+| **Conexão com o WAHA** | `WahaService` + `CompanyWhatsappConnection`: status, QR Code, conectar, desconectar (Configurações → Leads) | Funciona; a API key fica só no backend |
+| **Recebimento de mensagens** | — | **Não existia neste projeto.** O VetorLeads tem (`WhatsappInboundController`, via n8n, gravando em `lead_activities` com `direction`) |
+| **CRM comercial** | Dashboard comercial, `/leads` (lista, Kanban, tarefas, métricas, importação CSV, ações em massa, **"limpar todos"**), atividades, score, motivo de perda, API de importação da extensão AB Prospect, extensão Firefox (`extension/`, `public/files/*.xpi`), templates de mensagem | Funciona, mas é responsabilidade do VetorLeads pelo correio |
+| **Formulário de contato** | `ContactController` → `Lead` (`source=site`), deduplicação, e-mail para a equipe | Funciona |
+
+**Infraestrutura (`infra-abrasil`):** há um único WAHA (`waha:3000`, engine NOWEB, X-Api-Key) compartilhado por `abrasilsistema` e `ab-prospect` (VetorLeads); o `docker-compose.yml` dá aos dois o mesmo `WAHA_BASE_URL`/`WAHA_API_KEY`. O n8n tem os workflows de envio, log e ACK. Pelos relatórios anteriores, **os dois projetos usam a mesma sessão `vetoros1-1`**, e o VetorLeads recebe as mensagens dessa sessão via n8n. Não consultei o WAHA nem o n8n nesta etapa: não há Docker neste ambiente, e o correio pede para não mexer em produção sem validação.
+
+## 2. O que precisa ser mantido
+
+- `CompanyWhatsappSettings`, `WahaService`, `CompanyWhatsappConnection` e a tela de conexão (QR Code). Viraram a base do atendimento.
+- Tabelas `leads` e `lead_activities`, com todo o histórico, inclusive as mensagens de WhatsApp já registradas.
+- Formulário de contato → registro da solicitação + e-mail para a equipe.
+- Os endpoints de log e ACK do n8n, até confirmar no n8n que nenhum workflow ativo aponta para `abrasilsistemas.com.br` (seção 7).
+
+## 3. O que pode sair do site sem perda de dados
+
+Remover telas e rotas **não apaga** linhas do banco: `leads` e `lead_activities` ficam intactas e podem ser exportadas ou migradas para o VetorLeads.
+
+| Pode sair do site | Destino | Cuidado antes de remover |
+|---|---|---|
+| Dashboard comercial (`/dashboard`: funil, prioridades, métricas) | VetorLeads | O admin precisa de uma tela inicial (sugestão: `/atendimento`) |
+| Prospecção (`/leads`: Kanban, tarefas, métricas, score, motivo de perda, ações em massa) | VetorLeads | Manter uma lista simples de **solicitações do site** (os leads `source=site`) |
+| **`DELETE /leads/clear`** (apaga todos os leads) | — | **Recomendo remover já:** é destrutivo e não tem função no site institucional |
+| Importação CSV e `POST /api/prospects/import` (extensão AB Prospect) | VetorLeads | Confirmar que a extensão instalada aponta para o VetorLeads |
+| Extensão Firefox (`extension/`, `public/files/ab-prospect-*.xpi`) | VetorLeads | O link público do `.xpi` deixa de existir |
+| Envio para lead via n8n (`LeadWhatsappController`/`Service`) e templates de mensagem | VetorLeads | Substituído pela resposta direta no atendimento |
+| `api/prospects/{lead}/whatsapp/log` e `api/whatsapp/messages/{id}/status` | VetorLeads | **Só depois** de conferir os workflows do n8n |
+| Opções comerciais do `Lead` (status do funil, score, tarefas) | VetorLeads | As colunas continuam no banco; só deixam de aparecer |
+
+Migração de dados: se o histórico comercial deste banco precisar ir para o VetorLeads, é uma exportação `leads` + `lead_activities` → importação no VetorLeads (que agora é multi-tenant). Fica para uma tarefa própria, com conferência de duplicados.
+
+## 4. O que faltava para receber e responder (e foi feito)
+
+| Faltava | Solução |
+|---|---|
+| Entrada de eventos do WAHA | `POST /api/whatsapp/waha/webhook`, que recebe `message`, `message.any` e `message.ack` direto do WAHA, sem n8n. Autenticado por **HMAC-SHA512** (`X-Webhook-Hmac`, recurso nativo do webhook do WAHA). Sem `WAHA_WEBHOOK_HMAC_KEY`, responde 503 (desligado) |
+| Onde guardar conversas | Tabelas `whatsapp_conversations` e `whatsapp_messages` (seção 5), separadas do histórico comercial |
+| Enviar resposta | `WahaService::sendText()` → `POST /api/sendText` (sessão + chatId + texto, X-Api-Key só no servidor) |
+| Mensagens enviadas pelo celular | `message.any` com `fromMe` é gravado como mensagem enviada (já lida) |
+| Status | `message.ack` atualiza o status com a mesma regra de progressão do CRM (extraída para `LeadActivity::messageStatusCanAdvance`, sem duplicar lógica) |
+| Tempo real | Polling Inertia (`usePoll`, 5 s) só na tela do atendimento. Não precisa de WebSocket nem de infraestrutura nova |
+| Página de origem | Os links de WhatsApp do site (botão flutuante, rodapé, home, contato) acrescentam `Página: /caminho` à mensagem pré-preenchida, e o atendimento guarda essa página na primeira mensagem do contato |
+
+## 5. Implementação
+
+### Modelo de dados (migration `2026_10_14_120000_create_whatsapp_conversations_tables`)
+
+- `whatsapp_conversations`: `session`, `chat_id` (JID), `phone`, `name` (nome no WhatsApp), `lead_id` (nullable, `nullOnDelete`), `source_page`, `last_message_at`, `last_message_preview`. UNIQUE `(session, chat_id)`.
+- `whatsapp_messages`: conversa, `direction` (`inbound`/`outbound`), `body`, `has_media`, `provider_message_id` **UNIQUE**, `status` (ACK), `sent_by_user_id`, `sent_at`, `read_at`.
+- A migration só cria tabelas; o `down()` as remove. Validei up → down → up em SQLite descartável.
+
+### Regras
+
+- **Isolamento:** só entram eventos cuja `session` é a sessão do WhatsApp da empresa (Configurações → Leads). Eventos de outras sessões do WAHA compartilhado respondem `200 {reason: session_mismatch}` e não gravam nada. A tela e o envio também se limitam a essa sessão: conversa de outra sessão dá 404.
+- **Idempotência:** o WAHA manda `message` e `message.any` para a mesma mensagem. O índice UNIQUE em `provider_message_id` garante uma única gravação, inclusive com requisições simultâneas.
+- **Ids do WhatsApp:** o webhook manda `true_5551…@c.us_3EB0…` e o `sendText` do NOWEB devolve `3EB0…`. Gravamos o trecho final, então a resposta enviada pelo painel não é duplicada quando o eco chega pelo webhook. Isso está testado.
+- **Ignorados:** grupos (`@g.us`), `status@broadcast`, canais e mensagens vazias. Mídia é gravada com o aviso "abra no WhatsApp" (o download de mídia não foi implementado).
+- **Identificação:** nome no WhatsApp (`notifyName`/`pushName`), telefone formatado e vínculo automático com uma solicitação existente quando o telefone bate (com ou sem 55 e com ou sem o nono dígito). Contatos `@lid` (sem telefone) aparecem pelo identificador.
+- **Não lidas:** são as mensagens recebidas com `read_at` nulo. Abrir a conversa marca como lidas, e o título da aba mostra `(N) Atendimento`.
+
+### Arquivos criados
+
+| Arquivo | Papel |
+|---|---|
+| `database/migrations/2026_10_14_120000_create_whatsapp_conversations_tables.php` | Tabelas do atendimento |
+| `app/Models/WhatsappConversation.php`, `app/Models/WhatsappMessage.php` | Models, escopos de sessão e busca, não lidas, nome de exibição |
+| `app/Services/WhatsappInbox.php` | Processa eventos, envia respostas, marca como lidas, identifica contato e origem |
+| `app/Http/Controllers/Api/WahaWebhookController.php` | Webhook HMAC |
+| `app/Http/Controllers/WhatsappInboxController.php` | Tela (`index`) e resposta (`reply`, throttle 30/min) |
+| `resources/js/pages/atendimento/index.tsx` | Interface de 3 colunas, responsiva |
+| `tests/Feature/WhatsappInboxTest.php` | 15 testes |
+
+### Arquivos alterados
+
+| Arquivo | Mudança |
+|---|---|
+| `app/Services/WahaService.php` | `sendText()` |
+| `app/Models/LeadActivity.php` | Regra de ACK extraída para `messageStatusCanAdvance()`, com o mesmo comportamento |
+| `config/services.php`, `.env.example` | `WAHA_WEBHOOK_HMAC_KEY` (documentados também `WAHA_BASE_URL`/`WAHA_API_KEY`) |
+| `routes/web.php` | `GET /atendimento`, `POST /atendimento/{conversation}/mensagens` (auth + verified + admin) |
+| `routes/api.php` | `POST /api/whatsapp/waha/webhook` (throttle 600/min) |
+| `resources/js/components/app-sidebar.tsx` | Item "Atendimento" |
+| `resources/js/lib/contact.ts` | `useSiteWhatsappUrl()`: link de WhatsApp com a página de origem |
+| `whatsapp-float.tsx`, `public-footer.tsx`, `welcome.tsx`, `contato.tsx` | Usam `useSiteWhatsappUrl()` |
+
+### Interface (`/atendimento`)
+
+- **Desktop (≥1280 px):** conversas à esquerda (busca, horário, prévia, contador verde de não lidas), mensagens no centro (recebidas em branco, enviadas em verde com autor, hora e status Enviando/Enviada/Entregue/Lida), contato à direita (nome no WhatsApp, telefone, página de origem, primeiro contato e solicitação vinculada).
+- **Tablet (768–1279 px):** lista + mensagens; o painel de contato some.
+- **Celular:** a lista ocupa a tela; ao abrir uma conversa, ela ocupa a tela com botão de voltar.
+- **Aviso no topo** quando falta a sessão ou a chave do webhook.
+- Enter envia, Shift+Enter quebra linha. Erros do WAHA aparecem abaixo do campo.
+
+Conferi a tela em navegador headless com dados fictícios, numa cópia isolada com SQLite descartável (1440 px e 390 px).
+
+## 6. Como manter o WAHA compartilhado e isolar o atendimento
+
+Nada disso foi aplicado. São os passos para quando você validar:
+
+1. **Decidir a sessão do atendimento.** Hoje `vetoros1-1` é usada pelo site **e** pelo VetorLeads. Com a mesma sessão, as mesmas mensagens chegam aos dois sistemas, o que contraria o isolamento pedido. Recomendo uma **sessão nova no mesmo WAHA**, com o número institucional de atendimento:
+   - criar a sessão no WAHA (ex.: `abrasil-atendimento`) e ler o QR Code pela tela já existente em Configurações → Leads;
+   - salvar essa sessão no WhatsApp da empresa do site;
+   - **confirmar que o número exibido no site** (`CONTACT_WHATSAPP_NUMBER`, hoje `(51) 99893-1325`) é o número dessa sessão. Senão, as mensagens de quem clica no site não chegam ao atendimento.
+2. **Configurar o webhook da sessão no WAHA:**
+   - URL: `https://abrasilsistemas.com.br/api/whatsapp/waha/webhook` (ou `http://nginx/...` com `Host: abrasilsistemas.com.br` pela rede interna);
+   - eventos: `message`, `message.any`, `message.ack`;
+   - `hmac.key`: um segredo novo, igual ao `WAHA_WEBHOOK_HMAC_KEY` do container `abrasilsistema` (acrescentar ao `docker-compose.yml`/`.env` do infra-abrasil).
+   - ⚠️ O `PUT /api/sessions/{s}` do WAHA **substitui** a lista de webhooks. Se a sessão escolhida já tiver webhooks (ex.: os do n8n), inclua-os no mesmo PUT.
+3. **Deploy:** build + `php artisan migrate` (só cria as 2 tabelas).
+4. **Validação:** enviar uma mensagem de um celular de teste para o número do atendimento, conferir que aparece em `/atendimento`, responder e conferir o ACK.
+
+## 7. Plano de retirada do CRM (aguarda sua decisão)
+
+Na ordem, cada passo com teste e sem apagar dados:
+
+1. **Agora (baixo risco):** remover `DELETE /leads/clear`.
+2. **Conferir no n8n** os workflows "CRM ABrasil - Enviar WhatsApp", log e ACK: para qual host apontam (site ou VetorLeads). Conferir também a URL configurada na extensão AB Prospect.
+3. **Transformar `/leads` em "Solicitações"**: lista simples das solicitações do formulário do site (nome, empresa, contato, tipo de projeto, mensagem, data, vínculo com a conversa), sem Kanban, score, tarefas, importação ou ações em massa.
+4. **Remover do site:** dashboard comercial, importação CSV/API, extensão e `.xpi`, envio via n8n, templates e endpoints de log/ACK (se o passo 2 confirmar que não são usados), e mudar a tela inicial do admin para `/atendimento`.
+5. **Opcional:** exportar o histórico comercial para o VetorLeads.
+
+## 8. Testes
+
+Ambiente: PHP 8.4 local com o SQLite em memória do `phpunit.xml`, `Http::fake()` + `Http::preventStrayRequests()`. Nenhuma chamada real ao WAHA ou ao n8n. Suíte completa numa cópia na scratchpad sem `public/hot` (com o `npm run dev` rodando, o Inertia tenta SSR no Vite e os testes que bloqueiam HTTP externo falham; isso já acontecia antes desta tarefa).
+
+| Verificação | Resultado |
+|---|---|
+| Suíte completa | ✅ **229/229** (1.203 asserções) |
+| `WhatsappInboxTest` (15) | ✅ webhook desligado sem chave (503); assinatura ausente ou errada (401); mensagem recebida cria conversa com nome, telefone, página de origem, vínculo com solicitação e não lida; `message` + `message.any` gravam uma vez; outra sessão é ignorada; grupos, status e mensagens vazias ignorados; mídia com aviso; enviada pelo celular gravada como enviada e lida; ACK avança e não regride; a tela lista só a sessão configurada e marca como lida ao abrir; conversa de outra sessão não abre; busca por nome e por telefone formatado; resposta enviada ao WAHA com sessão, chatId, texto e X-Api-Key, sem duplicar o eco do webhook e com ACK aplicado; falha do WAHA mostra erro e não grava; resposta em conversa de outra sessão dá 404; acesso só para admin |
+| Migration up → down → up (SQLite) | ✅ |
+| `npm run build` | ✅ |
+| `tsc --noEmit` | ✅ 0 erros no código do projeto (continuam os 21 erros dos arquivos gerados pelo Wayfinder × Laravel 13.36, já registrados na ABRASIL-WEB-01) |
+| ESLint, Prettier, Pint nos arquivos alterados | ✅ |
+| Navegador headless (1440 e 390 px) | ✅ lista, conversa, status, painel de contato, contato sem nome com telefone formatado, layout de celular |
+| **MySQL 8.4** | ⚠️ não executado (sem Docker neste ambiente). A migration usa só tipos padrão; vale rodar no staging antes da produção |
+
+## 9. Pendências
+
+1. Escolher e criar a sessão de atendimento e confirmar o número público (seção 6, passo 1).
+2. Configurar o webhook com HMAC na sessão e a variável no `docker-compose.yml` (seção 6, passo 2).
+3. Decidir a retirada do CRM (seção 7). **O passo 1 foi feito com sua autorização (14/10):** `DELETE /leads/clear` saiu da rota, do `LeadController::clear()`, do botão "Limpar prospects" com o diálogo de confirmação em `/leads` e do teste correspondente. Nenhum dado foi apagado. Suíte depois da remoção: 228/228. Os demais passos continuam aguardando.
+4. Ainda não implementados: mídia (download e exibição), envio de "visto" ao WhatsApp, notificação no navegador, atribuição de conversa a atendente e respostas rápidas.
+5. Rodar a migration em MySQL/staging antes da produção.
+6. Commit, push e deploy aguardam sua autorização.
+
+---
+
+# Execução de `correio.md`: ABRASIL-WEB-01, auditoria e reposicionamento do site
+
+Data: 2026-10-14.
+
+## Resumo
+
+**Implementado e testado localmente. Nada foi publicado: não houve deploy, push nem commit.** O site institucional foi reestruturado para apresentar a ABrasil Sistemas como empresa de tecnologia e software: uma home nova, uma área de **Sistemas prontos** com página própria por produto, **6 páginas de serviço** geradas a partir de um catálogo central, e as páginas Soluções, Sobre e Contato reescritas. O SEO técnico foi corrigido: as meta tags estavam duplicadas, o título repetia a marca, faltava JSON-LD no HTML inicial e a fonte não carregava. A logo de 797 KB foi trocada por uma versão de 866 bytes.
+
+O CRM, os leads, o blog, o painel administrativo e as integrações de WhatsApp/n8n não foram alterados, exceto pela nova opção "Automação" no campo `product` do lead. Não há migration.
+
+Testes: **214/214 passando** (com build de produção numa cópia isolada), TypeScript sem erros no código novo, ESLint e Pint limpos nos arquivos alterados.
+
+## 1. Diagnóstico (auditoria)
+
+### Estrutura anterior
+
+| Rota | Página | Situação encontrada |
+|---|---|---|
+| `/` | `welcome.tsx` (1.123 linhas) | Carrossel automático de 3 slides (Sob medida / VetorOS / VetorPet) como hero. Cabeçalho próprio, diferente do resto do site. A empresa não era apresentada: a página só falava dos produtos |
+| `/produtos` | `produtos.tsx` | VetorOS, VetorPet e "Sob medida" no mesmo formato de card |
+| `/servicos` | `servicos.tsx` | 6 serviços em âncoras de uma única página, com 4 tópicos genéricos cada. Nenhum serviço tinha URL própria indexável |
+| `/desenvolvimento-de-sites-para-empresas` | `company-websites.tsx` | Única página de serviço com URL própria |
+| `/sobre` | `sobre.tsx` | 1 parágrafo e 4 cards |
+| `/contato` | `contato.tsx` | Campo "Serviço de interesse" com as chaves do CRM; sem "Automação" |
+| legais, blog, 404 | — | Funcionais |
+
+Componentes: `SecondaryPageHeader` (com a barra "← Site principal" em toda página interna), `NavProductsMenu`, `NavServicesMenu`, `PublicFooter`, `PublicBrand`, `WhatsAppFloat`, `CookieConsent`.
+
+### Problemas encontrados
+
+**SEO técnico**
+- **Meta tags duplicadas.** O `app.blade.php` gerava description, canonical e og:* no servidor, e cada página repetia as mesmas tags no `<Head>` do React. O Inertia v3 só substitui tags marcadas com `data-inertia`, então depois do carregamento havia **duas** descriptions e **dois** canonicals por página.
+- **Título com a marca repetida.** O `title` do `app.tsx` acrescentava " - AB Sistemas" a títulos que já terminavam em "| ABrasil Sistemas".
+- **JSON-LD só no JavaScript.** O schema.org existia apenas no `<Head>` do cliente, sem SSR, e não aparecia no HTML inicial.
+- Sem `og:url`. Organization sem `@id`. `provider.url: '/'` relativo nos `Service`.
+- Os serviços não tinham URL própria (eram âncoras `/servicos#automacao`), o que impedia ranquear para "automação de processos", "integração de sistemas" etc.
+- SEO declarado duas vezes, em `routes/web.php` e no `<Head>` de cada página, com textos que já divergiam entre si.
+
+**Performance**
+- `logo_ab.png` com **797 KB** (1254×1254) exibida em 44 px em todas as páginas.
+- A fonte "Instrument Sans" estava declarada no CSS mas **nunca era carregada** (caía na fonte do sistema).
+- Imagens sem `width`/`height` (CLS) e sem `loading="lazy"`.
+
+**Posicionamento e conteúdo**
+- O hero em carrossel de 7 s alternava três mensagens. Ninguém lia a mensagem principal, e "Do briefing ao ar em semanas" posicionava a empresa como fornecedora rápida de sites.
+- A home falava de "criar conta grátis" e "teste por 14 dias" antes de dizer o que a empresa é.
+- Automação estava descrita como "sempre dentro de um projeto de software", secundária, quando o correio pede que seja uma das áreas principais.
+- Não havia seção de tecnologias nem de processo de trabalho (só a "jornada" de cadastro no SaaS).
+
+**Visual**
+- Aparência de template: `font-black` com `tracking-[-0.075em]`, blobs de blur cyan/sky, grade de fundo, pílulas com ícone `Sparkles`, botões neon com sombra colorida, fundos alternados ciano/âmbar/violeta por seção e muitos cards iguais com ícone.
+- Três cabeçalhos diferentes (home, páginas internas, blog).
+
+**Responsividade:** funcional, mas o hero em carrossel mudava de altura a cada slide, e o menu móvel repetia a barra "Site principal".
+
+### Ecossistema auditado (para não inventar nada)
+
+| Projeto | Status | Uso no site |
+|---|---|---|
+| VetorOS (`gateway/vetoros`) | Produto em operação. README: OS, orçamentos, portal público do cliente, follow-ups, estoque, vendas, caixa, indicadores | Página `/sistemas/vetoros` |
+| VetorPet (`vetorpet.com.br`) | Produto em operação; o código não está neste ambiente. Funcionalidades tiradas do conteúdo já publicado | Página `/sistemas/vetorpet` |
+| CRM/AB Prospect, n8n, WAHA | Ferramentas internas | Citadas apenas como experiência ("na nossa própria operação usamos n8n e WhatsApp integrados ao CRM") |
+| Desgarrados | Projeto de terceiro | Não publicado |
+| `expo/solar-app`, `portal-solar`, `node-next/order-js` | Projetos locais sem confirmação de cliente/autorização | Não publicados; serviram só para confirmar React Native/Expo |
+
+**Tecnologias confirmadas e publicadas:** PHP, Laravel, React, TypeScript, Inertia.js, Tailwind CSS, React Native, Expo, Android, MySQL, Redis, SQLite, APIs REST, webhooks, filas, n8n, WhatsApp, Linux, Docker, Nginx, HTTPS/Let's Encrypt.
+**Não confirmadas e não publicadas:** Python, FastAPI, Next.js, Node.js (como backend), PostgreSQL, "serviços em nuvem" específicos.
+
+## 2. Estrutura proposta e implementada
+
+```
+/                                        Home institucional
+/servicos                                Soluções (hub)
+  /desenvolvimento-de-sistemas           Sistemas sob medida
+  /automacao-de-processos                Automação de processos
+  /integracao-de-sistemas-e-apis         Integrações e APIs
+  /desenvolvimento-de-aplicativos        Aplicativos
+  /desenvolvimento-de-sites-para-empresas Sites empresariais (URL antiga mantida)
+  /criacao-de-landing-pages              Landing Pages
+/sistemas                                Sistemas prontos (portfólio de produtos)
+  /sistemas/vetoros
+  /sistemas/vetorpet
+/sobre  /contato  /blog  /politica-de-*  /termos-de-uso
+/produtos  → 301 → /sistemas
+```
+
+**Navegação:** Soluções (dropdown com os 6 serviços e um resumo de cada) · Sistemas prontos · Sobre · Blog · Contato · Entrar · **[Falar sobre um projeto]**. O mesmo cabeçalho vale para todas as páginas institucionais e legais.
+
+**Home (ordem do correio):** hero → quem somos → sistemas prontos → soluções (Software e processos / Presença digital) → como trabalhamos → tecnologia → projetos (só aparece se houver itens no portfólio ou cases) → depoimentos (se houver) → blog (se houver) → CTA empresarial com contato.
+
+**Página de serviço (template único):** hero com ilustração própria → "O ponto de partida" (problemas) → "O que entregamos" → "O que muda na prática" + diagramas de fluxo → "Como funciona" (processo; Sistemas sob medida usa o fluxo de 7 etapas do correio) → FAQ + soluções relacionadas → CTA com o tipo de projeto pré-selecionado.
+
+**Página de produto:** segmento, problema, antes/depois, funcionalidades, plataformas, modelo de implantação, integrações, FAQ, CTAs "Solicitar demonstração" e "Criar conta e testar grátis". Na listagem, "Conhecer solução" e "Solicitar demonstração".
+
+**Inteligência Artificial:** avaliei e **não criei página própria**. Não encontrei projeto de IA em produção no ecossistema. A IA aparece só como um item da Automação ("IA aplicada ao processo… sempre conectada ao fluxo e com revisão humana"). Ver pendências.
+
+**Cases:** o tipo `CaseStudy` (Problema → Solução → Tecnologia → Resultado) e a renderização na home já estão prontos. A lista `caseStudies` está **vazia** de propósito: não há case autorizado e o correio proíbe resultados inventados.
+
+## 3. Direção visual
+
+- **Paleta:** navy `#0b1220` nas seções escuras, branco e `slate-50` nas claras, **um único acento** (`blue-700`). As cores de VetorOS (sky) e VetorPet (violet) aparecem só no segmento de cada produto.
+- **Tipografia:** Instrument Sans, agora carregada de fato (`fonts.bunny.net`, sem cookies). Títulos em `font-semibold` e `tracking-tight`, no lugar de `font-black` com tracking extremo.
+- **Removidos:** blobs de blur, grade de fundo, pílulas com `Sparkles`, botões neon, sombras coloridas, `hover:-translate-y`, carrossel e fundos coloridos alternados.
+- **Componentes:** botões `rounded-md` em 4 variantes; grades de células separadas por linha de 1 px (ex.: `bg-slate-200` + `gap-px`) e listas editoriais com divisórias, no lugar de cards iguais com ícone; numeração 01–06 no processo.
+- **Imagens e heroes:** cada página tem um visual próprio, sem repetir imagem e sem banco de fotos. São ilustrações em HTML/CSS que explicam o serviço:
+
+| Página | Visual |
+|---|---|
+| Home, Sistemas, VetorOS | Captura real do painel do VetorOS em moldura de navegador + o fluxo "Site → CRM → WhatsApp → Sistema" |
+| Sistemas sob medida | Janela de sistema com menu, indicadores e ordens com status, e "~~planilhas e cadernos~~ → um processo, um sistema" |
+| Automação | Fluxo "Quando: pagamento confirmado → Então: WhatsApp, recibo PDF, financeiro, notificação" |
+| Integrações e Soluções | ERP, CRM, e-commerce, WhatsApp, financeiro e app ligados por uma "camada de integração" |
+| Aplicativos | Smartphone com lista de visitas e "Novo pedido", com cartão "sincronizado via API" |
+| Sites | Site em desktop + celular (wireframe) |
+| Landing Pages | Landing com formulário + notificação "Novo lead no CRM — origem: campanha" |
+
+As ilustrações têm `role="img"` e um rótulo descritivo para leitores de tela.
+
+## 4. Arquivos
+
+### Criados
+
+| Arquivo | Papel |
+|---|---|
+| `app/Support/PublicPages.php` | Catálogo de slugs + SEO dos serviços e produtos, Organization/Service/SoftwareApplication em schema.org e as URLs do sitemap. Rotas e sitemap leem daqui |
+| `app/Http/Controllers/SiteController.php` | `home`, `systems`, `system`, `services`, `service`, `about` (substitui as closures do `web.php`) |
+| `resources/js/data/site.ts` | **Conteúdo** de serviços, produtos, processo, tecnologias e cases. Adicionar um produto ou serviço = 1 entrada aqui + 1 em `PublicPages` |
+| `resources/js/components/site/site-layout.tsx` | Estrutura comum: SEO, cabeçalho, `<main>`, rodapé, WhatsApp, cookies, link "Pular para o conteúdo" |
+| `resources/js/components/site/site-header.tsx` | Cabeçalho único (desktop com dropdown, menu móvel) |
+| `resources/js/components/site/seo-head.tsx` | Renderiza as tags do prop `seo` com `head-key` iguais aos `data-inertia` do Blade |
+| `resources/js/components/site/blocks.tsx` | `Container`, `Eyebrow`, `SectionHeading`, `ButtonLink`, `PageHero`, `ProcessSteps`, `FlowDiagram`, `FaqList`, `CtaBand` |
+| `resources/js/components/site/visuals.tsx` | `BrowserFrame` + as 6 ilustrações de hero |
+| `resources/js/pages/site/servico.tsx` | Template das 6 páginas de serviço |
+| `resources/js/pages/site/sistemas.tsx` | Portfólio de produtos |
+| `resources/js/pages/site/sistema.tsx` | Página de cada produto |
+| `public/images/logo_ab-96.webp` (866 B), `public/images/logo_ab-512.png` | Logo otimizada (cabeçalho) e logo para o schema.org |
+| `tests/Feature/PublicSiteTest.php` | 18 testes (abaixo) |
+
+### Alterados
+
+| Arquivo | Mudança |
+|---|---|
+| `routes/web.php` | Rotas públicas via `SiteController`. Serviços registrados em loop a partir de `PublicPages::SERVICES`. `/sistemas/{product}` com `whereIn`. `/produtos` → 301. O nome `company-websites` foi mantido |
+| `resources/views/app.blade.php` | `data-inertia` em cada tag de SEO (acaba a duplicação), `og:url`, JSON-LD no HTML inicial (`JSON_HEX_TAG` impede fechar o `<script>`), carregamento da fonte |
+| `app/Support/Seo.php` | Descrição padrão reposicionada |
+| `app/Http/Controllers/SitemapController.php` | Usa `PublicPages::sitemapUrls()`: entram as 6 páginas de serviço, `/sistemas` e os 2 produtos; sai `/produtos` |
+| `app/Models/Lead.php` | `PRODUCTS` ganha `automacao`. Novo `CONTACT_PROJECT_TYPES` (opções do formulário, na ordem do correio) |
+| `app/Http/Controllers/ContactController.php` | Envia `projectTypes` e `selectedType` (`?tipo=` pré-seleciona), SEO e ContactPage |
+| `app/Http/Requests/PublicContactRequest.php` | Valida contra `CONTACT_PROJECT_TYPES`; mensagens novas |
+| `resources/js/app.tsx` | O título não repete a marca. Páginas `site/*` sem layout do painel |
+| `resources/js/pages/welcome.tsx` | Home reescrita (1.123 → 547 linhas, já formatada pelo Prettier) |
+| `resources/js/pages/servicos.tsx` | Vira hub de soluções com links para as páginas próprias |
+| `resources/js/pages/sobre.tsx` | Perfil empresarial: princípios, método, capacidade técnica |
+| `resources/js/pages/contato.tsx` | Campos do correio, "Tipo de projeto", CTA **"Falar sobre meu projeto"**, aviso de privacidade, "O que acontece depois" |
+| `resources/js/components/public-footer.tsx` | Colunas Soluções / Sistemas prontos / Empresa / Contato |
+| `resources/js/components/public-brand.tsx` | Logo webp de 866 B com `width`/`height` |
+| `resources/js/pages/legal/*.tsx` | Usam `SiteHeader` e `SeoHead` |
+
+### Removidos
+
+`pages/produtos.tsx`, `pages/company-websites.tsx` (a URL continua e agora usa o template de serviço), `components/secondary-page-header.tsx`, `components/nav-products-menu.tsx`, `components/nav-services-menu.tsx`, `data/product-features.ts`.
+
+### Reaproveitados sem alteração
+
+`WhatsAppFloat`, `CookieConsent`, `useContact`/`buildWhatsappUrl`, `Collapsible`, `DropdownMenu`, `Input`, `Label`, `InputError`, o fluxo de contato → lead no CRM → e-mail (deduplicação, honeypot, throttle), os modelos `PortfolioItem` e `Testimonial` (a home continua exibindo o que for cadastrado no admin), o blog e o captura `dashboard-vetoros.webp`.
+
+## 5. SEO: o que mudou
+
+- Uma única description, canonical e og:* por página (antes eram duas), testado.
+- Títulos sem a marca repetida e específicos por página, como "Automação de processos empresariais | ABrasil Sistemas".
+- JSON-LD no HTML inicial: `Organization` (com `@id`) em todas as páginas, `WebSite` na home, `Service` em cada serviço, `SoftwareApplication` em cada produto, `ContactPage`.
+- 8 URLs novas e indexáveis: 5 de serviço (a de sites já existia), `/sistemas` e 2 de produto. O sitemap foi atualizado e `/produtos` redireciona com 301.
+- `og:url` em todas as páginas.
+- Headings: um `h1` por página, `h2` por seção, `h3` nos itens.
+- Termos do correio cobertos nos títulos e descrições: desenvolvimento de sistemas, software sob medida, sistemas empresariais, aplicativos, sites empresariais, landing pages, automação de processos, integração de sistemas, APIs. Sem repetição forçada.
+- Performance: logo de 797 KB → 866 B; imagens com `width`/`height`; `loading="lazy"` fora do hero e `fetchpriority="high"` na imagem do hero; fonte com `display=swap`.
+- Acessibilidade: "Pular para o conteúdo", `aria-label` nos menus, `aria-expanded`/`aria-controls` no menu móvel, rótulos nas ilustrações, `<dl>`/`<ol>`/`<figure>` semânticos e contraste AA nos textos.
+
+## 6. UX/UI: o que mudou
+
+- Uma mensagem fixa no hero, sem carrossel. CTAs **Conhecer soluções** e **Falar sobre um projeto**.
+- O CTA principal é o mesmo em todo o site ("Falar sobre um projeto" / "Falar sobre meu projeto") e leva ao formulário com o tipo de projeto já escolhido conforme a página de origem (`/contato?tipo=automacao#formulario`).
+- Os textos explicam primeiro o problema, depois o resultado e por último a tecnologia, sem jargão. Os FAQs de cada serviço respondem objeções reais (custo, prazo, propriedade, segurança).
+- Contato: campos do correio, a explicação "O que acontece depois" e o aviso de privacidade.
+- Menu móvel com Soluções e Sistemas listados e o CTA no final.
+
+## 7. Testes realizados
+
+Ambiente: PHP 8.4 local com o SQLite em memória do `phpunit.xml` (`MAIL_MAILER=array`, sem rede real). Nenhum banco, container ou serviço de produção foi tocado.
+
+| Verificação | Resultado |
+|---|---|
+| `tests/Feature/PublicSiteTest.php` | ✅ 18 testes |
+| Suíte completa, numa cópia na scratchpad, sem `public/hot`, após `npm run build` | ✅ **214/214** (1.077 asserções) |
+| Suíte completa na árvore de trabalho | 210/214: os 4 testes de WhatsApp (`CompanyWhatsappSettingsTest` ×2, `LeadWhatsappSendTest` ×2) falham **só por causa do `npm run dev` em execução**: com `public/hot` presente, o Inertia tenta SSR em `http://[::1]:5173/__inertia_ssr` e esses testes bloqueiam requisições externas. Na cópia sem `public/hot`, passam |
+| `npm run build` (com `SKIP_WAYFINDER_GENERATE=1`, como no Dockerfile) | ✅ (só o aviso de chunk > 500 kB, que já existia) |
+| `tsc --noEmit` | ✅ 0 erros nos arquivos do projeto. ⚠️ 21 erros em arquivos **gerados** pelo Wayfinder, em todos os `Route::redirect` (veja pendências) |
+| ESLint nos arquivos alterados/criados | ✅ (os 61 erros de ESLint do projeto estão em admin/blog/leads/settings, arquivos não alterados) |
+| Prettier nos arquivos criados/reescritos | ✅ |
+| Pint nos PHP alterados | ✅ |
+| Navegação real (servidor local + Chromium headless, 1440 px e 390 px) | ✅ Home, Automação, Contato (`?tipo=automacao` pré-selecionado), Aplicativos, VetorOS. Redirect `/produtos` → 301 conferido via `curl` |
+
+O que os 18 testes cobrem: as 7 páginas institucionais renderizam o componente certo com canonical, title, description e JSON-LD; as 6 páginas de serviço; a URL e o nome de rota `company-websites` preservados; 404 para produto desconhecido; 301 em `/produtos`; **uma** description e **um** canonical no HTML inicial, mais `og:url` e JSON-LD `Service`; o JSON-LD não consegue fechar o `<script>`; o sitemap com todas as URLs e sem `/produtos`; a pré-seleção `?tipo=` válida e inválida; o envio com `automacao` gravando o lead; a recusa de tipo fora da lista; os tipos do formulário existindo em `Lead::PRODUCTS`.
+
+## 8. Descrição visual das principais telas
+
+- **Home (desktop):** cabeçalho navy fino com logo, menu e botão branco "Falar sobre um projeto". Hero navy com o título em 3 linhas à esquerda e a captura do VetorOS em moldura de navegador à direita, com o fluxo Site → CRM → WhatsApp → Sistema abaixo. Em seguida, uma seção branca "Engenharia de software a serviço da operação" com 3 pilares; os dois produtos lado a lado sobre fundo cinza-claro; a lista editorial de soluções em duas colunas; o processo 01–06 em faixa navy; a grade de tecnologias; o CTA final navy.
+- **Home (390 px):** tudo em uma coluna, CTAs em largura total, a captura abaixo do texto, cards de produto empilhados.
+- **Página de serviço (Automação):** hero navy com o fluxo "Quando / Então"; problemas em lista de duas colunas; grade 3×2 do que entregamos; "O que muda na prática" com checks ao lado dos diagramas de fluxo; processo navy; FAQ e soluções relacionadas; CTA.
+- **Contato (390 px):** hero curto; formulário em cartão (Nome, Empresa, E-mail, WhatsApp, Tipo de projeto, Descrição, botão azul de largura total); depois os cartões de WhatsApp e e-mail e o "O que acontece depois".
+- **VetorOS:** link de volta para "Sistemas prontos", logo + segmento, título "VetorOS: a operação da assistência técnica em um só sistema.", captura, antes/depois em dois cartões, funcionalidades, plataformas, implantação e integrações.
+
+Capturas (temporárias, na scratchpad desta sessão): `/tmp/claude-1000/-home-anderson-projects-laravel-infra-abrasil-gateway-abrasilsistemas/d112c14c-66a1-49f9-ad1c-a5f04f73fadf/scratchpad/shots/`.
+
+## 9. Administração e evolução (decisão)
+
+**Não criei CMS.** O conteúdo institucional muda pouco e fica tipado em `resources/js/data/site.ts`, com o SEO e as rotas em `app/Support/PublicPages.php`:
+- **novo produto:** uma entrada em `products` + uma em `PublicPages::PRODUCTS` (rota, sitemap e JSON-LD saem automaticamente) + o logo/captura em `public/images`;
+- **novo serviço:** uma entrada em `services` + uma em `PublicPages::SERVICES`;
+- **novo case:** uma entrada em `caseStudies` (a seção aparece sozinha na home);
+- **trocar imagem/texto:** editar o campo correspondente.
+
+O que muda com frequência já tem painel: blog, portfólio e depoimentos (`/admin/blog`, `/portfolio`, `/testimonials`) continuam aparecendo na home. Se os cases passarem a ser frequentes, vale migrá-los para o banco reaproveitando o `PortfolioItem` (problema/solução/tecnologia/resultado). Isso exige migration e não foi feito agora.
+
+## 10. Pendências
+
+1. **Wayfinder × Laravel 13.36.** O `composer.lock` já estava modificado antes desta tarefa (Laravel 13.32 → 13.36). A versão nova inclui o método HTTP `QUERY` nos `Route::redirect`, e os tipos do Wayfinder não o aceitam: são 21 erros de `tsc` em `resources/js/routes` e `resources/js/actions`, em todos os redirects (`admin`, `conhecimento`, `minha-biblioteca`…). O build do Vite não é afetado. Resolver atualizando `@laravel/vite-plugin-wayfinder`/`laravel/wayfinder` ou fixando o framework.
+2. **SSR.** O site é renderizado no navegador; o HTML inicial tem só o `<head>` (agora correto). O Google renderiza JavaScript, mas o SSR do Inertia (`build:ssr` + processo Node no container) melhoraria a indexação e o LCP. Isso é uma mudança de infraestrutura e não foi feita.
+3. **Imagens reais.** Só existe uma captura real (o painel do VetorOS, com números zerados de demonstração). Faltam: uma captura do VetorPet (web e app Android), uma captura do VetorOS com dados de demonstração preenchidos, e uma imagem OG 1200×630 própria por página (hoje todas usam a do VetorOS).
+4. **Confirmar claims removidos/mantidos:**
+   - removi do VetorOS "Aplicativos para equipe e clientes": o app Android aparece em `docs/roadmap-app-tecnico-android.md` como *roadmap*. Se já estiver publicado, basta incluir em `products[0].platforms`;
+   - mantive as funcionalidades do VetorPet como já estavam publicadas (o código não está neste ambiente);
+   - "14 dias sem cartão" foi mantido do site anterior.
+5. **IA:** criar a página só quando houver um projeto real para mostrar.
+6. **Cases:** cadastrar quando houver projetos autorizados pelos clientes.
+7. **Tecnologias não confirmadas** (Python, FastAPI, Next.js, Node.js, PostgreSQL, nuvem): incluir em `technologyGroups` se forem usadas.
+8. **Blog:** o `BlogPublicLayout` mantém o cabeçalho antigo (tem o CTA de cadastro do blog). Unificar com o `SiteHeader` numa próxima etapa.
+9. **Página 404** mantém o visual antigo.
+10. `logo_ab.png`, `logo_ab_2.png` e `logo_ab-old.png` (2,2 MB no total) continuam em `public/images`. Não removi porque podem estar referenciados fora do site (e-mails, outros projetos).
+11. **Deploy:** precisa de build e publicação normais. Não há migration. A nova chave `automacao` em `leads.product` não exige mudança no banco (a coluna é `string`).
+12. Commit e push aguardam sua autorização.
+
+---
+
 # Execução de `correio.md`: gerenciamento da conexão WhatsApp/WAHA pelo painel
 
 Data: 2026-09-24.

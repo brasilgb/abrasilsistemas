@@ -1,551 +1,100 @@
-TAREFA — Gerenciamento da conexão WhatsApp/WAHA pelo painel do CRM ABrasil
+# ABRASIL-WEB-02 — Separação de responsabilidades e atendimento WhatsApp
 
-Projeto:
-ABrasil Sistemas / CRM de Leads.
+Estamos reposicionando o site `abrasilsistemas.com.br` como portal empresarial e institucional da ABrasil Sistemas.
 
-Objetivo:
-Implementar no próprio painel do CRM o gerenciamento da sessão WhatsApp WAHA, incluindo geração e exibição do QR Code, status da sessão, número realmente autenticado e desconexão.
+Existe também um projeto independente, VetorLeads, que será responsável por prospecção de empresas, gestão de leads, funil comercial e vendas.
 
-IMPORTANTE:
-Antes de implementar, audite o código atual relacionado a:
-- Configurações → Leads
-- CompanyWhatsappSettings
-- LeadWhatsappService
-- integrações WAHA/n8n existentes
-- rotas e controllers de settings
-- estrutura Docker/env/config relacionada ao WAHA
+**Não misturar as responsabilidades dos dois projetos.**
 
-Não recrie funcionalidades que já existam.
+## 1. ABrasil Sistemas
 
-==================================================
-1. SITUAÇÃO ATUAL
-==================================================
+O site institucional deverá concentrar:
 
-Já existe em:
+- Apresentação da empresa.
+- Sistemas próprios e soluções prontas.
+- Desenvolvimento de sistemas sob medida.
+- Criação de sites e landing pages.
+- Desenvolvimento de aplicativos.
+- Automação de processos.
+- Integrações e APIs.
+- Apresentação das tecnologias utilizadas.
+- Formulário institucional de contato.
+- Atendimento WhatsApp.
 
-Configurações → Leads → WhatsApp da empresa
+## 2. Atendimento WhatsApp
 
-configuração contendo:
+Auditar primeiro a implementação atual de leads e WhatsApp do projeto.
 
-- habilitado/desabilitado
-- número WhatsApp da empresa
-- provider = waha
-- session
-- exemplo atual de sessão: vetoros1-1
+Preservar e simplificar o que já funciona, transformando essa área em um módulo de conversas e atendimento.
 
-As configurações são persistidas na tabela settings.
+Funcionalidades desejadas:
 
-Já existe envio funcionando:
+- Caixa de entrada de conversas.
+- Histórico persistente de mensagens.
+- Envio e recebimento pelo WAHA.
+- Resposta diretamente no painel.
+- Atualização de mensagens em tempo real, quando viável.
+- Identificação de contatos.
+- Status de mensagens, conforme suporte da integração.
+- Mensagens não lidas.
+- Busca por contato.
+- Identificação da página de origem, quando disponível.
 
-CRM
-→ Laravel
-→ n8n
-→ WAHA
-→ WhatsApp
+O formulário de contato poderá criar um registro de solicitação simples, sem necessidade de um CRM comercial completo.
 
-NÃO alterar esse fluxo.
+## 3. Infraestrutura
 
-Também já existem workflows n8n para:
-- envio
-- message.ack/status
-- mensagens recebidas
+Reutilizar o WAHA existente no ecossistema `infra-abrasil`.
 
-NÃO modificar n8n.
-NÃO modificar webhooks WAHA existentes.
-NÃO alterar credenciais.
-NÃO alterar banco desnecessariamente.
+Não instalar uma nova instância WAHA apenas para o site.
 
-==================================================
-2. PROBLEMA ATUAL
-==================================================
+Verificar sessões, webhooks, autenticação e integrações já configuradas.
 
-Hoje o painel pode informar um número configurado diferente
-do número realmente autenticado na sessão WAHA.
+Garantir que as conversas do atendimento institucional sejam isoladas das conversas dos demais projetos.
 
-Exemplo encontrado:
+Não alterar configurações de produção sem validação.
 
-Número configurado no CRM:
-5551998931325
+## 4. VetorLeads
 
-Mas a sessão WAHA estava autenticada como:
-555195179173@c.us
+Toda funcionalidade de:
 
-Portanto:
+- Prospecção B2B.
+- Captação avançada de leads.
+- Campanhas.
+- Funil de vendas.
+- Follow-up comercial.
+- Gestão de oportunidades.
+- Automação de vendas.
 
-company_whatsapp_number
+Deve permanecer exclusivamente no projeto VetorLeads.
 
-NÃO deve ser considerado prova de qual conta está conectada.
+Não duplicar esses módulos no site ABrasil Sistemas.
 
-A fonte de verdade para a conexão deve ser:
+## 5. Interface administrativa
 
-GET /api/sessions/{session}
+Criar ou aproveitar uma área administrativa simples para o WhatsApp, com:
 
-e principalmente:
+- Lista de conversas à esquerda.
+- Mensagens no painel central.
+- Informações do contato à direita, quando houver espaço.
+- Campo de resposta.
+- Indicadores de mensagens não lidas.
 
-status
-me.id
-me.pushName
-me.lid
+Utilizar uma interface limpa, moderna e responsiva.
 
-==================================================
-3. NOVA FUNCIONALIDADE
-==================================================
+## 6. Auditoria antes da implementação
 
-Na seção existente:
+Inspecionar a estrutura atual e informar:
 
-Configurações
-→ Leads
-→ WhatsApp da empresa
+1. O que já existe e funciona.
+2. O que precisa ser mantido.
+3. Quais funcionalidades de CRM/leads podem ser retiradas do site institucional sem perda de dados.
+4. O que falta para permitir receber e responder mensagens.
+5. Quais componentes e tabelas serão reutilizados.
+6. Como manter a integração com o WAHA compartilhado.
 
-adicionar gerenciamento visual da conexão WAHA.
+Não excluir dados históricos de leads ou conversas.
 
-A interface deverá mostrar algo semelhante a:
+Preparar um plano de alterações e implementar somente após a avaliação da auditoria.
 
-WhatsApp da empresa
-
-Número configurado:
-(51) 99893-1325
-
-Provider:
-WAHA
-
-Sessão:
-vetoros1-1
-
-Status da conexão:
-[Conectado / Desconectado / Aguardando QR Code / Conectando / Erro]
-
-Quando conectado:
-
-Número autenticado:
-(51) XXXXX-XXXX
-
-Nome da conta:
-<me.pushName>
-
-Sessão:
-vetoros1-1
-
-Status:
-Conectado
-
-==================================================
-4. BOTÃO CONECTAR WHATSAPP
-==================================================
-
-Quando não estiver conectado:
-
-[ Conectar WhatsApp ]
-
-O Laravel deve controlar a sessão WAHA pelo backend.
-
-Nunca chamar WAHA diretamente pelo React/browser.
-
-Fluxo esperado:
-
-Frontend
-    ↓
-Laravel
-    ↓
-WAHA API
-
-O backend deve:
-
-1. consultar a sessão;
-2. iniciar/reiniciar quando necessário;
-3. aguardar/identificar SCAN_QR_CODE;
-4. buscar o QR Code;
-5. devolver o QR para o frontend de maneira segura.
-
-Endpoint WAHA já validado:
-
-GET /api/{session}/auth/qr
-
-Esse endpoint retorna diretamente uma imagem PNG.
-
-No ambiente atual foi validado como:
-
-PNG
-292 x 292
-RGBA
-
-Portanto NÃO interpretar a resposta como JSON.
-
-O backend Laravel deve receber o PNG e repassá-lo corretamente
-ao frontend, preferencialmente por uma rota autenticada.
-
-==================================================
-5. EXIBIÇÃO DO QR CODE
-==================================================
-
-Quando WAHA retornar:
-
-status = SCAN_QR_CODE
-
-mostrar o QR Code dentro de um Dialog/Modal.
-
-Exemplo:
-
-┌──────────────────────────────┐
-│ Conectar WhatsApp            │
-│                              │
-│ Abra o WhatsApp no celular   │
-│                              │
-│      [ QR CODE ]             │
-│                              │
-│ WhatsApp                     │
-│ → Aparelhos conectados       │
-│ → Conectar aparelho          │
-│                              │
-│ Aguardando conexão...        │
-└──────────────────────────────┘
-
-Não salvar QR Code permanentemente.
-
-QR é temporário e pode expirar.
-
-Se expirar:
-- informar ao usuário;
-- permitir gerar/atualizar QR;
-- não destruir configurações existentes.
-
-==================================================
-6. MONITORAMENTO DO STATUS
-==================================================
-
-Enquanto o modal estiver aberto, o frontend poderá consultar
-periodicamente um endpoint Laravel de status.
-
-Não consultar WAHA diretamente pelo browser.
-
-Por exemplo:
-
-GET /settings/leads/whatsapp/status
-
-Laravel consulta:
-
-GET /api/sessions/{session}
-
-Mapear estados WAHA para estados amigáveis da UI.
-
-Exemplo:
-
-WORKING
-→ Conectado
-
-SCAN_QR_CODE
-→ Aguardando leitura do QR Code
-
-STARTING
-→ Conectando
-
-FAILED
-→ Falha na conexão
-
-STOPPED
-→ Desconectado
-
-Não assumir que essa lista é completa.
-Tratar estados desconhecidos de forma segura.
-
-Quando mudar para:
-
-WORKING
-
-fechar automaticamente o QR/modal ou atualizar a interface
-para sucesso.
-
-Depois consultar novamente a sessão e mostrar:
-
-me.id
-me.pushName
-
-==================================================
-7. VALIDAÇÃO DO NÚMERO
-==================================================
-
-Implementar comparação entre:
-
-company_whatsapp_number
-
-e
-
-me.id retornado pelo WAHA.
-
-Normalizar ambos antes da comparação.
-
-Exemplo:
-
-me.id:
-5551998931325@c.us
-
-normalizado:
-5551998931325
-
-Se forem iguais:
-
-✓ Número conectado corretamente
-
-Se forem diferentes:
-
-ATENÇÃO
-
-Número configurado:
-(51) 99893-1325
-
-Número conectado:
-(51) XXXXX-XXXX
-
-A sessão WAHA está conectada a um número diferente
-do configurado para esta empresa.
-
-Não corrigir automaticamente.
-Não sobrescrever company_whatsapp_number.
-
-O usuário deve decidir.
-
-==================================================
-8. DESCONEXÃO
-==================================================
-
-Quando estiver WORKING, disponibilizar:
-
-[ Desconectar WhatsApp ]
-
-Com confirmação antes da operação.
-
-Laravel deverá chamar o logout da sessão WAHA.
-
-Endpoint já utilizado com sucesso:
-
-POST /api/sessions/{session}/logout
-
-Depois atualizar o estado visual.
-
-Não excluir a sessão.
-Não apagar os webhooks.
-Não apagar as configurações da empresa.
-
-==================================================
-9. SEGURANÇA
-==================================================
-
-A WAHA API possui autenticação por:
-
-X-Api-Key
-
-A chave NÃO pode:
-- ir para React;
-- aparecer no HTML;
-- ser armazenada em settings;
-- ser retornada pelas APIs do frontend;
-- aparecer em logs.
-
-Criar configuração Laravel via ENV/config.
-
-Exemplo conceitual:
-
-WAHA_BASE_URL=http://waha:3000
-WAHA_API_KEY=...
-
-Usar config/services.php ou estrutura equivalente já existente.
-
-Nunca usar env() diretamente fora dos arquivos config.
-
-Toda comunicação:
-
-Laravel → WAHA
-
-deve acontecer server-side.
-
-Aplicar:
-- autenticação
-- autorização adequada
-- timeout
-- tratamento de erro
-- validação do nome da sessão
-
-Não permitir que uma sessão arbitrária enviada pelo browser
-seja usada para consultar a WAHA API.
-
-A sessão deve ser obtida das configurações da empresa.
-
-==================================================
-10. SERVICE
-==================================================
-
-Preferencialmente criar uma abstração como:
-
-app/Services/WahaService.php
-
-Responsabilidades:
-
-getSession(string $session)
-restartSession(string $session)
-logoutSession(string $session)
-getQrCode(string $session)
-
-ou nomes equivalentes adequados ao padrão do projeto.
-
-Não colocar chamadas HTTP WAHA diretamente no controller.
-
-==================================================
-11. CONTROLLER
-==================================================
-
-Criar controller específico ou adaptar a arquitetura existente.
-
-Possíveis operações:
-
-status
-connect
-qr
-disconnect
-
-Os nomes finais devem seguir o padrão atual do projeto.
-
-O controller deve ser fino.
-
-Regra de negócio e integração WAHA ficam no Service.
-
-==================================================
-12. UX
-==================================================
-
-Reutilizar os componentes e padrões visuais existentes.
-
-Não redesenhar a página inteira.
-
-A seção WhatsApp deve deixar clara a diferença entre:
-
-CONFIGURAÇÃO
-
-e
-
-CONEXÃO REAL.
-
-Exemplo:
-
-Configuração
-Número: (51) 99893-1325
-Provider: WAHA
-Sessão: vetoros1-1
-
-Conexão
-Status: ● Conectado
-Conta: Anderson Brasil
-Número conectado: (51) 99893-1325
-
-ou:
-
-Status: ⚠ Número divergente
-
-==================================================
-13. ARQUITETURA FUTURA
-==================================================
-
-Embora o ABrasil atualmente utilize uma única empresa,
-não acoplar o WahaService à sessão:
-
-vetoros1-1
-
-Não colocar esse nome hardcoded.
-
-A sessão deve vir da configuração da empresa.
-
-Isso permitirá posteriormente aplicar a mesma arquitetura
-ao VetorOS multi-tenant:
-
-tenant A → sessão própria
-tenant B → sessão própria
-tenant C → sessão própria
-
-Mas NÃO implementar multitenancy do VetorOS nesta tarefa.
-
-Somente deixar a abstração preparada.
-
-==================================================
-14. TESTES
-==================================================
-
-Criar testes automatizados sem acessar o WAHA real.
-
-Usar Http::fake().
-
-Testar no mínimo:
-
-1. leitura de sessão WORKING;
-2. leitura de SCAN_QR_CODE;
-3. leitura de FAILED;
-4. obtenção de QR PNG;
-5. restart;
-6. logout;
-7. erro HTTP WAHA;
-8. timeout/falha de comunicação;
-9. comparação número configurado x me.id;
-10. número divergente;
-11. usuário não autorizado;
-12. API key nunca exposta na resposta;
-13. sessão usada vem da configuração e não de parâmetro arbitrário do browser.
-
-Executar testes dentro do container da aplicação.
-
-IMPORTANTE:
-Neste projeto, comandos PHP/Laravel/Artisan devem ser executados
-dentro do container Docker da aplicação, nunca diretamente no host.
-
-==================================================
-15. NÃO FAZER
-==================================================
-
-NÃO:
-- alterar workflows n8n;
-- alterar webhooks existentes;
-- alterar lógica de message.ack;
-- alterar envio de mensagens já funcionando;
-- recriar sessão WAHA sem necessidade;
-- excluir sessão;
-- alterar credenciais;
-- expor WAHA_API_KEY;
-- hardcodar vetoros1-1;
-- adicionar dependências desnecessárias;
-- criar migration se a estrutura atual de settings for suficiente;
-- executar ações destrutivas no WhatsApp real durante os testes.
-
-==================================================
-16. ENTREGA
-==================================================
-
-Ao finalizar:
-
-1. listar arquivos criados;
-2. listar arquivos alterados;
-3. explicar resumidamente a arquitetura implementada;
-4. informar novas variáveis ENV necessárias;
-5. informar se docker-compose precisa receber essas variáveis;
-6. mostrar rotas adicionadas;
-7. mostrar testes criados;
-8. executar testes;
-9. executar build do frontend;
-10. NÃO conectar/desconectar automaticamente a sessão real;
-11. NÃO fazer deploy de produção sem minha autorização.
-
-Gerar um relatório final objetivo.
-
-Objetivo final:
-
-O administrador entra em:
-
-Configurações → Leads → WhatsApp da empresa
-
-e consegue:
-
-Configurar número
-→ Conectar WhatsApp
-→ visualizar QR Code
-→ escanear
-→ acompanhar status
-→ confirmar número realmente conectado
-→ desconectar quando necessário
-
-sem precisar acessar terminal, Docker ou painel WAHA.
+Não executar push ou deploy sem autorização.

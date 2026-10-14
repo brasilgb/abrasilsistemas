@@ -22,13 +22,30 @@ const FALLBACK_CONTACT: ContactInfo = {
  * across every public page/component.
  */
 export function useContact(): ContactInfo {
-    return usePage<{ contact?: ContactInfo }>().props.contact ?? FALLBACK_CONTACT;
+    return (
+        usePage<{ contact?: ContactInfo }>().props.contact ?? FALLBACK_CONTACT
+    );
 }
 
 /**
  * Builds a wa.me link from the shared WhatsApp number and a page-specific
  * pre-filled message.
  */
-export function buildWhatsappUrl(whatsappNumber: string, message: string): string {
+export function buildWhatsappUrl(
+    whatsappNumber: string,
+    message: string,
+): string {
     return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
+
+/**
+ * Link do WhatsApp do site com a página de origem na última linha ("Página: /caminho").
+ * O atendimento (App\Services\WhatsappInbox) lê essa linha na primeira mensagem do contato
+ * e mostra de onde ele veio.
+ */
+export function useSiteWhatsappUrl(message: string): string {
+    const contact = useContact();
+    const path = usePage().url.split(/[?#]/)[0] || '/';
+
+    return buildWhatsappUrl(contact.whatsapp, `${message}\n\nPágina: ${path}`);
 }

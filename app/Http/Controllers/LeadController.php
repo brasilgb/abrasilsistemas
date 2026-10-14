@@ -296,29 +296,6 @@ class LeadController extends Controller
         return to_route('leads.index');
     }
 
-    public function clear(Request $request): RedirectResponse
-    {
-        $filters = $request->only(['search', 'product', 'status', 'city', 'state', 'industry', 'follow_up', 'owner']);
-        $hasFilters = array_filter($filters) !== [];
-
-        $query = $this->applyFollowUpFilter(
-            $this->applyCommonFilters(Lead::query(), $filters, $request),
-            $filters['follow_up'] ?? null
-        );
-
-        $deleted = $query->count();
-        $query->delete();
-
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => $hasFilters
-                ? "{$deleted} prospect(s) removido(s) conforme os filtros aplicados."
-                : "{$deleted} prospect(s) removido(s).",
-        ]);
-
-        return to_route('leads.index');
-    }
-
     public function status(Request $request, Lead $lead): RedirectResponse
     {
         $data = $request->validate([

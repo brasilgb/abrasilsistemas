@@ -81,7 +81,14 @@ class LeadActivity extends Model
      */
     public function canTransitionMessageStatusTo(string $status): bool
     {
-        $current = $this->message_status;
+        return self::messageStatusCanAdvance($this->message_status, $status);
+    }
+
+    /**
+     * A mesma regra, sem depender de uma atividade: usada também pelas mensagens do atendimento.
+     */
+    public static function messageStatusCanAdvance(?string $current, string $status): bool
+    {
         $progression = self::MESSAGE_STATUS_PROGRESSION;
 
         if ($current === null || ! in_array($current, self::MESSAGE_STATUSES, true)) {

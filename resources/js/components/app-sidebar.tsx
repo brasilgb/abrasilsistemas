@@ -3,6 +3,7 @@ import {
     Images,
     LayoutGrid,
     MessageSquareQuote,
+    MessagesSquare,
     Newspaper,
     Settings,
     Target,
@@ -36,6 +37,11 @@ const adminNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Atendimento',
+        href: '/atendimento',
+        icon: MessagesSquare,
     },
     {
         title: 'Prospecção',

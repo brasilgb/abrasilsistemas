@@ -75,6 +75,23 @@ class Lead extends Model
         'sistema_sob_medida' => 'Sistema sob medida',
         'aplicativo' => 'Aplicativo',
         'integracao' => 'Integração / API',
+        'automacao' => 'Automação de processos',
+        'outro' => 'Outro',
+    ];
+
+    /**
+     * Opções de "Tipo de projeto" no formulário de contato do site, na ordem de
+     * exibição. As chaves são as mesmas de PRODUCTS, gravadas em `product`.
+     */
+    public const CONTACT_PROJECT_TYPES = [
+        'vetoros' => 'Sistema pronto — VetorOS',
+        'vetorpet' => 'Sistema pronto — VetorPet',
+        'sistema_sob_medida' => 'Sistema sob medida',
+        'site' => 'Site',
+        'landing_page' => 'Landing Page',
+        'aplicativo' => 'Aplicativo',
+        'automacao' => 'Automação',
+        'integracao' => 'Integração / API',
         'outro' => 'Outro',
     ];
 
