@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PublicContactRequest;
 use App\Mail\ContactFormReceived;
 use App\Models\Lead;
+use App\Services\WhatsappInbox;
 use App\Support\PublicPages;
 use App\Support\Seo;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +29,7 @@ class ContactController extends Controller
                 'title' => 'Fale sobre o seu projeto | ABrasil Sistemas',
                 'description' => 'Conte o que sua empresa precisa: sistema pronto ou sob medida, site, landing page, aplicativo, automação ou integração. Resposta direta da equipe.',
                 'canonical' => url('/contato'),
+                ...PublicPages::heroSeo('contato'),
                 'jsonLd' => [
                     '@context' => 'https://schema.org',
                     '@graph' => [PublicPages::organization(), ['@type' => 'ContactPage', 'url' => url('/contato')]],
@@ -36,20 +38,24 @@ class ContactController extends Controller
         ]);
     }
 
-    public function store(PublicContactRequest $request): RedirectResponse
+    public function store(PublicContactRequest $request, WhatsappInbox $inbox): RedirectResponse
     {
         $data = $request->safe()->except('website_hp');
-        $duplicate = Lead::findDuplicate($data);
+        $duplicate = Lead::findSiteRequestDuplicate($data);
 
         if ($duplicate === null) {
             $lead = Lead::query()->create([
                 ...$data,
                 'status' => 'new',
-                'source' => 'site',
+                'request_status' => 'new',
+                'source' => Lead::SOURCE_SITE,
             ]);
         } else {
+            // A mesma pessoa voltou a escrever: a solicitação reabre como nova, com a mensagem anexada.
             $lead = $duplicate;
             $lead->forceFill([
+                'request_status' => 'new',
+                'source_page' => $lead->source_page ?? $data['source_page'] ?? null,
                 'last_contacted_at' => now(),
                 'notes' => trim(implode(PHP_EOL.PHP_EOL, array_filter([
                     $lead->notes,
@@ -64,6 +70,7 @@ class ContactController extends Controller
             ]);
         }
 
+        $inbox->linkSiteRequest($lead);
         $this->notifyTeam($lead);
 
         Inertia::flash('toast', [
@@ -75,8 +82,8 @@ class ContactController extends Controller
     }
 
     /**
-     * Notify the team by e-mail via the SMTP configured in .env. The lead is
-     * already saved in the CRM regardless, so a mail failure (bad SMTP
+     * Notify the team by e-mail via the SMTP configured in .env. The request is
+     * already saved regardless, so a mail failure (bad SMTP
      * credentials, provider outage) must not break the visitor's submission.
      */
     private function notifyTeam(Lead $lead): void
@@ -86,7 +93,7 @@ class ContactController extends Controller
         } catch (\Throwable $e) {
             Log::error('Falha ao enviar e-mail de notificação de contato.', [
                 'lead_id' => $lead->id,
-                'error' => $e->getMessage(),
+                'exception' => $e::class,
             ]);
         }
     }

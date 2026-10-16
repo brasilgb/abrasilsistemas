@@ -9,6 +9,7 @@ export type SeoTags = {
     ogTitle?: string;
     ogDescription?: string;
     ogImage?: string;
+    ogImageAlt?: string;
     siteName?: string;
     locale?: string;
     jsonLd?: unknown;
@@ -89,6 +90,13 @@ export function SeoHead() {
                     head-key="og:image"
                     property="og:image"
                     content={seo.ogImage}
+                />
+            )}
+            {seo.ogImage && seo.ogImageAlt && (
+                <meta
+                    head-key="og:image:alt"
+                    property="og:image:alt"
+                    content={seo.ogImageAlt}
                 />
             )}
             {seo.ogImage && (

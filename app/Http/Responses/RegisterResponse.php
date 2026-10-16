@@ -8,6 +8,6 @@ class RegisterResponse implements RegisterResponseContract
 {
     public function toResponse($request)
     {
-        return to_route($request->user()->isAdmin() ? 'dashboard' : 'blog.index');
+        return to_route($request->user()->isAdmin() ? 'atendimento.index' : 'blog.index');
     }
 }

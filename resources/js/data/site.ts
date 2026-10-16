@@ -9,6 +9,8 @@
  * problema e o resultado para a empresa; depois a tecnologia.
  */
 
+import type { HeroImageKey } from '@/data/hero-images';
+
 export type VisualKind =
     'system' | 'site' | 'landing' | 'app' | 'automation' | 'integration';
 
@@ -21,6 +23,8 @@ export type Service = {
     /** Valor gravado em `leads.product` quando o visitante vem desta página. */
     contactType: string;
     visual: VisualKind;
+    /** Foto do hero (ver data/hero-images.ts). */
+    heroImage: HeroImageKey;
     hero: { eyebrow: string; title: string; lead: string };
     /** Situações em que o serviço faz sentido — a dor da empresa. */
     problems: { title: string; items: string[] };
@@ -53,6 +57,8 @@ export type Product = {
     deployment: string;
     integrations: string[];
     screenshot?: { src: string; alt: string; width: number; height: number };
+    /** Foto do segmento no hero (ver data/hero-images.ts). */
+    heroImage: HeroImageKey;
     externalUrl: string;
     contactType: string;
     faq: { question: string; answer: string }[];
@@ -79,6 +85,7 @@ export const services: Service[] = [
             'Software construído em cima do processo real da empresa, quando uma ferramenta pronta não atende.',
         contactType: 'sistema_sob_medida',
         visual: 'system',
+        heroImage: 'sistemas-sob-medida',
         hero: {
             eyebrow: 'Desenvolvimento de sistemas sob medida',
             title: 'O sistema certo para o jeito que a sua empresa trabalha.',
@@ -201,6 +208,7 @@ export const services: Service[] = [
             'Rotinas repetitivas executadas sozinhas: notificações, cobranças, follow-ups, documentos e movimentação de dados.',
         contactType: 'automacao',
         visual: 'automation',
+        heroImage: 'automacao',
         hero: {
             eyebrow: 'Automação de processos empresariais',
             title: 'Sua equipe cuida do que importa. O repetitivo acontece sozinho.',
@@ -308,6 +316,7 @@ export const services: Service[] = [
             'Sistemas, plataformas e aplicativos trocando dados entre si, sem redigitação e sem planilha no meio.',
         contactType: 'integracao',
         visual: 'integration',
+        heroImage: 'integracoes',
         hero: {
             eyebrow: 'Integração de sistemas e APIs',
             title: 'Seus sistemas trabalhando como um só.',
@@ -405,6 +414,7 @@ export const services: Service[] = [
             'Aplicativos Android e iOS para clientes, equipes de campo e operações internas, integrados aos seus sistemas.',
         contactType: 'aplicativo',
         visual: 'app',
+        heroImage: 'aplicativos',
         hero: {
             eyebrow: 'Desenvolvimento de aplicativos',
             title: 'A operação da empresa no bolso de quem precisa dela.',
@@ -488,6 +498,7 @@ export const services: Service[] = [
             'Sites institucionais rápidos, encontráveis no Google e preparados para gerar contatos comerciais.',
         contactType: 'site',
         visual: 'site',
+        heroImage: 'sites',
         hero: {
             eyebrow: 'Criação de sites profissionais',
             title: 'Um site que trabalha pela sua empresa.',
@@ -585,6 +596,7 @@ export const services: Service[] = [
             'Páginas focadas em um objetivo — campanha, lançamento ou captação — com contato direto no CRM.',
         contactType: 'landing_page',
         visual: 'landing',
+        heroImage: 'landing-pages',
         hero: {
             eyebrow: 'Criação de landing pages',
             title: 'Uma página, um objetivo, resultado mensurável.',
@@ -676,6 +688,7 @@ export const services: Service[] = [
 export const products: Product[] = [
     {
         slug: 'vetoros',
+        heroImage: 'vetoros',
         name: 'VetorOS',
         segment: 'Assistências técnicas',
         tagline: 'A operação da assistência técnica em um só sistema.',
@@ -763,6 +776,7 @@ export const products: Product[] = [
     },
     {
         slug: 'vetorpet',
+        heroImage: 'vetorpet',
         name: 'VetorPet',
         segment: 'Distribuidores e representantes do mercado pet',
         tagline: 'Da visita ao pedido, com a equipe comercial sob controle.',

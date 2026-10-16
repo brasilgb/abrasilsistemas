@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -34,7 +35,9 @@ use Illuminate\Support\Facades\Schema;
     'captured_at',
     'instagram',
     'source',
+    'source_page',
     'status',
+    'request_status',
     'lost_reason',
     'next_follow_up_at',
     'last_contacted_at',
@@ -44,28 +47,23 @@ class Lead extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $appends = [
-        'lead_score',
-        'priority',
+    /** Origem gravada pelo formulário de contato do site: só elas aparecem em "Solicitações". */
+    public const SOURCE_SITE = 'site';
+
+    /**
+     * Situação de uma solicitação recebida pelo site (`request_status`). Não é funil comercial:
+     * o status comercial antigo (`status`) continua no banco só como histórico.
+     */
+    public const REQUEST_STATUSES = [
+        'new' => 'Nova',
+        'in_progress' => 'Em atendimento',
+        'answered' => 'Respondida',
+        'done' => 'Concluída',
+        'archived' => 'Arquivada',
     ];
 
-    public const STATUSES = [
-        'new' => 'Novo',
-        'contacted' => 'Contatado',
-        'interested' => 'Interessado',
-        'meeting' => 'Reunião',
-        'converted' => 'Convertido',
-        'lost' => 'Perdido',
-    ];
-
-    public const LOST_REASONS = [
-        'price' => 'Preço',
-        'no_interest' => 'Sem interesse',
-        'competitor' => 'Fechou com concorrente',
-        'no_response' => 'Sem resposta',
-        'bad_fit' => 'Fora do perfil',
-        'other' => 'Outro',
-    ];
+    /** Situações que ainda pedem ação da equipe. */
+    public const OPEN_REQUEST_STATUSES = ['new', 'in_progress', 'answered'];
 
     public const PRODUCTS = [
         'vetoros' => 'VetorOS',
@@ -126,67 +124,17 @@ class Lead extends Model
         });
     }
 
-    public function getLeadScoreAttribute(): int
+    /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeSiteRequests(Builder $query): void
     {
-        if ($this->status === 'converted') {
-            return 100;
-        }
-
-        if ($this->status === 'lost') {
-            return 0;
-        }
-
-        $score = [
-            'new' => 10,
-            'contacted' => 25,
-            'interested' => 45,
-            'meeting' => 60,
-        ][$this->status] ?? 10;
-
-        if ($this->next_follow_up_at !== null) {
-            if ($this->next_follow_up_at->isPast() && ! $this->next_follow_up_at->isToday()) {
-                $score += 25;
-            } elseif ($this->next_follow_up_at->isToday()) {
-                $score += 18;
-            } else {
-                $score += 8;
-            }
-        }
-
-        if ($this->whatsapp) {
-            $score += 8;
-        }
-
-        if ($this->email) {
-            $score += 4;
-        }
-
-        if ($this->contact_name) {
-            $score += 4;
-        }
-
-        if ($this->website || $this->instagram) {
-            $score += 3;
-        }
-
-        if ($this->notes) {
-            $score += 3;
-        }
-
-        return min($score, 100);
+        $query->where('source', self::SOURCE_SITE);
     }
 
-    public function getPriorityAttribute(): string
+    public function isSiteRequest(): bool
     {
-        if ($this->lead_score >= 70) {
-            return 'high';
-        }
-
-        if ($this->lead_score >= 40) {
-            return 'medium';
-        }
-
-        return 'low';
+        return $this->source === self::SOURCE_SITE;
     }
 
     public function user(): BelongsTo
@@ -199,38 +147,30 @@ class Lead extends Model
         return $this->hasMany(LeadActivity::class);
     }
 
-    /**
-     * Shared dedupe check (same e-mail, WhatsApp, or company+city+state)
-     * used both by the admin lead form and the public contact form.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    public static function isDuplicate(array $data, ?self $except = null): bool
+    public function whatsappConversations(): HasMany
     {
-        return self::findDuplicate($data, $except) !== null;
+        return $this->hasMany(WhatsappConversation::class);
     }
 
     /**
-     * Find the existing lead matching the shared deduplication rules.
+     * Solicitação anterior da mesma pessoa (mesmo e-mail ou WhatsApp), para o formulário do site
+     * não duplicar contatos. Só procura entre solicitações do site: um prospect importado com o
+     * mesmo e-mail não pode "engolir" o contato, senão ele não apareceria em Solicitações.
      *
      * @param  array<string, mixed>  $data
      */
-    public static function findDuplicate(array $data, ?self $except = null): ?self
+    public static function findSiteRequestDuplicate(array $data): ?self
     {
-        $email = isset($data['email']) ? strtolower(trim((string) $data['email'])) : null;
-        $whatsapp = isset($data['whatsapp']) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
-        $company = trim((string) ($data['company_name'] ?? ''));
-        $city = trim((string) ($data['city'] ?? ''));
-        $state = strtoupper(trim((string) ($data['state'] ?? '')));
-        $hasCompanyLocation = $company !== '' && $city !== '' && $state !== '';
+        $email = filled($data['email'] ?? null) ? strtolower(trim((string) $data['email'])) : null;
+        $whatsapp = filled($data['whatsapp'] ?? null) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
 
-        if (! $email && ! $whatsapp && ! $hasCompanyLocation) {
+        if (! $email && ! $whatsapp) {
             return null;
         }
 
         return self::query()
-            ->when($except, fn ($query) => $query->whereKeyNot($except->getKey()))
-            ->where(function ($query) use ($email, $whatsapp, $company, $city, $state, $hasCompanyLocation) {
+            ->siteRequests()
+            ->where(function ($query) use ($email, $whatsapp) {
                 if ($email) {
                     $query->orWhereRaw('LOWER(email) = ?', [$email]);
                 }
@@ -238,15 +178,8 @@ class Lead extends Model
                 if ($whatsapp) {
                     $query->orWhere('whatsapp', $whatsapp);
                 }
-
-                if ($hasCompanyLocation) {
-                    $query->orWhere(function ($query) use ($company, $city, $state) {
-                        $query->whereRaw('LOWER(company_name) = ?', [strtolower($company)])
-                            ->whereRaw('LOWER(city) = ?', [strtolower($city)])
-                            ->where('state', $state);
-                    });
-                }
             })
+            ->oldest('id')
             ->first();
     }
 }

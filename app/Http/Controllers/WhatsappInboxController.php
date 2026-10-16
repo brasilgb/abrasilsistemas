@@ -25,7 +25,7 @@ class WhatsappInboxController extends Controller
         if ($session !== null && $request->filled('conversa')) {
             $active = WhatsappConversation::query()
                 ->forSession($session)
-                ->with('lead:id,company_name,contact_name,status,source')
+                ->with('lead:id,company_name,contact_name,request_status,source')
                 ->find($request->integer('conversa'));
 
             if ($active !== null) {
@@ -105,11 +105,12 @@ class WhatsappInboxController extends Controller
             'chat_id' => $conversation->chat_id,
             'source_page' => $conversation->source_page,
             'first_contact_at' => $conversation->created_at?->toIso8601String(),
-            'lead' => $conversation->lead === null ? null : [
+            // Só solicitações do site; um vínculo antigo com prospect do CRM não aparece aqui.
+            'lead' => $conversation->lead?->isSiteRequest() !== true ? null : [
                 'id' => $conversation->lead->id,
                 'company_name' => $conversation->lead->company_name,
                 'contact_name' => $conversation->lead->contact_name,
-                'source' => $conversation->lead->source,
+                'request_status' => $conversation->lead->request_status,
             ],
             'messages' => $messages->map(fn (WhatsappMessage $message) => [
                 'id' => $message->id,

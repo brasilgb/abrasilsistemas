@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Settings;
 
 use App\Services\CompanyWhatsappSettings;
-use App\Services\LeadWhatsappService;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,7 +28,7 @@ class CompanyWhatsappRequest extends FormRequest
                 'string',
                 'max:30',
                 function (string $attribute, mixed $value, Closure $fail): void {
-                    if (LeadWhatsappService::normalizeNumber($value) === null) {
+                    if (CompanyWhatsappSettings::normalizeNumber($value) === null) {
                         $fail('Informe o WhatsApp da empresa com DDD, ex.: (51) 99999-8888.');
                     }
                 },

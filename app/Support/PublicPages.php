@@ -71,6 +71,51 @@ class PublicPages
     ];
 
     /**
+     * Fotos dos heroes (public/images/site/heroes/{chave}-*). Aqui ficam só o texto
+     * alternativo e o og:image; as variantes responsivas são montadas em
+     * resources/js/data/hero-images.ts, e a origem e a licença, em docs/imagens-do-site.md.
+     *
+     * @var array<string, string>
+     */
+    public const HERO_IMAGES = [
+        'home' => 'Equipe de desenvolvimento conversando ao lado de estações de trabalho com código na tela, em um escritório de tecnologia',
+        'sistemas' => 'Pessoa usando um sistema de gestão em um notebook sobre a mesa de trabalho',
+        'sistemas-sob-medida' => 'Duas pessoas desenvolvendo software com código-fonte aberto nos monitores, em um escritório claro',
+        'automacao' => 'Profissional registrando uma operação no notebook em um depósito com paletes e balança',
+        'integracoes' => 'Cabos de rede organizados e conectados a um painel de infraestrutura',
+        'aplicativos' => 'Mão segurando um smartphone com um aplicativo de painel de dados, diante de um computador',
+        'sites' => 'Pessoas trabalhando juntas no site de uma empresa aberto em um notebook',
+        'landing-pages' => 'Notebook exibindo um painel de métricas de acesso e conversão',
+        'vetoros' => 'Técnicos consertando equipamentos eletrônicos na bancada de uma assistência técnica',
+        'vetorpet' => 'Cão deitado ao lado de um pote de ração em um ambiente doméstico',
+        'sobre' => 'Dois colegas analisando juntos um projeto no notebook, com diagramas no quadro ao fundo',
+        'contato' => 'Profissional conversando ao telefone com um cliente em frente ao notebook',
+    ];
+
+    /** Foto do hero de cada página de serviço. */
+    public const SERVICE_HERO_IMAGES = [
+        'desenvolvimento-de-sistemas' => 'sistemas-sob-medida',
+        'desenvolvimento-de-sites-para-empresas' => 'sites',
+        'criacao-de-landing-pages' => 'landing-pages',
+        'desenvolvimento-de-aplicativos' => 'aplicativos',
+        'automacao-de-processos' => 'automacao',
+        'integracao-de-sistemas-e-apis' => 'integracoes',
+    ];
+
+    /**
+     * og:image (JPG 1200×630, aceito por todas as redes) e o texto alternativo da foto do hero.
+     *
+     * @return array{ogImage: string, ogImageAlt: string}
+     */
+    public static function heroSeo(string $key): array
+    {
+        return [
+            'ogImage' => url("/images/site/heroes/{$key}-og.jpg"),
+            'ogImageAlt' => self::HERO_IMAGES[$key],
+        ];
+    }
+
+    /**
      * Dados da organização para schema.org, usados em todas as páginas públicas.
      *
      * @return array<string, mixed>

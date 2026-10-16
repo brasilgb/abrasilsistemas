@@ -9,6 +9,7 @@
 | Serviço de interesse | {{ $serviceLabel }} |
 | WhatsApp | {{ $lead->whatsapp ?? '—' }} |
 | E-mail | {{ $lead->email ?? '—' }} |
+| Página de origem | {{ $lead->source_page ?? '—' }} |
 </x-mail::table>
 
 **Mensagem:**
@@ -16,10 +17,10 @@
 {{ $lead->notes }}
 
 <x-mail::button :url="$adminUrl">
-Ver no painel
+Abrir a solicitação
 </x-mail::button>
 
-Este lead já foi salvo no CRM com status "Novo".
+A solicitação já está no painel, em Solicitações, com a situação "Nova".
 
 Atenciosamente,<br>
 {{ config('app.name') }}

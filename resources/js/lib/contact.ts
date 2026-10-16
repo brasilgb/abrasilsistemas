@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 export type ContactInfo = {
     whatsapp: string;
@@ -48,4 +49,61 @@ export function useSiteWhatsappUrl(message: string): string {
     const path = usePage().url.split(/[?#]/)[0] || '/';
 
     return buildWhatsappUrl(contact.whatsapp, `${message}\n\nPágina: ${path}`);
+}
+
+const SOURCE_PAGE_KEY = 'ab:source-page';
+
+/**
+ * Guarda a última página institucional visitada (menos o próprio contato), para a
+ * solicitação registrar de onde a pessoa veio. Com a navegação do Inertia o
+ * document.referrer não muda, por isso fica no sessionStorage, que pode falhar
+ * (aba privada, bloqueio): nesse caso a origem só fica em branco.
+ */
+function rememberSourcePage(pathname: string) {
+    if (pathname.startsWith('/contato')) {
+        return;
+    }
+
+    try {
+        window.sessionStorage.setItem(SOURCE_PAGE_KEY, pathname);
+    } catch {
+        // Sem armazenamento: a solicitação fica sem página de origem.
+    }
+}
+
+/** Registra cada página pública visitada (inclusive navegações do Inertia entre páginas iguais). */
+export function useRememberSourcePage() {
+    const { url } = usePage();
+
+    useEffect(() => {
+        rememberSourcePage(window.location.pathname);
+    }, [url]);
+}
+
+/** Página de origem para o formulário de contato (null quando desconhecida). */
+export function readSourcePage(): string | null {
+    try {
+        const stored = window.sessionStorage.getItem(SOURCE_PAGE_KEY);
+
+        if (stored) {
+            return stored;
+        }
+    } catch {
+        // Segue para o referrer.
+    }
+
+    try {
+        const referrer = new URL(document.referrer);
+
+        if (
+            referrer.origin === window.location.origin &&
+            !referrer.pathname.startsWith('/contato')
+        ) {
+            return referrer.pathname;
+        }
+    } catch {
+        // Sem referrer válido.
+    }
+
+    return null;
 }

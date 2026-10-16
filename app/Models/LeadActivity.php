@@ -32,7 +32,7 @@ class LeadActivity extends Model
 
     /**
      * Status técnicos de ACK do WAHA, armazenados em message_status.
-     * Não confundir com o status comercial (Lead::STATUSES) do campo status.
+     * Não confundir com o status comercial legado do campo `status`.
      */
     public const MESSAGE_STATUS_PENDING = 'PENDING';
 

@@ -7,6 +7,8 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { heroImageSrcSet } from '@/data/hero-images';
+import type { HeroImage } from '@/data/hero-images';
 
 export function Container({
     children,
@@ -134,6 +136,43 @@ export function ButtonLink({
     );
 }
 
+/**
+ * Foto de fundo de um hero navy. É a imagem principal da página, por isso carrega com prioridade
+ * (só ela). O véu navy mantém o texto legível: uniforme no celular e mais aberto à direita
+ * no desktop, onde não há texto. A `section` que a recebe precisa de `relative isolate overflow-hidden`.
+ */
+export function HeroBackdrop({ image }: { image: HeroImage }) {
+    return (
+        <div className="absolute inset-0 -z-10">
+            <picture>
+                <source
+                    type="image/avif"
+                    srcSet={heroImageSrcSet(image.key, 'avif')}
+                    sizes="100vw"
+                />
+                <source
+                    type="image/webp"
+                    srcSet={heroImageSrcSet(image.key, 'webp')}
+                    sizes="100vw"
+                />
+                <img
+                    src={`/images/site/heroes/${image.key}-1280.webp`}
+                    alt={image.alt}
+                    width={1920}
+                    height={1080}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    className="size-full object-cover"
+                    style={{ objectPosition: image.position }}
+                />
+            </picture>
+            <div className="absolute inset-0 bg-[#0b1220]/85 lg:bg-transparent lg:bg-linear-to-r lg:from-[#0b1220] lg:from-30% lg:via-[#0b1220]/85 lg:to-[#0b1220]/50" />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#0b1220]/80 to-transparent" />
+        </div>
+    );
+}
+
 /** Hero escuro das páginas internas: texto à esquerda, visual explicativo à direita. */
 export function PageHero({
     eyebrow,
@@ -141,15 +180,18 @@ export function PageHero({
     lead,
     actions,
     visual,
+    image,
 }: {
     eyebrow: string;
     title: string;
     lead: string;
     actions?: ReactNode;
     visual?: ReactNode;
+    image?: HeroImage;
 }) {
     return (
-        <section className="bg-[#0b1220] pt-28 pb-16 text-white sm:pt-32 sm:pb-20 lg:pb-24">
+        <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-16 text-white sm:pt-32 sm:pb-20 lg:pb-24">
+            {image && <HeroBackdrop image={image} />}
             <Container
                 className={`grid items-center gap-12 ${visual ? 'lg:grid-cols-[1fr_1.05fr]' : ''}`}
             >

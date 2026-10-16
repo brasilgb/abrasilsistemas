@@ -7,6 +7,7 @@ import {
 } from '@/components/site/blocks';
 import { SiteLayout } from '@/components/site/site-layout';
 import { BrowserFrame } from '@/components/site/visuals';
+import { heroImages } from '@/data/hero-images';
 import { contactHref, products } from '@/data/site';
 import type { Product } from '@/data/site';
 
@@ -19,12 +20,12 @@ export default function Sistemas() {
                 eyebrow="Sistemas prontos"
                 title="Produtos de software criados e mantidos pela ABrasil."
                 lead="Sistemas completos para segmentos específicos, que nasceram de operações reais e seguem em evolução constante. Contratação online, sem instalação e com teste gratuito."
+                image={heroImages.sistemas}
                 visual={
                     vetorOs.screenshot ? (
                         <BrowserFrame
                             {...vetorOs.screenshot}
                             label="VetorOS · painel"
-                            priority
                         />
                     ) : undefined
                 }

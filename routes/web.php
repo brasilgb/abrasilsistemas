@@ -10,14 +10,11 @@ use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\TestimonialImageController;
 use App\Http\Controllers\BlogCommentController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EbookMercadoPagoWebhookController;
-use App\Http\Controllers\LeadActivityController;
-use App\Http\Controllers\LeadController;
-use App\Http\Controllers\LeadWhatsappController;
 use App\Http\Controllers\PublicBlogController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\SiteRequestController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhatsappInboxController;
 use App\Support\PublicPages;
@@ -87,7 +84,7 @@ Route::get('area-restrita', function (Request $request) {
         return to_route('blog.index');
     }
 
-    return to_route('dashboard');
+    return to_route('atendimento.index');
 })->name('restricted-area');
 Route::redirect('conhecimento', '/blog', 301);
 Route::redirect('conhecimento/{path}', '/blog', 301)->where('path', '.*');
@@ -97,16 +94,14 @@ Route::post('webhooks/mercadopago/ebooks/{token}', EbookMercadoPagoWebhookContro
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('blog/{post:slug}/comentarios', [BlogCommentController::class, 'store'])->name('blog.comments.store');
     Route::middleware('admin')->group(function () {
-        Route::get('dashboard', DashboardController::class)->name('dashboard');
-        Route::redirect('admin', '/dashboard')->name('admin');
-        Route::post('leads/import', [LeadController::class, 'import'])->name('leads.import');
-        Route::patch('leads/bulk', [LeadController::class, 'bulkUpdate'])->name('leads.bulk');
-        Route::patch('leads/{lead}/status', [LeadController::class, 'status'])->name('leads.status');
-        Route::resource('leads', LeadController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
-        Route::post('leads/{lead}/activities', [LeadActivityController::class, 'store'])->name('leads.activities.store');
-        Route::post('leads/{lead}/whatsapp', [LeadWhatsappController::class, 'store'])->middleware('throttle:10,1')->name('leads.whatsapp.store');
+        // Painel do site institucional: atendimento + solicitações + conteúdo. Prospecção, funil,
+        // importação e disparos comerciais ficam no VetorLeads (ABRASIL-WEB-03).
+        Route::redirect('admin', '/atendimento')->name('admin');
         Route::get('atendimento', [WhatsappInboxController::class, 'index'])->name('atendimento.index');
         Route::post('atendimento/{conversation}/mensagens', [WhatsappInboxController::class, 'reply'])->middleware('throttle:30,1')->name('atendimento.reply');
+        Route::get('solicitacoes', [SiteRequestController::class, 'index'])->name('solicitacoes.index');
+        Route::get('solicitacoes/{solicitacao}', [SiteRequestController::class, 'show'])->name('solicitacoes.show');
+        Route::patch('solicitacoes/{solicitacao}/situacao', [SiteRequestController::class, 'updateStatus'])->name('solicitacoes.status');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
 
         Route::post('testimonials/images', TestimonialImageController::class)->name('testimonials.images.store');

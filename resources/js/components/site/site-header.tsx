@@ -20,11 +20,13 @@ const mainLinks = [
 
 /** Cabeçalho único do site institucional (home, soluções, sistemas, sobre, contato, páginas legais). */
 export function SiteHeader() {
-    const { auth } = usePage<{ auth: { user: User | null } }>().props;
+    // `auth` pode faltar na página 404 renderizada pelo handler de exceções (sem middleware).
+    const user =
+        usePage<{ auth?: { user: User | null } }>().props.auth?.user ?? null;
     const [open, setOpen] = useState(false);
     const close = () => setOpen(false);
     const accountHref =
-        auth.user?.role === 'admin' ? '/dashboard' : '/settings/profile';
+        user?.role === 'admin' ? '/atendimento' : '/settings/profile';
 
     return (
         <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#0b1220]/95 text-white backdrop-blur">
@@ -96,10 +98,10 @@ export function SiteHeader() {
 
                 <div className="hidden items-center gap-5 lg:flex">
                     <Link
-                        href={auth.user ? accountHref : '/login'}
+                        href={user ? accountHref : '/login'}
                         className="text-sm font-medium text-slate-400 transition hover:text-white"
                     >
-                        {auth.user ? 'Minha conta' : 'Entrar'}
+                        {user ? 'Minha conta' : 'Entrar'}
                     </Link>
                     <Link
                         href="/contato#formulario"
@@ -169,11 +171,11 @@ export function SiteHeader() {
                             </Link>
                         ))}
                         <Link
-                            href={auth.user ? accountHref : '/login'}
+                            href={user ? accountHref : '/login'}
                             onClick={close}
                             className="block py-2.5 text-[15px] text-slate-400"
                         >
-                            {auth.user ? 'Minha conta' : 'Entrar'}
+                            {user ? 'Minha conta' : 'Entrar'}
                         </Link>
                     </div>
                     <Link

@@ -4,58 +4,30 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\CompanyWhatsappRequest;
-use App\Models\Setting;
 use App\Services\CompanyWhatsappSettings;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class LeadSettingsController extends Controller
+/**
+ * Configurações → WhatsApp: o WhatsApp institucional usado pelo atendimento (/atendimento).
+ * A conexão com o WAHA (status, QR Code, conectar, desconectar) fica em
+ * CompanyWhatsappConnectionController. Segredos (API key, chave HMAC) nunca vão ao navegador.
+ */
+class WhatsappSettingsController extends Controller
 {
-    /**
-     * Show the lead capture settings page.
-     */
     public function edit(CompanyWhatsappSettings $companyWhatsapp): Response
     {
-        $extension = collect(File::exists(public_path('files')) ? File::files(public_path('files')) : [])
-            ->filter(fn ($file) => in_array($file->getExtension(), ['xpi', 'zip'], true)
-                && str_starts_with($file->getFilename(), 'ab-prospect-firefox-'))
-            ->sortByDesc(fn ($file) => $file->getMTime())
-            ->first();
-
-        return Inertia::render('settings/leads', [
-            'prospectApiToken' => $this->prospectApiToken(),
-            'prospectApiEndpoint' => route('api.prospects.import'),
-            'prospectExtensionUrl' => $extension ? asset('files/'.$extension->getFilename()) : null,
-            'prospectExtensionFilename' => $extension?->getFilename(),
-            'prospectExtensionSigned' => $extension?->getExtension() === 'xpi',
+        return Inertia::render('settings/whatsapp', [
             'companyWhatsapp' => $companyWhatsapp->current(),
             'whatsappProviders' => CompanyWhatsappSettings::PROVIDERS,
+            // Só se o recebimento está ligado; a chave em si fica no servidor.
+            'webhookEnabled' => filled(config('services.waha.webhook_hmac_key')),
+            'webhookUrl' => route('api.whatsapp.waha.webhook'),
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'prospect_api_token' => ['required', 'string', 'min:16', 'max:255'],
-        ]);
-
-        Setting::query()->updateOrCreate(
-            ['key' => Setting::PROSPECT_API_TOKEN],
-            ['value' => trim($data['prospect_api_token'])],
-        );
-
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => 'Token de integração salvo.',
-        ]);
-
-        return to_route('lead-settings.edit');
-    }
-
-    public function updateWhatsapp(CompanyWhatsappRequest $request, CompanyWhatsappSettings $companyWhatsapp): RedirectResponse
+    public function update(CompanyWhatsappRequest $request, CompanyWhatsappSettings $companyWhatsapp): RedirectResponse
     {
         $companyWhatsapp->save([
             'enabled' => $request->boolean('enabled'),
@@ -66,17 +38,9 @@ class LeadSettingsController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'WhatsApp da empresa salvo.',
+            'message' => 'WhatsApp do atendimento salvo.',
         ]);
 
-        return to_route('lead-settings.edit');
-    }
-
-    private function prospectApiToken(): ?string
-    {
-        return Setting::valueFor(
-            Setting::PROSPECT_API_TOKEN,
-            config('services.ab_prospect.token'),
-        );
+        return to_route('whatsapp-settings.edit');
     }
 }

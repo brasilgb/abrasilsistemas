@@ -83,6 +83,27 @@ class WhatsappInbox
     }
 
     /**
+     * Vincula a uma solicitação do site as conversas do mesmo número que ainda não têm solicitação
+     * (quando a pessoa falou pelo WhatsApp antes de preencher o formulário). Devolve quantas vinculou.
+     */
+    public function linkSiteRequest(Lead $lead): int
+    {
+        $session = $this->session();
+        $phone = CompanyWhatsappSettings::normalizeNumber($lead->whatsapp);
+
+        if ($session === null || $phone === null || ! $lead->isSiteRequest()) {
+            return 0;
+        }
+
+        return WhatsappConversation::query()
+            ->forSession($session)
+            // Sem vínculo, ou ligada a um prospect antigo do CRM: nunca troca de uma solicitação para outra.
+            ->whereDoesntHave('lead', fn ($query) => $query->siteRequests())
+            ->whereIn('phone', $this->phoneVariants($phone))
+            ->update(['lead_id' => $lead->id]);
+    }
+
+    /**
      * Marca como lidas as mensagens recebidas da conversa.
      */
     public function markAsRead(WhatsappConversation $conversation): void
@@ -194,7 +215,8 @@ class WhatsappInbox
         );
 
         if ($conversation->wasRecentlyCreated && $phone !== null) {
-            $lead = Lead::query()->whereIn('whatsapp', $this->phoneVariants($phone))->oldest('id')->first();
+            // Só solicitações do site: prospects comerciais (VetorLeads) não entram no atendimento.
+            $lead = Lead::query()->siteRequests()->whereIn('whatsapp', $this->phoneVariants($phone))->oldest('id')->first();
 
             if ($lead !== null) {
                 $conversation->forceFill(['lead_id' => $lead->id])->save();

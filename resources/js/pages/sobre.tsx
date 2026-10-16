@@ -7,6 +7,7 @@ import {
     SectionHeading,
 } from '@/components/site/blocks';
 import { SiteLayout } from '@/components/site/site-layout';
+import { heroImages } from '@/data/hero-images';
 import {
     contactHref,
     processSteps,
@@ -43,6 +44,7 @@ export default function Sobre() {
                 eyebrow="Sobre a ABrasil Sistemas"
                 title="Uma empresa de tecnologia feita para durar junto com os clientes."
                 lead="A ABrasil Sistemas desenvolve software para empresas brasileiras: produtos próprios, sistemas sob medida, aplicativos, integrações, automações e sites. Nosso trabalho é transformar processos em soluções digitais que funcionam no dia a dia — e continuar cuidando delas depois."
+                image={heroImages.sobre}
                 actions={
                     <>
                         <ButtonLink href="/servicos" variant="inverse" arrow>

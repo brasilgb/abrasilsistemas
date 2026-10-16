@@ -6,10 +6,12 @@ import {
     CtaBand,
     Eyebrow,
     FaqList,
+    HeroBackdrop,
     SectionHeading,
 } from '@/components/site/blocks';
 import { SiteLayout } from '@/components/site/site-layout';
 import { BrowserFrame } from '@/components/site/visuals';
+import { heroImages } from '@/data/hero-images';
 import { contactHref, findProduct } from '@/data/site';
 
 export default function SistemaPage({ slug }: { slug: string }) {
@@ -21,7 +23,8 @@ export default function SistemaPage({ slug }: { slug: string }) {
 
     return (
         <SiteLayout>
-            <section className="bg-[#0b1220] pt-28 pb-16 text-white sm:pt-32 sm:pb-20">
+            <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-16 text-white sm:pt-32 sm:pb-20">
+                <HeroBackdrop image={heroImages[product.heroImage]} />
                 <Container>
                     <Link
                         href="/sistemas"
@@ -71,7 +74,6 @@ export default function SistemaPage({ slug }: { slug: string }) {
                             <BrowserFrame
                                 {...product.screenshot}
                                 label={`${product.name} · painel`}
-                                priority
                             />
                         )}
                     </div>

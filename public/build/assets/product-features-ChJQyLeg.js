@@ -1,1 +1,0 @@
-var e=[`Ordens de serviço e orçamentos`,`Clientes e equipamentos`,`Estoque, vendas e financeiro`,`Aplicativos para equipe e clientes`],t=[`Painel web e aplicativo Android`,`Carteira de clientes e regiões`,`Catálogo e pedidos em campo`,`Visitas, comissões e resultados`];export{t as n,e as t};

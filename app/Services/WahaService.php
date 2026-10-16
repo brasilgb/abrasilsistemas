@@ -203,7 +203,7 @@ class WahaService
         ]);
 
         if (in_array($response->status(), [401, 403], true)) {
-            throw new WahaException('O WAHA recusou a autenticação do CRM. Avise o administrador do sistema.');
+            throw new WahaException('O WAHA recusou a autenticação do site. Avise o administrador do sistema.');
         }
 
         throw WahaException::unavailable();

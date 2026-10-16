@@ -2,11 +2,12 @@ import { Form } from '@inertiajs/react';
 import { Mail, MessageCircle } from 'lucide-react';
 import ContactController from '@/actions/App/Http/Controllers/ContactController';
 import InputError from '@/components/input-error';
-import { Container, Eyebrow } from '@/components/site/blocks';
+import { Container, Eyebrow, HeroBackdrop } from '@/components/site/blocks';
 import { SiteLayout } from '@/components/site/site-layout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useContact, useSiteWhatsappUrl } from '@/lib/contact';
+import { heroImages } from '@/data/hero-images';
+import { readSourcePage, useContact, useSiteWhatsappUrl } from '@/lib/contact';
 
 const fieldClass =
     'border-input flex w-full rounded-md border bg-white px-3 text-[15px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
@@ -25,7 +26,8 @@ export default function Contato({
 
     return (
         <SiteLayout>
-            <section className="bg-[#0b1220] pt-28 pb-14 text-white sm:pt-32 sm:pb-16">
+            <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-14 text-white sm:pt-32 sm:pb-16">
+                <HeroBackdrop image={heroImages.contato} />
                 <Container>
                     <Eyebrow inverse>Contato</Eyebrow>
                     <h1 className="mt-4 max-w-3xl text-4xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-5xl">
@@ -51,6 +53,11 @@ export default function Contato({
                         <Form
                             {...ContactController.store.form()}
                             resetOnSuccess
+                            // Página de origem lida no envio (sessionStorage), só no navegador.
+                            transform={(data) => ({
+                                ...data,
+                                source_page: readSourcePage() ?? '',
+                            })}
                             className="mt-6 grid gap-5"
                         >
                             {({ processing, errors }) => (

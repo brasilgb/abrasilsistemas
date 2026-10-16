@@ -14,6 +14,9 @@ class PublicContactRequest extends FormRequest
         $this->merge([
             'email' => $this->filled('email') ? strtolower(trim((string) $this->input('email'))) : null,
             'whatsapp' => $this->filled('whatsapp') ? (preg_replace('/\D+/', '', (string) $this->input('whatsapp')) ?? '') : null,
+            // Só caminhos do próprio site ("/automacao-de-processos"); qualquer outra coisa é descartada
+            // em vez de recusar o contato do visitante.
+            'source_page' => is_string($page = $this->input('source_page')) && preg_match('#^/(?!/)\S{0,254}$#', $page) === 1 ? $page : null,
         ]);
     }
 
@@ -32,6 +35,8 @@ class PublicContactRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'product' => ['required', 'string', Rule::in(array_keys(Lead::CONTACT_PROJECT_TYPES))],
             'notes' => ['required', 'string', 'max:5000'],
+            // Página do site de onde a pessoa veio (caminho relativo, enviado pelo formulário).
+            'source_page' => ['nullable', 'string', 'max:255'],
             // Honeypot: real visitors never fill this hidden field.
             'website_hp' => ['prohibited'],
         ];

@@ -3,507 +3,263 @@
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\User;
-use Illuminate\Http\UploadedFile;
+use App\Models\WhatsappConversation;
+use App\Services\CompanyWhatsappSettings;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('authenticated users can view leads', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Assistencia Modelo',
-        'status' => 'new',
-    ]);
-
-    $response = $this->actingAs($user)->get(route('leads.index'));
-
-    $response->assertOk();
-});
-
-test('authenticated users can create leads', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    $response = $this->actingAs($user)->post(route('leads.store'), [
-        'company_name' => 'Pet Shop Modelo',
-        'product' => 'vetorpet',
-        'contact_name' => 'Maria',
-        'industry' => 'Pet shop',
-        'city' => 'Canoas',
-        'state' => 'rs',
-        'whatsapp' => '51999999999',
-        'status' => 'new',
-        'next_follow_up_at' => now()->addDay()->toDateString(),
-    ]);
-
-    $response->assertRedirect(route('leads.index', absolute: false));
-
-    $lead = Lead::query()->where('company_name', 'Pet Shop Modelo')->first();
-
-    expect($lead)->not->toBeNull();
-    expect($lead->user_id)->toBe($user->id);
-    expect($lead->product)->toBe('vetorpet');
-    expect($lead->state)->toBe('RS');
-});
-
-test('authenticated users can import leads from csv with optional fields', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $csv = implode("\n", [
-        'company_name,product,phone,website,industry,city',
-        'Pet Shop Scraper,vetorpet,51999999999,https://pet.example,Pet shop,Canoas',
-        ',vetoros,51988888888,https://semnome.example,Assistencia,Porto Alegre',
-        'Assistencia Modelo,vetoros,5133333333,https://assistencia.example,Assistencia tecnica,Novo Hamburgo',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('leads.import'), [
-        'csv' => UploadedFile::fake()->createWithContent('leads.csv', $csv),
-    ]);
-
-    $response->assertRedirect(route('leads.index', absolute: false));
-
-    expect(Lead::query()->where('company_name', 'Pet Shop Scraper')->exists())->toBeTrue();
-    expect(Lead::query()->where('company_name', 'Assistencia Modelo')->exists())->toBeTrue();
-    expect(Lead::query()->where('website', 'https://semnome.example')->exists())->toBeFalse();
-
-    $lead = Lead::query()->where('company_name', 'Pet Shop Scraper')->first();
-
-    expect($lead->whatsapp)->toBeNull();
-    expect($lead->phone)->toBe('51999999999');
-    expect($lead->website)->toBe('https://pet.example');
-    expect($lead->product)->toBe('vetorpet');
-    expect($lead->industry)->toBe('Pet shop');
-    expect($lead->city)->toBe('Canoas');
-    expect($lead->status)->toBe('new');
-    expect($lead->source)->toBe('CSV');
-});
-
-test('authenticated users can update leads', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $lead = Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Empresa Antiga',
-        'status' => 'new',
-    ]);
-
-    $response = $this->actingAs($user)->put(route('leads.update', $lead), [
-        'company_name' => 'Empresa Editada',
-        'product' => 'vetoros',
-        'contact_name' => 'Joao',
-        'industry' => 'Assistencia tecnica',
-        'city' => 'Porto Alegre',
-        'state' => 'RS',
-        'whatsapp' => '51988888888',
-        'status' => 'contacted',
-        'notes' => 'Contato inicial realizado.',
-    ]);
-
-    $response->assertRedirect(route('leads.index', absolute: false));
-
-    $lead->refresh();
-
-    expect($lead->company_name)->toBe('Empresa Editada');
-    expect($lead->status)->toBe('contacted');
-    expect($lead->last_contacted_at)->not->toBeNull();
-});
-
-test('authenticated admin users can delete a prospect', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-    $lead = Lead::query()->create([
-        'company_name' => 'Prospect descartado',
-        'status' => 'new',
-    ]);
-
-    $this->actingAs($user)
-        ->delete(route('leads.destroy', $lead))
-        ->assertRedirect(route('leads.index', absolute: false));
-
-    expect(Lead::query()->whereKey($lead->id)->exists())->toBeFalse();
-});
-
-test('authenticated users can update lead status from kanban', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $lead = Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Kanban',
-        'status' => 'new',
-    ]);
-
-    $response = $this->actingAs($user)->patch(route('leads.status', $lead), [
-        'status' => 'meeting',
-    ]);
-
-    $response->assertRedirect();
-
-    $lead->refresh();
-
-    expect($lead->status)->toBe('meeting');
-    expect($lead->last_contacted_at)->not->toBeNull();
-    expect(LeadActivity::query()->where('lead_id', $lead->id)->where('description', 'like', '%Kanban%')->exists())->toBeTrue();
-});
-
-test('kanban requires and stores lost reason when lead is lost', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $lead = Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Perdido',
-        'status' => 'meeting',
-    ]);
-
-    $this->actingAs($user)
-        ->patch(route('leads.status', $lead), ['status' => 'lost'])
-        ->assertSessionHasErrors('lost_reason');
-
-    $this->actingAs($user)
-        ->patch(route('leads.status', $lead), [
-            'status' => 'lost',
-            'lost_reason' => 'competitor',
-        ])
-        ->assertRedirect();
-
-    $lead->refresh();
-
-    expect($lead->status)->toBe('lost');
-    expect($lead->lost_reason)->toBe('competitor');
-});
-
-test('authenticated users can filter leads', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead A',
-        'city' => 'Canoas',
-        'state' => 'RS',
-        'industry' => 'Pet shop',
-        'status' => 'interested',
-    ]);
-
-    $response = $this->actingAs($user)->get(route('leads.index', [
-        'status' => 'interested',
-        'state' => 'RS',
-        'industry' => 'Pet',
-    ]));
-
-    $response->assertOk();
-});
-
-test('authenticated users can filter leads by follow up', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Atrasado',
-        'status' => 'contacted',
-        'next_follow_up_at' => now()->subDay()->toDateString(),
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Futuro',
-        'status' => 'new',
-        'next_follow_up_at' => now()->addDay()->toDateString(),
-    ]);
-
-    $response = $this->actingAs($user)->get(route('leads.index', [
-        'follow_up' => 'overdue',
-    ]));
-
-    $response->assertOk();
-});
-
-test('authenticated users can filter only their leads', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $otherUser = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Meu Lead',
-        'status' => 'new',
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $otherUser->id,
-        'company_name' => 'Lead de Outro',
-        'status' => 'new',
-    ]);
-
-    $response = $this->actingAs($user)->get(route('leads.index', [
-        'owner' => 'mine',
-    ]));
-
-    $response->assertOk();
-});
-
-test('lead priority score is calculated from commercial signals', function () {
-    $lead = Lead::query()->make([
-        'company_name' => 'Lead Prioritario',
-        'status' => 'meeting',
-        'whatsapp' => '51999999999',
-        'email' => 'lead@example.com',
-        'contact_name' => 'Maria',
-        'next_follow_up_at' => now()->subDay()->toDateString(),
-        'notes' => 'Cliente pediu proposta.',
-    ]);
-
-    expect($lead->lead_score)->toBeGreaterThanOrEqual(70);
-    expect($lead->priority)->toBe('high');
-});
-
-test('authenticated users can register lead activities', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $lead = Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead com Historico',
-        'status' => 'new',
-    ]);
-    $contactedAt = now()->subHour()->format('Y-m-d H:i:s');
-    $followUpAt = now()->addDays(2)->toDateString();
-
-    $response = $this->actingAs($user)->post(route('leads.activities.store', $lead), [
-        'type' => 'whatsapp',
-        'status' => 'interested',
-        'contacted_at' => $contactedAt,
-        'next_follow_up_at' => $followUpAt,
-        'description' => 'Cliente pediu apresentacao do sistema.',
-    ]);
-
-    $response->assertRedirect();
-
-    $lead->refresh();
-
-    expect(LeadActivity::query()->where('lead_id', $lead->id)->count())->toBe(1);
-    expect($lead->status)->toBe('interested');
-    expect($lead->last_contacted_at)->not->toBeNull();
-    expect($lead->next_follow_up_at->toDateString())->toBe($followUpAt);
-});
-
-test('quick activity can mark lead as lost with reason', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-    $lead = Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Atividade Perdida',
-        'status' => 'interested',
-    ]);
-
-    $response = $this->actingAs($user)->post(route('leads.activities.store', $lead), [
-        'type' => 'call',
-        'status' => 'lost',
-        'lost_reason' => 'price',
-        'description' => 'Cliente informou que ficou acima do orçamento.',
-    ]);
-
-    $response->assertRedirect();
-
-    $lead->refresh();
-
-    expect($lead->status)->toBe('lost');
-    expect($lead->lost_reason)->toBe('price');
-});
-
-test('duplicate leads are rejected by email whatsapp or company location', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Empresa Original',
-        'product' => 'vetoros',
-        'email' => 'contato@empresa.test',
-        'whatsapp' => '51999999999',
-        'city' => 'Canoas',
-        'state' => 'RS',
-        'status' => 'new',
-    ]);
-
-    $baseData = [
-        'product' => 'vetoros',
-        'status' => 'new',
-    ];
-
-    $this->actingAs($user)->post(route('leads.store'), [
-        ...$baseData,
-        'company_name' => 'Outra Empresa',
-        'email' => 'CONTATO@EMPRESA.TEST',
-    ])->assertSessionHasErrors('company_name');
-
-    $this->actingAs($user)->post(route('leads.store'), [
-        ...$baseData,
-        'company_name' => 'Outra Empresa',
-        'whatsapp' => '(51) 99999-9999',
-    ])->assertSessionHasErrors('company_name');
-
-    $this->actingAs($user)->post(route('leads.store'), [
-        ...$baseData,
-        'company_name' => 'empresa original',
-        'city' => 'canoas',
-        'state' => 'rs',
-    ])->assertSessionHasErrors('company_name');
-
-    expect(Lead::query()->count())->toBe(1);
-});
-
-test('csv import skips duplicate leads', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Existente',
-        'product' => 'vetoros',
-        'email' => 'existente@example.test',
-        'status' => 'new',
-    ]);
-
-    $csv = implode("\n", [
-        'company_name,product,email',
-        'Lead Duplicado,vetoros,EXISTENTE@example.test',
-        'Lead Novo,vetorpet,novo@example.test',
-    ]);
-
-    $this->actingAs($user)->post(route('leads.import'), [
-        'csv' => UploadedFile::fake()->createWithContent('leads.csv', $csv),
-    ])->assertRedirect(route('leads.index', absolute: false));
-
-    expect(Lead::query()->count())->toBe(2);
-    expect(Lead::query()->where('company_name', 'Lead Novo')->exists())->toBeTrue();
-    expect(Lead::query()->where('company_name', 'Lead Duplicado')->exists())->toBeFalse();
-});
-
-test('task queues include open leads and exclude closed leads', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-
-    foreach ([
-        ['company_name' => 'Atrasado aberto', 'status' => 'contacted', 'next_follow_up_at' => now()->subDay()],
-        ['company_name' => 'Para hoje', 'status' => 'interested', 'next_follow_up_at' => today()],
-        ['company_name' => 'Sem tarefa', 'status' => 'new', 'next_follow_up_at' => null],
-        ['company_name' => 'Convertido atrasado', 'status' => 'converted', 'next_follow_up_at' => now()->subDay()],
-    ] as $data) {
-        Lead::query()->create([...$data, 'user_id' => $user->id, 'product' => 'vetoros']);
-    }
-
-    $this->actingAs($user)->get(route('leads.index'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('taskLeads.overdue', 1)
-            ->has('taskLeads.today', 1)
-            ->has('taskLeads.without_follow_up', 1)
-            ->where('taskTotals.overdue', 1)
-            ->where('taskTotals.today', 1)
-            ->where('taskTotals.without_follow_up', 1)
-            ->where('metrics.follow_ups.overdue', 1)
-            ->where('metrics.follow_ups.today', 1)
-            ->where('metrics.follow_ups.without_follow_up', 1));
-});
-
-test('commercial filters apply to metrics tasks and kanban totals', function () {
-    $user = User::factory()->create(['email_verified_at' => now()]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Pet Shop Filtrado',
-        'product' => 'vetorpet',
-        'status' => 'new',
-    ]);
-
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Assistência Fora do Filtro',
-        'product' => 'vetoros',
-        'status' => 'new',
-    ]);
-
-    $this->actingAs($user)->get(route('leads.index', [
-        'product' => 'vetorpet',
-        'search' => 'Filtrado',
-    ]))->assertInertia(fn (Assert $page) => $page
-        ->where('metrics.total', 1)
-        ->where('kanbanTotal', 1)
-        ->has('kanbanLeads', 1)
-        ->has('taskLeads.without_follow_up', 1)
-        ->where('taskLeads.without_follow_up.0.company_name', 'Pet Shop Filtrado'));
-});
-
-test('public contact submissions append activity to duplicate leads', function () {
-    Queue::fake();
-
-    $lead = Lead::query()->create([
+/*
+ * Área "Solicitações" (ABRASIL-WEB-03): só os contatos do formulário do site (source = site),
+ * sem funil comercial. Prospects antigos continuam no banco, mas não aparecem aqui.
+ */
+
+function siteRequest(array $attributes = []): Lead
+{
+    return Lead::query()->create([
         'company_name' => 'Empresa do Site',
-        'product' => 'site',
-        'email' => 'contato@empresa.test',
-        'status' => 'contacted',
-        'notes' => 'Primeiro contato.',
+        'contact_name' => 'Maria',
+        'product' => 'automacao',
+        'source' => 'site',
+        'request_status' => 'new',
+        'notes' => 'Quero automatizar a cobrança.',
+        ...$attributes,
     ]);
+}
+
+function commercialProspect(array $attributes = []): Lead
+{
+    return Lead::query()->create([
+        'company_name' => 'Prospect do Maps',
+        'product' => 'vetoros',
+        'source' => 'Google Maps',
+        'status' => 'contacted',
+        ...$attributes,
+    ]);
+}
+
+beforeEach(function () {
+    Queue::fake();
+});
+
+test('only requests sent by the site form are listed', function () {
+    $request = siteRequest(['email' => 'maria@empresa.test', 'source_page' => '/automacao-de-processos']);
+    commercialProspect();
+    commercialProspect(['company_name' => 'Importado por CSV', 'source' => 'CSV']);
+    commercialProspect(['company_name' => 'Sem origem', 'source' => null]);
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('solicitacoes.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('solicitacoes/index')
+            ->has('requests.data', 1)
+            ->where('requests.data.0.id', $request->id)
+            ->where('requests.data.0.project_type', 'Automação')
+            ->where('requests.data.0.source_page', '/automacao-de-processos')
+            ->where('requests.data.0.request_status', 'new')
+            ->where('counts.todas', 1)
+            ->where('statuses', Lead::REQUEST_STATUSES));
+});
+
+test('the list shows open requests by default and filters by status', function () {
+    siteRequest();
+    siteRequest(['request_status' => 'in_progress', 'email' => 'b@x.test']);
+    siteRequest(['request_status' => 'done', 'email' => 'c@x.test']);
+    $archived = siteRequest(['request_status' => 'archived', 'email' => 'd@x.test']);
+    $admin = User::factory()->create();
+
+    $this->actingAs($admin)->get(route('solicitacoes.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.situacao', 'abertas')
+            ->has('requests.data', 2)
+            ->where('counts.abertas', 2)
+            ->where('counts.done', 1)
+            ->where('counts.archived', 1));
+
+    $this->actingAs($admin)->get(route('solicitacoes.index', ['situacao' => 'archived']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('requests.data', 1)
+            ->where('requests.data.0.id', $archived->id));
+
+    $this->actingAs($admin)->get(route('solicitacoes.index', ['situacao' => 'todas']))
+        ->assertInertia(fn (Assert $page) => $page->has('requests.data', 4));
+
+    $this->actingAs($admin)->get(route('solicitacoes.index', ['situacao' => 'invalida']))
+        ->assertInertia(fn (Assert $page) => $page->where('filters.situacao', 'abertas'));
+});
+
+test('requests can be searched by name, company, e-mail or phone', function () {
+    siteRequest(['contact_name' => 'Joana Lima', 'company_name' => 'Oficina Central', 'whatsapp' => '51977776666']);
+    siteRequest(['contact_name' => 'Pedro', 'company_name' => 'Padaria', 'email' => 'pedro@padaria.test']);
+    $admin = User::factory()->create();
+
+    foreach (['Joana', 'Oficina', '(51) 97777-6666', 'pedro@padaria'] as $term) {
+        $this->actingAs($admin)->get(route('solicitacoes.index', ['busca' => $term]))
+            ->assertInertia(fn (Assert $page) => $page->has('requests.data', 1));
+    }
+});
+
+test('a request shows its data, history and linked WhatsApp conversation', function () {
+    $request = siteRequest(['whatsapp' => '51988887777', 'source_page' => '/sistemas/vetoros']);
+    $request->activities()->create(['type' => 'note', 'description' => 'Novo contato recebido pelo formulário do site: segunda mensagem']);
+    $conversation = WhatsappConversation::query()->create([
+        'session' => 'abrasil-atendimento',
+        'chat_id' => '5551988887777@c.us',
+        'phone' => '5551988887777',
+        'lead_id' => $request->id,
+        'last_message_preview' => 'Olá!',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('solicitacoes.show', $request))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('solicitacoes/show')
+            ->where('request.id', $request->id)
+            ->where('request.message', 'Quero automatizar a cobrança.')
+            ->where('request.source_page', '/sistemas/vetoros')
+            ->where('request.project_type', 'Automação')
+            ->has('history', 1)
+            ->has('conversations', 1)
+            ->where('conversations.0.id', $conversation->id));
+});
+
+test('a commercial prospect cannot be opened or changed as a request', function () {
+    $prospect = commercialProspect();
+    $admin = User::factory()->create();
+
+    $this->actingAs($admin)->get(route('solicitacoes.show', $prospect))->assertNotFound();
+    $this->actingAs($admin)->patch(route('solicitacoes.status', $prospect), ['request_status' => 'done'])->assertNotFound();
+
+    expect($prospect->fresh()->request_status)->toBeNull()
+        ->and($prospect->fresh()->status)->toBe('contacted');
+});
+
+test('the request status can be changed, including archiving', function (string $status) {
+    $request = siteRequest();
+
+    $this->actingAs(User::factory()->create())
+        ->from(route('solicitacoes.show', $request))
+        ->patch(route('solicitacoes.status', $request), ['request_status' => $status])
+        ->assertRedirect(route('solicitacoes.show', $request))
+        ->assertSessionHasNoErrors();
+
+    expect($request->fresh()->request_status)->toBe($status);
+})->with(['new', 'in_progress', 'answered', 'done', 'archived']);
+
+test('an unknown request status is rejected', function () {
+    $request = siteRequest(['request_status' => 'in_progress']);
+
+    $this->actingAs(User::factory()->create())
+        ->patch(route('solicitacoes.status', $request), ['request_status' => 'converted'])
+        ->assertSessionHasErrors('request_status');
+
+    expect($request->fresh()->request_status)->toBe('in_progress');
+});
+
+test('changing the status never touches the history or the legacy commercial data', function () {
+    $request = siteRequest(['status' => 'interested', 'notes' => 'Histórico antigo']);
+    $request->activities()->create(['type' => 'whatsapp', 'description' => 'Mensagem enviada no tempo do CRM']);
+
+    $this->actingAs(User::factory()->create())
+        ->patch(route('solicitacoes.status', $request), ['request_status' => 'archived']);
+
+    $request->refresh();
+
+    expect($request->status)->toBe('interested')
+        ->and($request->notes)->toBe('Histórico antigo')
+        ->and($request->activities()->count())->toBe(1)
+        ->and(Lead::withTrashed()->count())->toBe(1);
+});
+
+test('the contact form creates a new request with its origin page', function () {
+    $this->post(route('contato.store'), [
+        'contact_name' => 'Carlos',
+        'company_name' => 'Transportes Sul',
+        'whatsapp' => '(51) 96666-5555',
+        'product' => 'integracao',
+        'notes' => 'Integrar o ERP com a loja virtual.',
+        'source_page' => '/integracao-de-sistemas-e-apis',
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    $request = Lead::query()->sole();
+
+    expect($request->source)->toBe('site')
+        ->and($request->request_status)->toBe('new')
+        ->and($request->source_page)->toBe('/integracao-de-sistemas-e-apis')
+        ->and($request->whatsapp)->toBe('51966665555');
+});
+
+test('an invalid origin page is discarded without refusing the contact', function (string $page) {
+    $this->post(route('contato.store'), [
+        'contact_name' => 'Carlos',
+        'company_name' => 'Transportes Sul',
+        'email' => 'carlos@sul.test',
+        'product' => 'site',
+        'notes' => 'Quero um site.',
+        'source_page' => $page,
+    ])->assertSessionHasNoErrors();
+
+    expect(Lead::query()->sole()->source_page)->toBeNull();
+})->with(['https://outro-site.test/pagina', '//outro-site.test', 'sem-barra', '/com espaço']);
+
+test('a repeated contact reopens the same request and keeps its history', function () {
+    $request = siteRequest(['email' => 'contato@empresa.test', 'request_status' => 'done', 'notes' => 'Primeiro contato.']);
 
     $this->post(route('contato.store'), [
         'contact_name' => 'Maria',
         'company_name' => 'Empresa do Site',
         'email' => 'CONTATO@EMPRESA.TEST',
         'product' => 'site',
-        'notes' => 'Solicitou uma nova apresentação comercial.',
+        'notes' => 'Solicitou uma nova apresentação.',
     ])->assertRedirect();
 
-    expect(Lead::query()->count())->toBe(1);
-    expect(LeadActivity::query()->where('lead_id', $lead->id)->count())->toBe(1);
-    expect($lead->fresh()->notes)->toContain('Solicitou uma nova apresentação comercial.');
-    expect($lead->fresh()->last_contacted_at)->not->toBeNull();
+    $request->refresh();
+
+    expect(Lead::query()->count())->toBe(1)
+        ->and($request->request_status)->toBe('new')
+        ->and($request->notes)->toContain('Primeiro contato.')
+        ->and($request->notes)->toContain('Solicitou uma nova apresentação.')
+        ->and($request->last_contacted_at)->not->toBeNull()
+        ->and(LeadActivity::query()->where('lead_id', $request->id)->count())->toBe(1);
 });
 
-test('dashboard priority leads include the commercial fields used by scoring', function () {
-    $user = User::factory()->create();
+test('a site contact is never merged into a commercial prospect with the same e-mail', function () {
+    $prospect = commercialProspect(['email' => 'contato@empresa.test', 'notes' => 'Anotação comercial']);
 
-    Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead Prioritário',
-        'product' => 'site',
-        'status' => 'meeting',
-        'whatsapp' => '51999999999',
-        'email' => 'prioritario@example.test',
+    $this->post(route('contato.store'), [
         'contact_name' => 'Maria',
-        'notes' => 'Solicitou proposta.',
-    ]);
-
-    $this->actingAs($user)->get(route('dashboard'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('priorityLeads.0.priority', 'high')
-            ->where('metrics.high_priority', 1));
-});
-
-test('lead activity can clear an existing follow up', function () {
-    $user = User::factory()->create();
-    $lead = Lead::query()->create([
-        'user_id' => $user->id,
-        'company_name' => 'Lead sem follow-up',
+        'company_name' => 'Empresa do Site',
+        'email' => 'contato@empresa.test',
         'product' => 'site',
-        'status' => 'contacted',
-        'next_follow_up_at' => today()->addDay(),
-    ]);
-
-    $this->actingAs($user)->post(route('leads.activities.store', $lead), [
-        'type' => 'note',
-        'description' => 'Follow-up cancelado.',
-        'next_follow_up_at' => null,
+        'notes' => 'Quero um orçamento.',
     ])->assertRedirect();
 
-    expect($lead->fresh()->next_follow_up_at)->toBeNull();
+    expect(Lead::query()->count())->toBe(2)
+        ->and($prospect->fresh()->notes)->toBe('Anotação comercial')
+        ->and(Lead::query()->siteRequests()->sole()->notes)->toBe('Quero um orçamento.');
+});
+
+test('a new request is linked to an earlier WhatsApp conversation from the same number', function () {
+    app(CompanyWhatsappSettings::class)->save([
+        'enabled' => true,
+        'number' => '51998931325',
+        'provider' => 'waha',
+        'session' => 'abrasil-atendimento',
+    ]);
+    $prospect = commercialProspect(['whatsapp' => '51955554444']);
+    $sameNumber = WhatsappConversation::query()->create(['session' => 'abrasil-atendimento', 'chat_id' => '5551955554444@c.us', 'phone' => '5551955554444', 'lead_id' => $prospect->id]);
+    $otherSession = WhatsappConversation::query()->create(['session' => 'sessao-comercial', 'chat_id' => '5551955554444@c.us', 'phone' => '5551955554444']);
+
+    $this->post(route('contato.store'), [
+        'contact_name' => 'Ana',
+        'company_name' => 'Clínica Ana',
+        'whatsapp' => '(51) 95555-4444',
+        'product' => 'sistema_sob_medida',
+        'notes' => 'Preciso de um sistema de agenda.',
+    ])->assertRedirect();
+
+    $request = Lead::query()->siteRequests()->sole();
+
+    expect($sameNumber->fresh()->lead_id)->toBe($request->id)
+        ->and($otherSession->fresh()->lead_id)->toBeNull();
 });

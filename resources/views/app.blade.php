@@ -78,6 +78,9 @@
                 @endif
                 @if (! empty($seo['ogImage']))
                     <meta property="og:image" content="{{ $seo['ogImage'] }}" data-inertia="og:image">
+                    @if (! empty($seo['ogImageAlt']))
+                        <meta property="og:image:alt" content="{{ $seo['ogImageAlt'] }}" data-inertia="og:image:alt">
+                    @endif
                     <meta name="twitter:card" content="summary_large_image" data-inertia="twitter:card">
                     <meta name="twitter:image" content="{{ $seo['ogImage'] }}" data-inertia="twitter:image">
                 @endif

@@ -6,9 +6,9 @@ import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
-import { edit as editLeadSettings } from '@/routes/lead-settings';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
+import { edit as editWhatsappSettings } from '@/routes/whatsapp-settings';
 import type { NavItem, User } from '@/types';
 
 const accountNavItems: NavItem[] = [
@@ -29,18 +29,20 @@ const accountNavItems: NavItem[] = [
     },
 ];
 
-const leadSettingsNavItem: NavItem = {
-    title: 'Leads',
-    href: editLeadSettings(),
+/** WhatsApp institucional do atendimento (só administradores). */
+const whatsappSettingsNavItem: NavItem = {
+    title: 'WhatsApp',
+    href: editWhatsappSettings(),
     icon: null,
 };
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
     const { auth } = usePage<{ auth: { user: User } }>().props;
-    const sidebarNavItems = auth.user.role === 'admin'
-        ? [...accountNavItems, leadSettingsNavItem]
-        : accountNavItems;
+    const sidebarNavItems =
+        auth.user.role === 'admin'
+            ? [...accountNavItems, whatsappSettingsNavItem]
+            : accountNavItems;
 
     return (
         <div className="px-4 py-6">

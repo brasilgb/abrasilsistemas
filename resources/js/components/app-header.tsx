@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Search, Target, Users } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,41 +22,16 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
+import { adminNavItems } from '@/lib/admin-navigation';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
-import { index as leadsIndex } from '@/routes/leads';
-import { index as usersIndex } from '@/routes/users';
-import type { BreadcrumbItem, NavItem, User } from '@/types';
+import type { BreadcrumbItem, User } from '@/types';
 
 type Props = {
     breadcrumbs?: BreadcrumbItem[];
 };
-
-const adminNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Prospecção',
-        href: leadsIndex(),
-        icon: Target,
-    },
-    {
-        title: 'Usuários',
-        href: usersIndex(),
-        icon: Users,
-    },
-];
 
 const activeItemStyles =
     'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';

@@ -5,6 +5,7 @@ import {
     Container,
     CtaBand,
     Eyebrow,
+    HeroBackdrop,
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
@@ -13,6 +14,7 @@ import {
     BrowserFrame,
     ConnectedOperationBadge,
 } from '@/components/site/visuals';
+import { heroImages } from '@/data/hero-images';
 import {
     caseStudies,
     contactHref,
@@ -97,7 +99,8 @@ export default function Welcome({
     return (
         <SiteLayout>
             {/* Hero */}
-            <section className="bg-[#0b1220] pt-28 pb-16 text-white sm:pt-36 sm:pb-24">
+            <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-16 text-white sm:pt-36 sm:pb-24">
+                <HeroBackdrop image={heroImages.home} />
                 <Container className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
                     <div>
                         <Eyebrow inverse>
@@ -134,7 +137,6 @@ export default function Welcome({
                             <BrowserFrame
                                 {...vetorOs.screenshot}
                                 label="VetorOS · painel"
-                                priority
                             />
                             <figcaption className="mt-4 flex flex-col gap-3 text-xs text-slate-400">
                                 <span>

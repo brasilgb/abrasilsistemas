@@ -40,17 +40,10 @@ return [
         'webhook_token' => env('MP_WEBHOOK_TOKEN'),
     ],
 
+    // Token das rotas legadas /api/prospects/* e /api/whatsapp/messages/* (extensão e n8n), até
+    // essas integrações passarem para o VetorLeads.
     'ab_prospect' => [
         'token' => env('AB_PROSPECT_API_TOKEN'),
-    ],
-
-    'n8n' => [
-        // Webhook do workflow que envia a mensagem pelo WAHA e registra a LeadActivity no CRM.
-        'whatsapp_webhook_url' => env('N8N_WHATSAPP_WEBHOOK_URL'),
-        'whatsapp_webhook_timeout' => (int) env('N8N_WHATSAPP_WEBHOOK_TIMEOUT', 20),
-        // Header Auth do node Webhook do n8n: nome do header e valor da credential.
-        'whatsapp_webhook_header' => env('N8N_WHATSAPP_WEBHOOK_HEADER', 'X-CRM-Token'),
-        'whatsapp_webhook_token' => env('N8N_WHATSAPP_WEBHOOK_TOKEN'),
     ],
 
     'waha' => [

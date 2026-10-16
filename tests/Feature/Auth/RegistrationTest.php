@@ -37,6 +37,6 @@ test('first registered user becomes admin', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('atendimento.index', absolute: false));
     $this->assertDatabaseHas('users', ['email' => 'first@example.com', 'role' => 'admin']);
 });

@@ -29,8 +29,8 @@ test('reader can comment but cannot access administration', function () {
     $this->actingAs($reader)->post(route('blog.comments.store', $post), ['body' => 'Ótimo conteúdo!'])->assertRedirect();
     expect(BlogComment::first())->status->toBe('pending');
     $this->actingAs($reader)->get(route('admin.blog.posts.index'))->assertForbidden();
-    $this->actingAs($reader)->get(route('leads.index'))->assertForbidden();
-    $this->actingAs($reader)->get(route('lead-settings.edit'))->assertForbidden();
+    $this->actingAs($reader)->get(route('solicitacoes.index'))->assertForbidden();
+    $this->actingAs($reader)->get(route('whatsapp-settings.edit'))->assertForbidden();
 });
 
 test('administrator can create article and moderate comment', function () {

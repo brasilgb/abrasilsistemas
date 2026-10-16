@@ -18,7 +18,7 @@ class Seo
             'canonical' => url('/'),
             'robots' => 'index, follow, max-image-preview:large',
             'ogType' => 'website',
-            'ogImage' => url('/images/dashboard-vetoros.webp'),
+            'ogImage' => url('/images/site/heroes/home-og.jpg'),
             'siteName' => 'ABrasil Sistemas',
             'locale' => 'pt_BR',
         ];
@@ -26,6 +26,11 @@ class Seo
         $tags = array_merge($defaults, $overrides);
         $tags['ogTitle'] ??= $tags['title'];
         $tags['ogDescription'] ??= $tags['description'];
+
+        // O alt padrão só descreve a imagem padrão; uma imagem própria sem alt fica sem ele.
+        if (! isset($overrides['ogImage'])) {
+            $tags['ogImageAlt'] ??= PublicPages::HERO_IMAGES['home'];
+        }
 
         return $tags;
     }

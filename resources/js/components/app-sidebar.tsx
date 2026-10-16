@@ -1,14 +1,4 @@
 import { Link, usePage } from '@inertiajs/react';
-import {
-    Images,
-    LayoutGrid,
-    MessageSquareQuote,
-    MessagesSquare,
-    Newspaper,
-    Settings,
-    Target,
-    Users,
-} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -21,63 +11,13 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import { index as leadsIndex } from '@/routes/leads';
-import { edit as profileEdit } from '@/routes/profile';
-import { index as usersIndex } from '@/routes/users';
-import type { NavItem, User } from '@/types';
-
-const adminNavItems: NavItem[] = [
-    {
-        title: 'Blog',
-        href: '/admin/blog/posts',
-        icon: Newspaper,
-    },
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Atendimento',
-        href: '/atendimento',
-        icon: MessagesSquare,
-    },
-    {
-        title: 'Prospecção',
-        href: leadsIndex(),
-        icon: Target,
-    },
-    {
-        title: 'Depoimentos',
-        href: '/testimonials',
-        icon: MessageSquareQuote,
-    },
-    {
-        title: 'Trabalhos recentes',
-        href: '/portfolio',
-        icon: Images,
-    },
-    {
-        title: 'Usuários',
-        href: usersIndex(),
-        icon: Users,
-    },
-    {
-        title: 'Configurações',
-        href: profileEdit(),
-        icon: Settings,
-    },
-];
+import { adminNavItems, readerNavItems } from '@/lib/admin-navigation';
+import type { User } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage<{ auth: { user: User } }>().props;
     const mainNavItems =
-        auth.user.role === 'admin'
-            ? adminNavItems
-            : adminNavItems.filter((item) =>
-                  ['Configurações'].includes(item.title),
-              );
+        auth.user.role === 'admin' ? adminNavItems : readerNavItems;
 
     return (
         <Sidebar collapsible="icon" variant="inset">

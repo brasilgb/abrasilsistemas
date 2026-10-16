@@ -27,6 +27,7 @@ class SiteController extends Controller
                 'title' => 'ABrasil Sistemas — Software, sistemas e integração para empresas',
                 'description' => 'Empresa de tecnologia que desenvolve sistemas sob medida, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS e VetorPet.',
                 'canonical' => url('/'),
+                ...PublicPages::heroSeo('home'),
                 'jsonLd' => [
                     '@context' => 'https://schema.org',
                     '@graph' => [
@@ -51,6 +52,7 @@ class SiteController extends Controller
                 'title' => 'Sistemas prontos para empresas — VetorOS e VetorPet | ABrasil Sistemas',
                 'description' => 'Produtos de software da ABrasil Sistemas em operação: VetorOS para assistências técnicas e VetorPet para a gestão comercial no mercado pet.',
                 'canonical' => url('/sistemas'),
+                ...PublicPages::heroSeo('sistemas'),
                 'jsonLd' => [
                     '@context' => 'https://schema.org',
                     '@graph' => [
@@ -77,6 +79,7 @@ class SiteController extends Controller
                 'title' => $meta['title'],
                 'description' => $meta['description'],
                 'canonical' => url('/sistemas/'.$product),
+                ...PublicPages::heroSeo($product),
                 'jsonLd' => PublicPages::productJsonLd($product),
             ]),
         ]);
@@ -108,6 +111,7 @@ class SiteController extends Controller
                 'title' => $meta['title'],
                 'description' => $meta['description'],
                 'canonical' => url('/'.$slug),
+                ...PublicPages::heroSeo(PublicPages::SERVICE_HERO_IMAGES[$slug]),
                 'jsonLd' => PublicPages::serviceJsonLd($slug),
             ]),
         ]);
@@ -120,6 +124,7 @@ class SiteController extends Controller
                 'title' => 'Sobre a ABrasil Sistemas — empresa de tecnologia e software',
                 'description' => 'Conheça a ABrasil Sistemas: como trabalhamos, o que desenvolvemos e por que acompanhamos cada sistema depois que ele entra em operação.',
                 'canonical' => url('/sobre'),
+                ...PublicPages::heroSeo('sobre'),
                 'jsonLd' => ['@context' => 'https://schema.org', '@graph' => [PublicPages::organization()]],
             ]),
         ]);

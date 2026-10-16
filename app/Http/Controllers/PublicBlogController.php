@@ -65,7 +65,7 @@ class PublicBlogController extends Controller
                 'ogType' => 'article',
                 'ogTitle' => $post->title,
                 'ogDescription' => $post->excerpt,
-                'ogImage' => $post->cover_image_url ?: url('/images/dashboard-vetoros.webp'),
+                'ogImage' => $post->cover_image_url ?: url('/images/site/heroes/home-og.jpg'),
             ]),
         ]);
     }

@@ -12,6 +12,7 @@ import {
 } from '@/components/site/blocks';
 import { SiteLayout } from '@/components/site/site-layout';
 import { ServiceVisual } from '@/components/site/visuals';
+import { heroImages } from '@/data/hero-images';
 import { contactHref, findService, processSteps } from '@/data/site';
 import type { Service } from '@/data/site';
 
@@ -33,6 +34,7 @@ export default function ServicePage({ slug }: { slug: string }) {
                 title={service.hero.title}
                 lead={service.hero.lead}
                 visual={<ServiceVisual kind={service.visual} />}
+                image={heroImages[service.heroImage]}
                 actions={
                     <>
                         <ButtonLink

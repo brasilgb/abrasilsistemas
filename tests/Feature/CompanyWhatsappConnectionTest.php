@@ -63,7 +63,7 @@ test('WORKING session is shown as connected with the authenticated account', fun
     ]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson([
             'state' => 'connected',
@@ -88,7 +88,7 @@ test('SCAN_QR_CODE session is waiting for the QR Code', function () {
     Http::fake([wahaSessionUrl() => Http::response(wahaSession('SCAN_QR_CODE'))]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson([
             'state' => 'scan_qr_code',
@@ -102,7 +102,7 @@ test('WAHA statuses are mapped to panel states', function (string $wahaStatus, s
     Http::fake([wahaSessionUrl() => Http::response(wahaSession($wahaStatus))]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson(['state' => $state, 'label' => $label, 'waha_status' => $wahaStatus]);
 })->with([
@@ -119,7 +119,7 @@ test('the QR Code PNG is proxied without being parsed as JSON', function () {
     ]);
 
     $response = $this->actingAs(wahaAdmin())
-        ->get(route('lead-settings.whatsapp.qr'))
+        ->get(route('whatsapp-settings.qr'))
         ->assertOk()
         ->assertHeader('Content-Type', 'image/png');
 
@@ -135,7 +135,7 @@ test('the QR Code is refused when the session is not waiting for it', function (
     Http::fake([wahaSessionUrl() => Http::response(wahaSession('WORKING', ['id' => '5551998931325@c.us']))]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.qr'))
+        ->getJson(route('whatsapp-settings.qr'))
         ->assertStatus(409)
         ->assertJsonPath('message', fn (string $message) => str_contains($message, 'QR Code não está disponível'));
 
@@ -149,7 +149,7 @@ test('an invalid QR Code image is rejected', function () {
     ]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.qr'))
+        ->getJson(route('whatsapp-settings.qr'))
         ->assertStatus(502);
 });
 
@@ -162,7 +162,7 @@ test('connect restarts a stopped or failed session', function (string $wahaStatu
     ]);
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.connect'))
+        ->postJson(route('whatsapp-settings.connect'))
         ->assertOk()
         ->assertJson(['state' => 'scan_qr_code']);
 
@@ -174,7 +174,7 @@ test('connect does not restart a session that is already working or waiting for 
     Http::fake([wahaSessionUrl() => Http::response(wahaSession($wahaStatus, $wahaStatus === 'WORKING' ? ['id' => '5551998931325@c.us'] : null))]);
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.connect'))
+        ->postJson(route('whatsapp-settings.connect'))
         ->assertOk();
 
     Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/restart'));
@@ -184,7 +184,7 @@ test('connect never creates a session that does not exist in WAHA', function () 
     Http::fake([wahaSessionUrl() => Http::response(['message' => 'Session not found'], 404)]);
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.connect'))
+        ->postJson(route('whatsapp-settings.connect'))
         ->assertNotFound()
         ->assertJsonPath('message', fn (string $message) => str_contains($message, 'não existe no WAHA'));
 
@@ -198,7 +198,7 @@ test('disconnect logs out the session without deleting it or the settings', func
     ]);
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.disconnect'))
+        ->postJson(route('whatsapp-settings.disconnect'))
         ->assertOk()
         ->assertJson(['state' => 'scan_qr_code']);
 
@@ -219,13 +219,13 @@ test('WAHA HTTP errors become friendly messages', function () {
     ]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson(['state' => 'error', 'label' => 'Erro'])
         ->assertJsonPath('message', fn (string $message) => str_contains($message, 'Não foi possível falar com o serviço de WhatsApp'));
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.disconnect'))
+        ->postJson(route('whatsapp-settings.disconnect'))
         ->assertStatus(502);
 });
 
@@ -233,12 +233,12 @@ test('WAHA timeouts and connection failures are handled', function () {
     Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out after 5001 milliseconds'));
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson(['state' => 'error']);
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.connect'))
+        ->postJson(route('whatsapp-settings.connect'))
         ->assertStatus(502);
 });
 
@@ -261,7 +261,7 @@ test('a different connected number is reported as divergent and never saved', fu
     ]);
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson([
             'state' => 'connected',
@@ -276,15 +276,15 @@ test('a different connected number is reported as divergent and never saved', fu
 test('guests and readers cannot manage the WhatsApp connection', function () {
     Http::fake();
 
-    $this->getJson(route('lead-settings.whatsapp.status'))->assertUnauthorized();
-    $this->postJson(route('lead-settings.whatsapp.connect'))->assertUnauthorized();
+    $this->getJson(route('whatsapp-settings.status'))->assertUnauthorized();
+    $this->postJson(route('whatsapp-settings.connect'))->assertUnauthorized();
 
     $reader = User::factory()->reader()->create();
 
-    $this->actingAs($reader)->getJson(route('lead-settings.whatsapp.status'))->assertForbidden();
-    $this->actingAs($reader)->postJson(route('lead-settings.whatsapp.connect'))->assertForbidden();
-    $this->actingAs($reader)->get(route('lead-settings.whatsapp.qr'))->assertForbidden();
-    $this->actingAs($reader)->postJson(route('lead-settings.whatsapp.disconnect'))->assertForbidden();
+    $this->actingAs($reader)->getJson(route('whatsapp-settings.status'))->assertForbidden();
+    $this->actingAs($reader)->postJson(route('whatsapp-settings.connect'))->assertForbidden();
+    $this->actingAs($reader)->get(route('whatsapp-settings.qr'))->assertForbidden();
+    $this->actingAs($reader)->postJson(route('whatsapp-settings.disconnect'))->assertForbidden();
 
     Http::assertNothingSent();
 });
@@ -299,10 +299,10 @@ test('the WAHA API key is never exposed in responses', function () {
     $admin = wahaAdmin();
 
     foreach ([
-        $this->actingAs($admin)->getJson(route('lead-settings.whatsapp.status')),
-        $this->actingAs($admin)->postJson(route('lead-settings.whatsapp.connect')),
-        $this->actingAs($admin)->postJson(route('lead-settings.whatsapp.disconnect')),
-        $this->actingAs($admin)->get(route('lead-settings.edit')),
+        $this->actingAs($admin)->getJson(route('whatsapp-settings.status')),
+        $this->actingAs($admin)->postJson(route('whatsapp-settings.connect')),
+        $this->actingAs($admin)->postJson(route('whatsapp-settings.disconnect')),
+        $this->actingAs($admin)->get(route('whatsapp-settings.edit')),
     ] as $response) {
         expect($response->getContent())->not->toContain(WAHA_TEST_KEY);
     }
@@ -320,12 +320,12 @@ test('the session always comes from the settings, never from the browser', funct
     $admin = wahaAdmin();
 
     $this->actingAs($admin)
-        ->getJson(route('lead-settings.whatsapp.status', ['session' => 'sessao-de-outro']))
+        ->getJson(route('whatsapp-settings.status', ['session' => 'sessao-de-outro']))
         ->assertOk()
         ->assertJsonPath('session', WAHA_TEST_SESSION);
 
     $this->actingAs($admin)
-        ->postJson(route('lead-settings.whatsapp.connect'), ['session' => 'sessao-de-outro'])
+        ->postJson(route('whatsapp-settings.connect'), ['session' => 'sessao-de-outro'])
         ->assertOk()
         ->assertJsonPath('session', WAHA_TEST_SESSION);
 
@@ -343,12 +343,12 @@ test('connection actions require a saved WAHA session', function () {
     Http::fake();
 
     $this->actingAs(wahaAdmin())
-        ->getJson(route('lead-settings.whatsapp.status'))
+        ->getJson(route('whatsapp-settings.status'))
         ->assertOk()
         ->assertJson(['state' => 'not_configured']);
 
     $this->actingAs(wahaAdmin())
-        ->postJson(route('lead-settings.whatsapp.connect'))
+        ->postJson(route('whatsapp-settings.connect'))
         ->assertUnprocessable();
 
     Http::assertNothingSent();

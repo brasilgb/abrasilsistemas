@@ -83,7 +83,7 @@ test('the webhook rejects a missing or wrong signature', function () {
 });
 
 test('an inbound message opens a conversation with contact, origin page and unread message', function () {
-    $lead = Lead::query()->create(['company_name' => 'Empresa da Maria', 'product' => 'site', 'whatsapp' => '51988887777']);
+    $lead = Lead::query()->create(['company_name' => 'Empresa da Maria', 'product' => 'site', 'source' => 'site', 'whatsapp' => '51988887777']);
 
     wahaWebhook('message', inboundPayload())->assertOk()->assertJson(['success' => true]);
 
@@ -103,6 +103,15 @@ test('an inbound message opens a conversation with contact, origin page and unre
         ->and($message->provider_message_id)->toBe('3EB0AAA111')
         ->and($message->read_at)->toBeNull()
         ->and($message->sent_at->timestamp)->toBe(1760000000);
+});
+
+test('a conversation is never linked to a commercial prospect with the same number', function () {
+    // Prospect importado no tempo do CRM (pertence ao VetorLeads): mesmo número, outra origem.
+    Lead::query()->create(['company_name' => 'Prospect do Maps', 'product' => 'vetoros', 'source' => 'Google Maps', 'whatsapp' => '51988887777']);
+
+    wahaWebhook('message', inboundPayload())->assertOk();
+
+    expect(WhatsappConversation::query()->sole()->lead_id)->toBeNull();
 });
 
 test('message and message.any for the same message are stored once', function () {

@@ -48,7 +48,7 @@ type ActiveConversation = {
         id: number;
         company_name: string;
         contact_name: string | null;
-        source: string | null;
+        request_status: string | null;
     } | null;
     messages: Message[];
 };
@@ -153,10 +153,10 @@ export default function AtendimentoIndex({
                                     Nenhuma sessão do WhatsApp configurada.
                                     Defina a sessão em{' '}
                                     <Link
-                                        href="/settings/leads"
+                                        href="/settings/whatsapp"
                                         className="font-medium underline"
                                     >
-                                        Configurações → WhatsApp da empresa
+                                        Configurações → WhatsApp
                                     </Link>
                                     .
                                 </>
@@ -509,7 +509,7 @@ function ContactPanel({ conversation }: { conversation: ActiveConversation }) {
             {conversation.lead && (
                 <div className="mt-6 rounded-md border p-3 text-sm">
                     <p className="text-xs text-muted-foreground">
-                        Cadastro existente
+                        Solicitação pelo site
                     </p>
                     <p className="mt-1 font-medium">
                         {conversation.lead.company_name}
@@ -520,7 +520,7 @@ function ContactPanel({ conversation }: { conversation: ActiveConversation }) {
                         </p>
                     )}
                     <Link
-                        href={`/leads/${conversation.lead.id}/edit`}
+                        href={`/solicitacoes/${conversation.lead.id}`}
                         className="mt-2 inline-block text-xs font-medium underline"
                     >
                         Ver solicitação

@@ -17,7 +17,7 @@ import {
     disconnect as disconnectRoute,
     qr as qrRoute,
     status as statusRoute,
-} from '@/routes/lead-settings/whatsapp';
+} from '@/routes/whatsapp-settings';
 
 const POLL_INTERVAL = 3000;
 const QR_REFRESH_INTERVAL = 20000;
@@ -404,9 +404,9 @@ export default function CompanyWhatsappConnection() {
                             : ''}{' '}
                         será desconectada da sessão{' '}
                         <span className="font-mono">{status?.session}</span>. O
-                        CRM deixa de enviar mensagens até um novo QR Code ser
-                        lido. A sessão, os webhooks e as configurações são
-                        mantidos.
+                        atendimento deixa de receber e enviar mensagens até um
+                        novo QR Code ser lido. A sessão, os webhooks e as
+                        configurações são mantidos.
                     </DialogDescription>
                     <DialogFooter>
                         <DialogClose asChild>

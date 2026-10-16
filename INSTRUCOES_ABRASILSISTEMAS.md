@@ -1,5 +1,10 @@
 # Instrucoes do abrasilsistemas
 
+> **Histórico (desatualizado desde a ABRASIL-WEB-03, 15/10/2026).** O CRM descrito abaixo (dashboard
+> comercial, prospecção, Kanban, funil, tarefas, importação, templates) saiu do site e é
+> responsabilidade do VetorLeads. O site ficou institucional + Solicitações + Atendimento.
+> Ver `executed.md` (ABRASIL-WEB-03).
+
 ## Estado atual
 
 O projeto `abrasilsistemas` ja recebeu melhorias no CRM/prospeccao:

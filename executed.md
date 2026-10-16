@@ -1,3 +1,149 @@
+# Execução de `correio.md`: ABRASIL-WEB-03, consolidação do site institucional e separação do CRM/VetorLeads
+
+Data: 2026-10-15.
+
+## Resumo
+
+**O site virou institucional + Solicitações + Atendimento. O CRM saiu da interface e do código, e os heroes ganharam fotos.** Nenhum dado foi apagado: as tabelas `leads` e `lead_activities` estão intactas, e a única migration só acrescenta duas colunas. Não houve deploy, push nem commit. Nada foi alterado no WAHA, no n8n ou no banco de produção.
+
+- **Saiu do site:** dashboard comercial, `/leads` (lista, Kanban, funil, score, tarefas, follow-up, ações em massa, importação CSV), envio de WhatsApp via n8n, templates comerciais, configuração do token e download da extensão AB Prospect (incluindo o `.xpi` público e a pasta `extension/`). Todas essas rotas agora retornam 404.
+- **Ficou de propósito:** as 3 rotas de API legadas (`/api/prospects/import`, `/api/prospects/{lead}/whatsapp/log` e `/api/whatsapp/messages/{id}/status`). A extensão AB Prospect, **inclusive a v1.4.0 do VetorLeads**, ainda vem configurada com `https://abrasilsistemas.com.br/api/prospects/import`. O destino real dos workflows do n8n não pôde ser conferido. Elas continuam protegidas por token, e o site não as usa.
+- **Entrou:** a área **Solicitações** (só os contatos `source=site`, com situação), **Configurações → WhatsApp** no lugar de "Leads", o login do admin abrindo em `/atendimento`, o menu novo, o 404 e o blog no visual institucional, e **12 fotos de hero** (AVIF/WebP responsivos e `og:image` por página).
+- **Testes:** 219/219 (1.368 asserções), build ok, TypeScript sem erros no código do projeto, ESLint, Prettier e Pint limpos nos arquivos alterados, e validação visual no Chromium a 1440 e a 390 px.
+
+Por autorização sua, durante a tarefa os arquivos do CRM foram apagados com `git rm`. Eles continuam recuperáveis pelo histórico (commit `8f3b0ad`).
+
+## 1. Arquivos criados
+
+| Arquivo | Para quê |
+|---|---|
+| `app/Http/Controllers/SiteRequestController.php` | Solicitações: lista, detalhe e troca de situação |
+| `app/Http/Controllers/Settings/WhatsappSettingsController.php` | Configurações → WhatsApp (renomeado de `LeadSettingsController` pelo `git mv`) |
+| `database/migrations/2026_10_15_120000_add_request_fields_to_leads_table.php` | `leads.request_status` e `leads.source_page` (só acrescenta) |
+| `resources/js/pages/solicitacoes/index.tsx`, `show.tsx` | Telas de Solicitações |
+| `resources/js/pages/settings/whatsapp.tsx` | Tela do WhatsApp do atendimento |
+| `resources/js/lib/admin-navigation.ts` | Menu do painel, compartilhado entre a sidebar e o header |
+| `resources/js/lib/site-requests.ts` | Tipos, cores e datas das situações |
+| `resources/js/data/hero-images.ts` | Catálogo das fotos dos heroes (alt, foco, srcset) |
+| `public/images/site/heroes/*` | 12 fotos × (640/1280/1920 em AVIF e WebP + OG JPG 1200×630) = 84 arquivos, 2,6 MB no total |
+| `docs/imagens-do-site.md` | Origem, autor e licença de cada foto, além de como trocar |
+| `tests/Feature/SiteRequestTest.php` | Substitui o `LeadManagementTest` (pelo `git mv`) |
+| `tests/Feature/AdminPanelTest.php` | Substitui o `DashboardTest` (pelo `git mv`) |
+
+## 2. Arquivos alterados
+
+- **Backend:** `ContactController` (situação, página de origem, deduplicação só entre solicitações do site e vínculo com o WhatsApp), `PublicContactRequest` (`source_page` saneado), `Lead` (escopo `siteRequests`, `REQUEST_STATUSES`, relação `whatsappConversations`; saíram score, prioridade, funil e motivo de perda), `WhatsappInbox` (vínculo só com solicitações do site e o novo `linkSiteRequest`), `WhatsappInboxController`, `CompanyWhatsappSettings` (recebeu o `normalizeNumber`), `CompanyWhatsappRequest`, `WahaService` (mensagem sem "CRM"), `LoginResponse`/`RegisterResponse` e `config/fortify.php` (abrem `/atendimento`), `ContactFormReceived` com o e-mail (link para a solicitação e página de origem), `PublicPages`, `Seo`, `SiteController`, `PublicBlogController` (og:image), `LeadActivity` (comentário), `config/services.php` (saiu o bloco `n8n`), `.env.example` (saíram as `N8N_*`; o token legado foi documentado), `routes/web.php`, `routes/settings.php` e `routes/api.php` (comentário de legado), além de `resources/views/app.blade.php` (`og:image:alt`).
+- **Frontend:** `app-sidebar`, `app-header`, `nav-main` (rótulo "Painel" e item ativo em sub-rotas), `layouts/settings/layout` (item "WhatsApp"), `company-whatsapp-connection` (rotas novas), `atendimento/index` (links para a solicitação e para as configurações), `site/blocks` (`HeroBackdrop` e `PageHero` com `image`), `site-header` (link da conta para `/atendimento`, tolerante à ausência de `auth` no 404), `site-layout` e `blog-public-layout` (página de origem; o blog passou a usar o cabeçalho institucional), `seo-head`, `lib/contact` (rastreia a página de origem), `data/site` (`heroImage`), e as páginas `welcome`, `servico`, `sistemas`, `sistema`, `sobre`, `contato` e `errors/404`.
+- **Testes:** `CompanyWhatsappSettingsTest`, `CompanyWhatsappConnectionTest`, `WhatsappInboxTest`, `PublicSiteTest`, `BlogTest` e os 4 testes de `Auth/*` (rota de destino).
+- **Outros:** `INSTRUCOES_ABRASILSISTEMAS.md` ganhou um aviso de que o conteúdo é histórico, e `public/build/*` foi regenerado pelo build (é versionado).
+
+## 3. Arquivos removidos
+
+`DashboardController`, `LeadController`, `LeadActivityController`, `LeadWhatsappController`, `Requests/Leads/*` (4), `LeadWhatsappService`, `LeadWhatsappException`, `pages/dashboard.tsx`, `pages/leads/*` (4), `pages/settings/leads.tsx`, `send-lead-whatsapp-dialog.tsx`, `lib/lead-whatsapp-messages.ts`, `LeadHistoryWhatsappStatusTest`, `LeadWhatsappSendTest`, `extension/ab-prospect-firefox/` (19 arquivos; o VetorLeads tem a própria cópia, na v1.4.0) e `public/files/ab-prospect-firefox-v1.3.0.xpi`.
+
+## 4. Rotas removidas (todas respondem 404, o que foi conferido por teste e por `curl`)
+
+`GET /dashboard`, `GET|POST /leads`, `GET /leads/create`, `GET /leads/{lead}/edit`, `PUT|PATCH|DELETE /leads/{lead}`, `PATCH /leads/{lead}/status`, `PATCH /leads/bulk`, `POST /leads/import`, `POST /leads/{lead}/activities`, `POST /leads/{lead}/whatsapp`, `GET|PUT /settings/leads`, `PUT /settings/leads/whatsapp`, `/settings/leads/whatsapp/{status,connect,qr,disconnect}` e `/files/ab-prospect-firefox-v1.3.0.xpi`.
+
+## 5. Rotas mantidas e novas
+
+- **Novas:** `GET /solicitacoes`, `GET /solicitacoes/{id}`, `PATCH /solicitacoes/{id}/situacao`, `GET|PUT /settings/whatsapp` e `/settings/whatsapp/{status,connect,qr,disconnect}`, todas restritas a admin.
+- **Mantidas:** todo o site público, o blog, `/atendimento` (lista e resposta), `/admin` (agora redireciona para `/atendimento`), `/area-restrita`, usuários, portfólio, depoimentos, blog admin, perfil, segurança e aparência, além de `POST /api/whatsapp/waha/webhook`.
+- **Mantidas como legado** (seção 9): `POST /api/prospects/import`, `POST /api/prospects/{lead}/whatsapp/log` e `PATCH /api/whatsapp/messages/{id}/status`.
+
+## 6. Área Solicitações
+
+- Mostra **só** os leads com `source = site`. Prospects importados (Google Maps, CSV, extensão) continuam no banco, mas não aparecem nem abrem: o acesso direto pelo ID dá 404.
+- **Lista:** data, nome, empresa, WhatsApp ou e-mail, tipo de projeto, página de origem, trecho da mensagem, situação e um selo "WhatsApp" quando há conversa vinculada. Tem abas por situação com contadores (Abertas, que é a padrão, Nova, Em atendimento, Respondida, Concluída, Arquivada e Todas), busca por nome, empresa, e-mail ou telefone, e paginação de 20 em 20.
+- **Detalhe:** a mensagem, os dados (telefone, WhatsApp, e-mail, tipo, página de origem, recebida em, último contato), os botões de situação (Nova, Em atendimento, Respondida, Concluída, Arquivar), o histórico somente leitura (contatos repetidos e registros do tempo do CRM) e o link para a conversa em `/atendimento`.
+- **Situação:** fica numa coluna nova, `request_status`, para não misturar com o status comercial antigo, que permanece intacto no banco como histórico. A migration preencheu as solicitações já existentes a partir do status que elas tinham: `new` virou Nova; `contacted`, `interested` e `meeting` viraram Em atendimento; `converted` virou Concluída; e `lost` virou Arquivada. Validei up → down → up num SQLite com dados: as linhas foram preservadas, só as do site receberam situação, e o `down` remove apenas as 2 colunas.
+- **Formulário do site:** grava `request_status = new` e a página de onde a pessoa veio (lida do `sessionStorage`; um valor inválido é descartado sem recusar o contato). Se a mesma pessoa escrever de novo, pelo mesmo e-mail ou WhatsApp, a solicitação **reabre como Nova** e a mensagem é anexada ao histórico. A deduplicação agora procura **só entre solicitações do site**: antes, um contato com o e-mail de um prospect importado era "engolido" pelo prospect e não apareceria em Solicitações.
+- **Vínculo com o WhatsApp:** a conversa nova só se liga a uma solicitação do site, nunca a um prospect. Quando a pessoa já tinha falado pelo WhatsApp antes de preencher o formulário, a conversa da sessão do atendimento com o mesmo número é vinculada à solicitação.
+- O e-mail para a equipe agora leva à solicitação e mostra a página de origem.
+
+## 7. Menu administrativo
+
+**Atendimento · Solicitações · Blog · Portfólio · Depoimentos · Usuários · Configurações.** Saíram Dashboard e Prospecção, e "Trabalhos recentes" passou a se chamar Portfólio. O mesmo menu é usado na sidebar e no header (`lib/admin-navigation.ts`). Em Configurações, o item "Leads" virou **WhatsApp** (número, provedor, sessão, status, QR Code, conectar e desconectar), com o estado do webhook ligado ou desligado e a URL e os eventos a configurar no WAHA. Nenhum segredo vai ao navegador (há teste). Depois do login, o admin cai em `/atendimento`.
+
+## 8. Referências ao CRM que permaneceram, e por quê
+
+| O quê | Por quê |
+|---|---|
+| Tabelas `leads` e `lead_activities`, colunas comerciais (`status`, `lost_reason`, `next_follow_up_at`, campos do Maps) | O correio proíbe apagar dados e fazer drop. Ficam como histórico e para uma eventual exportação ao VetorLeads |
+| Modelo `Lead` (nome) e `LeadActivity` | São as tabelas das solicitações; renomear exigiria uma migration destrutiva |
+| 3 rotas `/api/*` legadas, `EnsureValidProspectToken`, `Setting::PROSPECT_API_TOKEN`, `AB_PROSPECT_API_TOKEN` | Integrações externas ainda podem apontar para o site (seção 9) |
+| "CRM" e "lead" nos textos das páginas de serviço | São serviços vendidos aos clientes (integrar o CRM do cliente, landing page que envia leads), conteúdo aprovado na WEB-01 |
+| `INSTRUCOES_ABRASILSISTEMAS.md` | Documento histórico; ganhou um aviso no topo |
+
+## 9. Integrações n8n e WAHA encontradas
+
+Não há acesso ao n8n nem ao WAHA neste ambiente, e o correio pede para não mexer em produção. A tabela junta o código, o `docker-compose` e o que os relatórios anteriores registraram.
+
+| Integração | Origem | Destino atual | Ainda usada? | Destino correto |
+|---|---|---|---|---|
+| Extensão AB Prospect (v1.3.0 no site, v1.4.0 no VetorLeads) | Navegador do usuário | `https://abrasilsistemas.com.br/api/prospects/import` (padrão no `config.js` das **duas** versões) | Provável. Depende da URL salva em cada navegador | **VetorLeads.** Mudar o `crmUrl` padrão da extensão e publicar uma nova versão |
+| `CRM ABrasil - Enviar WhatsApp` (`VWvN7AWQc88fgSdV`, ativo) | Antes: Laravel do site, `POST /leads/{lead}/whatsapp` | WAHA `sendText` (sessão fixa `vetoros1-1` no nó "Edit Fields") | **Não pelo site:** o botão e a rota foram removidos. O VetorLeads pode usar o mesmo webhook | VetorLeads |
+| Log do envio (dentro do workflow acima) | n8n | `POST /api/prospects/{lead}/whatsapp/log` em um host **não confirmado** (site ou VetorLeads) | Só se o workflow ainda apontar para o site | VetorLeads |
+| ACK de envio (`waha-message-status`) | WAHA → n8n | `PATCH /api/whatsapp/messages/{id}/status` em um host não confirmado | Idem | VetorLeads |
+| `WAHA - Mensagens Recebidas → CRM` (`waha-message-received`) | WAHA → n8n | Inbound do VetorLeads (o site nunca teve esse endpoint) | Sim, pelo VetorLeads | VetorLeads (sem mudança) |
+| Atendimento do site | WAHA (sessão do site) | `POST /api/whatsapp/waha/webhook` (direto, HMAC) | Pronto; falta configurar em produção | Site (correto) |
+
+## 10. O que precisa mudar no VetorLeads (e no n8n)
+
+1. **Extensão AB Prospect:** trocar o `crmUrl` padrão (`config.js`) e o placeholder do `popup.html` para a URL do VetorLeads, publicar uma nova versão e pedir aos usuários que confiram a URL salva nas configurações da extensão.
+2. **n8n:** apontar o "Registrar envio no CRM" (log) e o workflow de ACK para o host do VetorLeads, e conferir que o `crm/send-whatsapp` só é chamado pelo VetorLeads.
+3. **Sessão comercial:** o VetorLeads continua com a sessão comercial (`vetoros1-1`); o site passa a usar a dele (`abrasil-atendimento`).
+4. Depois dos itens 1 e 2: avisar para que eu remova do site as 3 rotas `/api/*` legadas, o middleware e o token.
+5. **Opcional:** exportar `leads` e `lead_activities` comerciais (com `source` diferente de `site`) para o VetorLeads, com conferência de duplicados.
+
+## 11. Imagens institucionais (complemento)
+
+- **12 fotos, uma por página e sem repetição** (há teste): Home (equipe em escritório de tecnologia), Sistemas prontos (sistema de gestão no notebook), Sob medida (desenvolvedores com código nos monitores), Automação (operação em depósito com notebook), Integrações (cabos de rede em painel), Aplicativos (app no smartphone), Sites (site aberto em notebook), Landing pages (painel de métricas), VetorOS (técnicos em bancada de assistência), VetorPet (cão e ração, segmento pet), Sobre (colegas analisando um projeto) e Contato (profissional atendendo ao telefone).
+- **Licença:** todas vêm do Unsplash, sob a Licença Unsplash (uso comercial livre, sem atribuição obrigatória). O conteúdo pago Unsplash+ foi excluído. Autor e link de cada uma estão em `docs/imagens-do-site.md`.
+- **Visual:** a foto fica ao fundo do hero, sob um véu navy (uniforme no celular e mais aberto à direita no desktop). Os títulos e CTAs continuam brancos sobre o navy, e o visual aprovado da WEB-01 (diagramas, captura do VetorOS) continua à direita. O ponto de foco foi ajustado por foto para não cortar rostos.
+- **Desempenho:** `<picture>` com AVIF e WebP, `srcset` de 640, 1280 e 1920 com `sizes="100vw"` e dimensões explícitas. **Só a foto do hero** tem `fetchpriority="high"`, e as capturas de produto deixaram de ser prioritárias. No navegador, a 1440 px carrega `*-1920.avif` (15 a 116 KB) e a 390 px carrega `*-640.avif` (5 a 31 KB).
+- **SEO:** `og:image` próprio por página (JPG 1200×630) e `og:image:alt` com o texto alternativo (no HTML inicial e nas navegações do Inertia). Um post do blog com capa própria não herda o alt padrão.
+- **Capturas reais:** a do VetorOS continua na home, em Sistemas prontos e na página do produto. **O VetorPet não tem captura real disponível** (nem neste repositório nem no projeto `vetorpet`), então a página usa só a foto do segmento; nenhuma tela foi inventada.
+- **Validado** a 1440 e a 390 px em todas as 12 páginas: sem rolagem horizontal, sem erros de console, com o texto legível.
+
+## 12. Pontos adicionais da auditoria
+
+- **Blog:** o cabeçalho antigo (pílulas ciano, "Cadastre-se") foi trocado pelo cabeçalho institucional, sem criar CMS.
+- **404:** agora usa o layout institucional (cabeçalho, hero navy, atalhos para as soluções e o rodapé). O cabeçalho foi ajustado para funcionar sem as props compartilhadas, que faltam no 404.
+- **Painel:** "Platform" virou "Painel", "Trabalhos recentes" virou "Portfólio", e "Configurações de leads" virou "WhatsApp do atendimento". O link "Minha conta" do site leva a `/atendimento`, e o diálogo de desconexão não fala mais em CRM.
+
+## 13. Testes executados
+
+Ambiente: PHP 8.4 local com o SQLite em memória do `phpunit.xml` e `Http::preventStrayRequests()`. Nenhuma chamada real ao WAHA ou ao n8n. A validação visual usou um servidor local com um SQLite descartável.
+
+| Verificação | Resultado |
+|---|---|
+| Suíte Laravel completa | ✅ **219/219** (1.368 asserções) |
+| `SiteRequestTest` (20) | ✅ só aparece `source=site`; filtros e contadores; busca; detalhe com histórico e conversa; prospect dá 404 (ver e alterar); as 5 situações; situação inválida é recusada; status comercial, notas e atividades preservados; formulário grava a origem; origem inválida é descartada; repetição reabre a solicitação; contato não se funde a prospect com o mesmo e-mail; vínculo com conversa anterior, só na sessão do atendimento |
+| `AdminPanelTest` (24) | ✅ visitante é redirecionado ao login; leitor recebe 403 em atendimento, solicitações e configurações; `/admin` e `/area-restrita` levam a `/atendimento`; **16 rotas do CRM retornam 404** sem apagar dados; o `.xpi` e a `extension/` não existem mais; as APIs legadas respondem 401 sem token |
+| `WhatsappInboxTest` (16) | ✅ atendimento intacto, além de um caso novo: conversa nunca se liga a prospect. **Isolamento entre sessões** coberto (outra sessão é ignorada no webhook, não aparece na lista e não pode ser respondida) |
+| `CompanyWhatsappSettingsTest` (18) e `CompanyWhatsappConnectionTest` (28) | ✅ nas rotas novas; **nenhum segredo** (API key, HMAC) na página; rotas antigas retornam 404 |
+| `PublicSiteTest` (36) | ✅ SEO de todas as páginas; og:image e alt por página; os 84 arquivos de imagem existem e têm menos de 250 KB; nenhuma foto repetida; alt igual no PHP e no TS; 404 no layout novo |
+| Migration up → down → up (SQLite com dados) | ✅ |
+| `npm run build` | ✅ |
+| `tsc --noEmit` | ✅ 0 erros no código do projeto (continuam os 21 dos arquivos gerados pelo Wayfinder, já registrados na WEB-01) |
+| ESLint e Prettier (arquivos alterados) | ✅ |
+| Pint (PHP alterados) | ✅ |
+| PHPStan (fora do correio; rodado nos arquivos alterados) | ⚠️ sobram avisos do mesmo tipo dos já existentes (relações sem generics, `account_id`); o único que era deste trabalho foi corrigido |
+| Navegador (Chromium, 1440 e 390 px) | ✅ 12 páginas públicas, blog e 404; login → `/atendimento`; Solicitações (lista, detalhe, troca de situação pela tela); Configurações → WhatsApp |
+| **MySQL 8.4** | ⚠️ não executado (sem Docker aqui). A migration usa só tipos padrão; vale rodar no staging |
+
+## 14. Pendências para produção (nada executado)
+
+1. **Deploy:** build e `php artisan migrate` (acrescenta `request_status` e `source_page` e preenche as solicitações antigas). Antes, um backup do banco.
+2. **Sessão `abrasil-atendimento`:** criar no WAHA, ler o QR Code em Configurações → WhatsApp e salvá-la ali (hoje a configuração aponta para `vetoros1-1`, compartilhada com o VetorLeads). Confirmar que o número da sessão é o número exibido no site.
+3. **Webhook da sessão:** `POST https://abrasilsistemas.com.br/api/whatsapp/waha/webhook`, com os eventos `message`, `message.any` e `message.ack`, e `hmac.key` igual a `WAHA_WEBHOOK_HMAC_KEY` (acrescentar ao `docker-compose.yml` e ao `.env` do infra-abrasil). O `PUT` da sessão substitui a lista de webhooks.
+4. **Extensão e n8n:** as mudanças da seção 10; só depois remover as APIs legadas do site.
+5. **VetorPet:** trazer uma captura real do sistema para a página do produto.
+6. **Commit:** aguarda sua autorização. O diff inclui `public/build/*`, que é versionado.
+
+---
+
 # Execução de `correio.md`: ABRASIL-WEB-02, separação de responsabilidades e atendimento WhatsApp
 
 Data: 2026-10-14.
