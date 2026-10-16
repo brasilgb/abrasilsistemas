@@ -46,7 +46,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['whatsapp_conversation_id', 'sent_at']);
-            $table->index(['whatsapp_conversation_id', 'direction', 'read_at']);
+            // Nome explícito: o gerado passa do limite de 64 caracteres do MySQL.
+            $table->index(['whatsapp_conversation_id', 'direction', 'read_at'], 'whatsapp_messages_conversation_unread_index');
         });
     }
 
