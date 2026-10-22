@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Seo\SeoSettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -47,6 +48,13 @@ class HandleInertiaRequests extends Middleware
                 'whatsappDisplay' => config('contact.whatsapp_display'),
                 'email' => config('contact.email'),
             ],
+            // GA4 (SEO → Integrações). O site só carrega a tag após o consentimento de cookies.
+            'analytics' => function () {
+                $settings = app(SeoSettings::class);
+                $id = (string) $settings->get('ga4_measurement_id');
+
+                return preg_match('/^G-[A-Z0-9]{4,16}$/', $id) ? ['measurementId' => $id, 'events' => $settings->ga4Events()] : null;
+            },
         ];
     }
 }

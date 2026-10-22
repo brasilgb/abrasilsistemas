@@ -1,6 +1,11 @@
 <?php
 
 return [
+    // Optional client installation: copy the public key from the tenant's Chat do Site settings.
+    'vetorchat' => [
+        'widget_key' => env('VETORCHAT_WIDGET_KEY'),
+        'script_url' => env('VETORCHAT_SCRIPT_URL', 'https://vetorleads.com.br/widget.js'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

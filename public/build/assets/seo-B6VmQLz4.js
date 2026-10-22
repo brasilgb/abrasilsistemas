@@ -1,0 +1,1 @@
+var e={queued:`Na fila`,running:`Em execução`,completed:`Concluída`,failed:`Falhou`};export{e as t};

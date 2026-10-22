@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\PublicContactRequest;
 use App\Mail\ContactFormReceived;
 use App\Models\Lead;
+use App\Services\Seo\StructuredData;
 use App\Services\WhatsappInbox;
-use App\Support\PublicPages;
 use App\Support\Seo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,16 +25,7 @@ class ContactController extends Controller
         return Inertia::render('contato', [
             'projectTypes' => Lead::CONTACT_PROJECT_TYPES,
             'selectedType' => is_string($selected) && isset(Lead::CONTACT_PROJECT_TYPES[$selected]) ? $selected : null,
-            'seo' => Seo::tags([
-                'title' => 'Fale sobre o seu projeto | ABrasil Sistemas',
-                'description' => 'Conte o que sua empresa precisa: sistema pronto ou sob medida, site, landing page, aplicativo, automação ou integração. Resposta direta da equipe.',
-                'canonical' => url('/contato'),
-                ...PublicPages::heroSeo('contato'),
-                'jsonLd' => [
-                    '@context' => 'https://schema.org',
-                    '@graph' => [PublicPages::organization(), ['@type' => 'ContactPage', 'url' => url('/contato')]],
-                ],
-            ]),
+            'seo' => Seo::page('contato', ['jsonLd' => app(StructuredData::class)->forPage('contato')]),
         ]);
     }
 

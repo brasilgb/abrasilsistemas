@@ -28,6 +28,10 @@ A atribuição abaixo é um registro interno. A licença não obriga a exibir cr
 | `vetorpet` | VetorPet | Ayla Verschueren | [jnq52JjkLAg](https://unsplash.com/photos/a-brown-and-white-dog-sitting-next-to-a-bowl-of-food-jnq52JjkLAg) | 4608×3072 |
 | `sobre` | Sobre | Vitaly Gariev | [tp_SwN8pC0A](https://unsplash.com/photos/two-colleagues-collaborating-on-a-laptop-at-a-desk-tp_SwN8pC0A) | 3840×2160 |
 | `contato` | Contato | Vitaly Gariev | [L0rCfOSyUlQ](https://unsplash.com/photos/man-talking-on-phone-in-workspace-L0rCfOSyUlQ) | 3840×2160 |
+| `seo` | SEO técnico e otimização de sites | Luke Chesser | [JKUTrJ4vK00](https://unsplash.com/photos/graphs-of-performance-analytics-on-a-laptop-screen-JKUTrJ4vK00) | 4810×3207 |
+
+A foto `seo` foi acrescentada na ABRASIL-SEO-FINAL-01, com as variantes geradas por PHP GD (mesmos
+tamanhos e qualidades das demais).
 
 Capturas reais de produto: `public/images/dashboard-vetoros.webp` (painel do VetorOS, já usado
 desde a ABRASIL-WEB-01) continua na home, em Sistemas prontos e na página do VetorOS.
@@ -53,6 +57,10 @@ Texto alternativo: `App\Support\PublicPages::HERO_IMAGES` (servidor, `og:image:a
 
 ## Pendências
 
+- **`seo`:** a tela da foto é um painel genérico de desempenho (tempo de carregamento × taxa de
+  rejeição), com números de demonstração do fotógrafo e sem marca legível. Esses números não são
+  resultados da ABrasil e, sob o véu navy, ficam pouco legíveis. Se incomodarem, troque a foto seguindo
+  "Como trocar uma foto".
 - **VetorPet sem captura real de tela.** Não há print do sistema no repositório (nem no projeto
   `vetorpet`). A página do produto usa só a foto do segmento; nenhuma tela foi inventada. Quando
   houver um print real, ele entra como `screenshot` do produto em `resources/js/data/site.ts`,

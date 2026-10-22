@@ -19,7 +19,8 @@ export type HeroImageKey =
     | 'vetoros'
     | 'vetorpet'
     | 'sobre'
-    | 'contato';
+    | 'contato'
+    | 'seo';
 
 export type HeroImage = {
     key: HeroImageKey;
@@ -90,6 +91,11 @@ export const heroImages: Record<HeroImageKey, HeroImage> = {
         key: 'contato',
         alt: 'Profissional conversando ao telefone com um cliente em frente ao notebook',
         position: '60% 15%',
+    },
+    seo: {
+        key: 'seo',
+        alt: 'Notebook exibindo gráficos de desempenho de um site, com tempo de carregamento e taxa de rejeição',
+        position: 'center',
     },
 };
 

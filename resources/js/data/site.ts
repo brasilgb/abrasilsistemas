@@ -12,7 +12,13 @@
 import type { HeroImageKey } from '@/data/hero-images';
 
 export type VisualKind =
-    'system' | 'site' | 'landing' | 'app' | 'automation' | 'integration';
+    | 'system'
+    | 'site'
+    | 'landing'
+    | 'app'
+    | 'automation'
+    | 'integration'
+    | 'seo';
 
 export type Service = {
     slug: string;
@@ -38,6 +44,8 @@ export type Service = {
     steps?: { title: string; description: string }[];
     faq: { question: string; answer: string }[];
     related: string[];
+    /** Projeto web público: a página mostra o bloco "SEO técnico incluído". */
+    seoIncluded?: boolean;
 };
 
 export type Product = {
@@ -200,6 +208,7 @@ export const services: Service[] = [
             'automacao-de-processos',
             'desenvolvimento-de-aplicativos',
         ],
+        seoIncluded: true,
     },
     {
         slug: 'automacao-de-processos',
@@ -585,9 +594,10 @@ export const services: Service[] = [
         ],
         related: [
             'criacao-de-landing-pages',
-            'automacao-de-processos',
+            'seo-tecnico-e-otimizacao-de-sites',
             'integracao-de-sistemas-e-apis',
         ],
+        seoIncluded: true,
     },
     {
         slug: 'criacao-de-landing-pages',
@@ -679,11 +689,230 @@ export const services: Service[] = [
         ],
         related: [
             'desenvolvimento-de-sites-para-empresas',
-            'automacao-de-processos',
+            'seo-tecnico-e-otimizacao-de-sites',
+            'integracao-de-sistemas-e-apis',
+        ],
+        seoIncluded: true,
+    },
+    {
+        slug: 'seo-tecnico-e-otimizacao-de-sites',
+        label: 'SEO e performance',
+        summary:
+            'Auditoria, correções técnicas e acompanhamento para sites e aplicações que já estão no ar serem encontrados nas buscas.',
+        contactType: 'seo',
+        visual: 'seo',
+        heroImage: 'seo',
+        hero: {
+            eyebrow: 'SEO técnico, performance e otimização digital',
+            title: 'Seu site encontrado por quem já procura o que a sua empresa faz.',
+            lead: 'Auditamos, corrigimos e acompanhamos sites e aplicações web que já estão no ar: estrutura técnica, velocidade, dados estruturados e conteúdo, para que os buscadores entendam a empresa e o visitante encontre o caminho até o contato.',
+        },
+        problems: {
+            title: 'Sinais de que o site precisa de SEO',
+            items: [
+                'A empresa não aparece quando alguém pesquisa o próprio serviço',
+                'O site é lento, principalmente no celular',
+                'Páginas importantes não aparecem no Google',
+                'Títulos e descrições repetidos ou gerados automaticamente',
+                'Mudanças de endereço deixaram links quebrados',
+                'Não há dados para saber de onde vêm as visitas',
+            ],
+        },
+        offerings: [
+            {
+                title: 'Auditoria técnica',
+                description:
+                    'Indexação, canonical, sitemap, robots.txt, redirecionamentos, links quebrados e metadados de cada página.',
+            },
+            {
+                title: 'Performance',
+                description:
+                    'Carregamento no celular, imagens, scripts e os indicadores de experiência que o Google mede.',
+            },
+            {
+                title: 'Dados estruturados',
+                description:
+                    'Marcação schema.org pertinente à empresa, aos serviços e aos artigos, só com dados reais.',
+            },
+            {
+                title: 'Conteúdo e estrutura',
+                description:
+                    'Hierarquia de títulos, links internos, intenção de busca e pautas para o blog.',
+            },
+            {
+                title: 'Search Console e Analytics',
+                description:
+                    'Configuração e leitura dos dados oficiais de busca e de visitas, respeitando o consentimento de cookies.',
+            },
+            {
+                title: 'Acompanhamento',
+                description:
+                    'Relatórios periódicos, recomendações e correções conforme o site e a concorrência mudam.',
+            },
+        ],
+        outcomes: [
+            'Páginas certas indexadas, áreas privadas fora do índice',
+            'Site mais rápido para o visitante e para o buscador',
+            'Decisões baseadas nos dados do Search Console',
+            'Mais chances de aparecer para quem procura o serviço',
+        ],
+        faq: [],
+        related: [
+            'desenvolvimento-de-sistemas',
+            'desenvolvimento-de-sites-para-empresas',
             'integracao-de-sistemas-e-apis',
         ],
     },
 ];
+
+/**
+ * SEO técnico que acompanha todo projeto web público da ABrasil (sites, landing pages,
+ * portais e sistemas com páginas públicas). Não inclui conteúdo contínuo, monitoramento
+ * nem consultoria: isso é o serviço de SEO profissional.
+ */
+export const includedSeo = {
+    title: 'SEO técnico incluído em todos os nossos projetos web.',
+    description:
+        'Sites, landing pages, portais e sistemas com páginas públicas já saem preparados para os mecanismos de busca, sem custo à parte.',
+    items: [
+        'Estrutura HTML semântica',
+        'Metadados individualizados por página',
+        'Sitemap XML',
+        'URLs amigáveis',
+        'Canonical',
+        'Dados estruturados pertinentes',
+        'Otimização técnica de carregamento',
+        'Configuração de indexabilidade',
+        'Compatibilidade com mecanismos de busca',
+    ],
+    privacy:
+        'Nos sistemas web, só as páginas públicas relevantes são indexadas. Painéis, áreas autenticadas, dados de clientes e informações comerciais privadas ficam fora dos buscadores.',
+    notIncluded:
+        'Produção contínua de conteúdo, monitoramento de posições e consultoria fazem parte do serviço de SEO profissional, contratado à parte.',
+};
+
+/** Landing page do serviço de SEO profissional (/seo-tecnico-e-otimizacao-de-sites). */
+export const seoOffer = {
+    benefits: [
+        {
+            title: 'Visitas de quem já tem a necessidade',
+            description:
+                'A busca orgânica traz pessoas que procuram exatamente o que a empresa oferece, no momento em que estão decidindo.',
+        },
+        {
+            title: 'Um canal que não para quando a verba acaba',
+            description:
+                'Diferente do anúncio, a página bem posicionada continua recebendo visitas sem custo por clique.',
+        },
+        {
+            title: 'Site mais rápido e confiável',
+            description:
+                'As correções técnicas melhoram a experiência de quem visita, não só a leitura dos buscadores.',
+        },
+        {
+            title: 'Decisão com dados oficiais',
+            description:
+                'Search Console e Analytics mostram o que as pessoas pesquisam, quais páginas recebem visitas e o que precisa de atenção.',
+        },
+    ],
+    modalities: [
+        {
+            name: 'SEO Essencial',
+            audience:
+                'Para empresas que já têm site e querem a base técnica correta.',
+            description:
+                'Auditoria e implantação técnica do que impede o site de ser bem lido pelos buscadores.',
+            items: [
+                'Auditoria técnica completa',
+                'Metadados, canonical e indexabilidade',
+                'Sitemap XML e robots.txt',
+                'Redirecionamentos e links quebrados',
+                'Configuração do Search Console',
+            ],
+        },
+        {
+            name: 'SEO Profissional',
+            audience:
+                'Para sites e aplicações em que a busca orgânica é canal de vendas.',
+            description:
+                'Auditoria aprofundada e correções técnicas, de performance e editoriais.',
+            items: [
+                'Tudo do SEO Essencial',
+                'Performance e Core Web Vitals',
+                'Dados estruturados (schema.org)',
+                'Estrutura de conteúdo e links internos',
+                'Plano de palavras-chave por intenção',
+            ],
+            highlight: true,
+        },
+        {
+            name: 'SEO Gerenciado',
+            audience: 'Para quem quer acompanhamento contínuo.',
+            description:
+                'Acompanhamento recorrente do desempenho orgânico, com melhorias contínuas.',
+            items: [
+                'Relatórios periódicos com dados oficiais',
+                'Recomendações e correções contínuas',
+                'Pautas e revisão de conteúdo',
+                'Monitoramento de indexação e erros',
+                'Acompanhamento após mudanças no site',
+            ],
+        },
+    ],
+    steps: [
+        {
+            title: 'Solicitação',
+            description:
+                'Você informa o endereço do site e o que espera da busca orgânica.',
+        },
+        {
+            title: 'Análise inicial',
+            description:
+                'Avaliamos o site e indicamos os problemas mais relevantes e a modalidade adequada.',
+        },
+        {
+            title: 'Proposta',
+            description:
+                'Escopo, prazos e entregas definidos conforme o tamanho e a tecnologia do site.',
+        },
+        {
+            title: 'Correções',
+            description:
+                'Implantamos as correções técnicas ou entregamos o plano para a sua equipe.',
+        },
+        {
+            title: 'Acompanhamento',
+            description:
+                'Medimos pelos dados do Search Console e ajustamos o que for preciso.',
+        },
+    ],
+    faq: [
+        {
+            question: 'Vocês garantem a primeira posição no Google?',
+            answer: 'Não. Ninguém controla o ranqueamento do Google, e quem garante posição está prometendo o que não pode cumprir. O que entregamos é um site tecnicamente correto, rápido e bem estruturado, além de acompanhamento com dados oficiais.',
+        },
+        {
+            question: 'Em quanto tempo aparecem resultados?',
+            answer: 'Correções técnicas costumam ser percebidas pelos buscadores em algumas semanas, conforme o Google volta a rastrear as páginas. O ganho de visitas orgânicas depende da concorrência, do conteúdo e da autoridade do site, e normalmente aparece ao longo de meses.',
+        },
+        {
+            question: 'Meu site não foi feito pela ABrasil. Vocês atendem?',
+            answer: 'Sim. A análise inicial verifica a tecnologia do site (WordPress, plataformas de loja, sistemas próprios) e indica o que pode ser corrigido e como.',
+        },
+        {
+            question: 'Qual a diferença entre SEO e anúncios pagos?',
+            answer: 'O anúncio aparece enquanto há verba e cobra por clique. O SEO trabalha a presença orgânica, que leva mais tempo para crescer, mas não depende de pagamento por visita. Os dois podem ser usados juntos.',
+        },
+        {
+            question: 'Quanto custa?',
+            answer: 'Depende do tamanho do site, da tecnologia e da modalidade. Depois da análise inicial, enviamos uma proposta com escopo e prazos definidos.',
+        },
+        {
+            question: 'Os sites que vocês desenvolvem já vêm com SEO?',
+            answer: 'Sim. Todo projeto web público da ABrasil sai com SEO técnico incluído. O SEO profissional é para sites que já existem e para quem quer acompanhamento contínuo.',
+        },
+    ],
+};
 
 export const products: Product[] = [
     {

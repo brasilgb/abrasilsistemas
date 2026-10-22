@@ -84,13 +84,32 @@
                     <meta name="twitter:card" content="summary_large_image" data-inertia="twitter:card">
                     <meta name="twitter:image" content="{{ $seo['ogImage'] }}" data-inertia="twitter:image">
                 @endif
+                <meta name="twitter:title" content="{{ $seo['twitterTitle'] ?? $seo['ogTitle'] ?? $seo['title'] ?? config('app.name') }}" data-inertia="twitter:title">
+                @if (! empty($seo['twitterDescription'] ?? $seo['ogDescription'] ?? $seo['description'] ?? null))
+                    <meta name="twitter:description" content="{{ $seo['twitterDescription'] ?? $seo['ogDescription'] ?? $seo['description'] }}" data-inertia="twitter:description">
+                @endif
             @endif
             @if (! empty($seo['jsonLd']))
                 <script type="application/ld+json" data-inertia="json-ld">{!! json_encode($seo['jsonLd'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) !!}</script>
             @endif
         </x-inertia::head>
+        @if (! empty($seo))
+            {{-- Verificação de propriedade (SEO → Integrações). Valores validados no painel e escapados aqui. --}}
+            @php $seoSettings = app(\App\Services\Seo\SeoSettings::class); @endphp
+            @if ($seoSettings->get('google_verification'))
+                <meta name="google-site-verification" content="{{ $seoSettings->get('google_verification') }}">
+            @endif
+            @if ($seoSettings->get('bing_verification'))
+                <meta name="msvalidate.01" content="{{ $seoSettings->get('bing_verification') }}">
+            @endif
+        @endif
     </head>
     <body class="font-sans antialiased">
         <x-inertia::app />
+        @if (request()->routeIs('home', 'sistemas*', 'servicos*', 'company-websites', 'sobre', 'contato', 'blog.*', 'legal.*')
+            && preg_match('/^[A-Za-z0-9]{48}$/', (string) config('services.vetorchat.widget_key'))
+            && str_starts_with((string) config('services.vetorchat.script_url'), 'https://'))
+            <script src="{{ config('services.vetorchat.script_url') }}" data-widget-key="{{ config('services.vetorchat.widget_key') }}" data-product="abrasil" data-position="left" data-z-index="50" async></script>
+        @endif
     </body>
 </html>

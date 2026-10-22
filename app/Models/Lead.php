@@ -74,6 +74,7 @@ class Lead extends Model
         'aplicativo' => 'Aplicativo',
         'integracao' => 'Integração / API',
         'automacao' => 'Automação de processos',
+        'seo' => 'SEO Profissional',
         'outro' => 'Outro',
     ];
 
@@ -90,6 +91,7 @@ class Lead extends Model
         'aplicativo' => 'Aplicativo',
         'automacao' => 'Automação',
         'integracao' => 'Integração / API',
+        'seo' => 'SEO Profissional',
         'outro' => 'Outro',
     ];
 

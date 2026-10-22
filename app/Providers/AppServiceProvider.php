@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Seo\SeoSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Uma leitura das configurações de SEO por requisição (ou job).
+        $this->app->scoped(SeoSettings::class);
     }
 
     /**

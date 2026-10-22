@@ -9,6 +9,7 @@ import {
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
+import { SeoIncluded } from '@/components/site/seo-included';
 import { SiteLayout } from '@/components/site/site-layout';
 import { ServiceVisual } from '@/components/site/visuals';
 import { contactHref, processSteps, products, services } from '@/data/site';
@@ -19,7 +20,7 @@ export default function Servicos() {
             <PageHero
                 eyebrow="Soluções"
                 title="Da necessidade da empresa à solução em produção."
-                lead="Sistemas, aplicativos, automações, integrações, sites e landing pages — desenvolvidos a partir do problema que a empresa precisa resolver e conectados entre si."
+                lead="Sistemas, aplicativos, automações, integrações, sites, landing pages e SEO — desenvolvidos a partir do problema que a empresa precisa resolver e conectados entre si."
                 visual={<ServiceVisual kind="integration" />}
                 actions={
                     <ButtonLink href={contactHref()} variant="inverse" arrow>
@@ -112,6 +113,8 @@ export default function Servicos() {
                     </div>
                 </Container>
             </section>
+
+            <SeoIncluded />
 
             <section className="bg-[#0b1220] py-20 text-white sm:py-24">
                 <Container>

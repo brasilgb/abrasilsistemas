@@ -10,6 +10,8 @@ export type SeoTags = {
     ogDescription?: string;
     ogImage?: string;
     ogImageAlt?: string;
+    twitterTitle?: string;
+    twitterDescription?: string;
     siteName?: string;
     locale?: string;
     jsonLd?: unknown;
@@ -111,6 +113,22 @@ export function SeoHead() {
                     head-key="twitter:image"
                     name="twitter:image"
                     content={seo.ogImage}
+                />
+            )}
+            <meta
+                head-key="twitter:title"
+                name="twitter:title"
+                content={seo.twitterTitle ?? seo.ogTitle ?? seo.title}
+            />
+            {(seo.twitterDescription ?? seo.ogDescription ?? seo.description) && (
+                <meta
+                    head-key="twitter:description"
+                    name="twitter:description"
+                    content={
+                        seo.twitterDescription ??
+                        seo.ogDescription ??
+                        seo.description
+                    }
                 />
             )}
             {seo.jsonLd ? (

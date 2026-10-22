@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplySeoRedirects;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureValidProspectToken;
 use App\Http\Middleware\HandleAppearance;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpKernel\Exception\GoneHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Redirecionamentos do painel de SEO: antes do roteamento, para valer em URLs antigas.
+        $middleware->append(ApplySeoRedirects::class);
+
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'prospect.token' => EnsureValidProspectToken::class,
@@ -52,5 +57,16 @@ return Application::configure(basePath: dirname(__DIR__))
             return Inertia::render('errors/404')
                 ->toResponse($request)
                 ->setStatusCode(404);
+        });
+
+        // Página removida de propósito (redirecionamento 410 no painel de SEO).
+        $exceptions->render(function (GoneHttpException $e, Request $request): ?SymfonyResponse {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            return Inertia::render('errors/404', ['gone' => true])
+                ->toResponse($request)
+                ->setStatusCode(410);
         });
     })->create();

@@ -4,6 +4,7 @@ import {
     MessageSquareQuote,
     MessagesSquare,
     Newspaper,
+    SearchCheck,
     Settings,
     Users,
 } from 'lucide-react';
@@ -12,6 +13,19 @@ import { edit as profileEdit } from '@/routes/profile';
 import { index as solicitacoesIndex } from '@/routes/solicitacoes';
 import { index as usersIndex } from '@/routes/users';
 import type { NavItem } from '@/types';
+
+/** Submenus de SEO (ABRASIL-SEO-02), também usados nas abas do topo das telas de SEO. */
+export const seoNavItems: NavItem[] = [
+    { title: 'Visão geral', href: '/admin/seo' },
+    { title: 'Auditoria do site', href: '/admin/seo/auditoria' },
+    { title: 'Páginas e metadados', href: '/admin/seo/paginas' },
+    { title: 'Palavras-chave', href: '/admin/seo/palavras-chave' },
+    { title: 'Sitemap e indexação', href: '/admin/seo/sitemap' },
+    { title: 'Redirecionamentos', href: '/admin/seo/redirecionamentos' },
+    { title: 'Dados estruturados', href: '/admin/seo/dados-estruturados' },
+    { title: 'Integrações', href: '/admin/seo/integracoes' },
+    { title: 'Configurações', href: '/admin/seo/configuracoes' },
+];
 
 /**
  * Menu do painel do site institucional (sidebar e cabeçalho). O site é institucional +
@@ -27,6 +41,12 @@ export const adminNavItems: NavItem[] = [
         title: 'Solicitações',
         href: solicitacoesIndex(),
         icon: Inbox,
+    },
+    {
+        title: 'SEO',
+        href: '/admin/seo',
+        icon: SearchCheck,
+        items: seoNavItems,
     },
     {
         title: 'Blog',

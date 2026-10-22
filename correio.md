@@ -1,353 +1,233 @@
-Execute a etapa **ABRASIL-WEB-03 — Consolidação do site institucional e separação definitiva do CRM/VetorLeads**.
+# ABRASIL-SEO-FINAL-01 — Consolidação técnica e comercial do SEO
 
-Use como base o estado atual após ABRASIL-WEB-01 e ABRASIL-WEB-02.
+**Projeto:** ABrasil Sistemas
+**Base:** ABRASIL-SEO-02 concluída em 21/10/2026
+**Prioridade:** Alta
 
-O objetivo desta etapa é transformar definitivamente `abrasilsistemas.com.br` em um site institucional e de atendimento da ABrasil Sistemas, retirando dele as responsabilidades comerciais que agora pertencem ao VetorLeads.
+## Objetivo
 
-Não apagar dados existentes.
+Consolidar o sistema de SEO implementado na ABRASIL-SEO-02, corrigir pendências relevantes e incorporar SEO profissional ao portfólio comercial da ABrasil Sistemas.
 
-## 1. Arquitetura definitiva
+Não reconstruir o sistema existente nem duplicar funcionalidades.
 
-O site ABrasil Sistemas deve manter apenas:
+A empresa adotará duas modalidades comerciais:
 
-- site institucional;
-- páginas de serviços;
-- páginas dos sistemas;
-- formulário de contato;
-- solicitações recebidas pelo site;
-- atendimento WhatsApp;
-- configurações do WhatsApp institucional;
-- blog;
-- portfólio;
-- depoimentos;
-- administração dessas áreas.
+1. SEO técnico essencial incluído em todos os novos projetos de sites, landing pages, portais e sistemas web.
+2. SEO profissional contratado separadamente para otimização de sites e aplicações existentes, incluindo acompanhamento contínuo opcional.
 
-O VetorLeads passa a ser responsável por:
+---
 
-- prospecção;
-- extensão AB Prospect;
-- importação de prospects;
-- Kanban;
-- funil comercial;
-- scoring;
-- tarefas;
-- follow-up;
-- disparos;
-- campanhas;
-- templates comerciais;
-- automações comerciais;
-- gestão completa de leads/prospects.
+## 1. Avaliação da implementação anterior
 
-Não duplicar essas funções entre os dois sistemas.
+Ler o relatório ABRASIL-SEO-02 e auditar os arquivos efetivamente implementados.
 
-## 2. Remover o CRM visual do abrasilsistemas
+Confirmar:
 
-Retirar do frontend, menus, rotas e controllers institucionais:
+- Funcionamento das nove seções administrativas.
+- Integridade das migrations e configurações.
+- Sitemap e robots.txt dinâmicos.
+- Metadados e canonical.
+- Redirecionamentos.
+- Auditoria interna.
+- JSON-LD.
+- Análise editorial.
+- Integrações do Search Console, GA4 e Bing.
+- Compatibilidade com a infraestrutura de produção existente.
 
-- dashboard comercial;
-- Kanban;
-- funil;
-- scoring;
-- tarefas comerciais;
-- follow-up;
-- importação CSV de prospects;
-- importação da extensão;
-- ações em massa;
-- templates comerciais de WhatsApp;
-- envio de WhatsApp específico do CRM;
-- download/distribuição da extensão AB Prospect.
+Corrigir problemas reais encontrados sem reescrever módulos funcionais.
 
-Antes de remover endpoints usados pelo n8n ou pela extensão, auditar as referências.
+Revisar os avisos PHPStan referentes ao novo código, priorizando os que indiquem riscos efetivos.
 
-Se ainda houver integração externa apontando para o site antigo, documentar exatamente qual é e não quebrá-la nesta etapa.
+## 2. SEO incluído no desenvolvimento
 
-Não excluir registros das tabelas `leads` ou `lead_activities`.
+Atualizar a apresentação dos serviços da ABrasil para informar:
 
-## 3. Criar área "Solicitações"
+**"SEO técnico incluído em todos os nossos projetos web."**
 
-A antiga área `/leads` não deve continuar sendo um CRM.
+Explicar que sites e sistemas públicos são desenvolvidos com:
 
-Criar ou transformar em uma área simples chamada:
+- Estrutura HTML apropriada.
+- Metadados individualizados.
+- Sitemap XML.
+- URLs amigáveis.
+- Canonical.
+- Dados estruturados pertinentes.
+- Otimização técnica de carregamento.
+- Configuração de indexabilidade.
+- Compatibilidade com mecanismos de busca.
 
-**Solicitações**
+Nos sistemas web, aplicar indexação somente às páginas públicas relevantes.
 
-Ela deve mostrar exclusivamente contatos originados pelo site institucional, especialmente `source=site`.
+Não permitir indexação de dashboards, informações comerciais privadas, dados de clientes ou áreas autenticadas.
 
-Campos principais:
+Distinguir SEO técnico incluído de serviços contínuos de conteúdo, monitoramento e consultoria.
 
-- data;
-- nome;
-- empresa;
-- telefone;
-- WhatsApp;
-- e-mail;
-- tipo de projeto;
-- mensagem;
-- página/origem;
-- situação da solicitação;
-- vínculo com conversa WhatsApp, quando existir.
+## 3. Criar o serviço SEO Profissional
 
-Pode permitir:
+Adicionar ao portfólio institucional:
 
-- visualizar;
-- marcar como nova;
-- em atendimento;
-- respondida;
-- concluída;
-- arquivar.
+**SEO Técnico, Performance e Otimização Digital**
 
-Não implementar funil comercial complexo nessa área.
+Criar uma landing page com identidade visual profissional e tecnológica, compatível com a identidade atual da ABrasil.
 
-Caso seja tecnicamente melhor, mantenha as tabelas atuais e apenas simplifique a utilização delas. Não criar migration desnecessária.
+A página deve apresentar três modalidades:
 
-## 4. Atendimento como página inicial administrativa
+### SEO Essencial
 
-Depois do login administrativo, priorizar:
+Auditoria e implantação técnica para empresas que já possuem um site.
 
-`/atendimento`
+### SEO Profissional
 
-A navegação administrativa principal deve ficar aproximadamente:
+Auditoria aprofundada, correções técnicas, dados estruturados, performance, otimização editorial e melhorias de indexabilidade.
 
-- Atendimento
-- Solicitações
-- Blog
-- Portfólio
-- Depoimentos
-- Configurações
+### SEO Gerenciado
 
-Remover itens relacionados à prospecção e CRM.
+Acompanhamento recorrente de desempenho orgânico, recomendações, relatórios e melhorias contínuas.
 
-## 5. WhatsApp institucional separado
+Não estabelecer preços fixos.
 
-Não utilizar a sessão comercial do VetorLeads como arquitetura definitiva.
+Não prometer posições garantidas no Google.
 
-Preparar o sistema para usar uma sessão dedicada, sugerida:
+## 4. Página comercial
 
-`abrasil-atendimento`
+A landing page deverá possuir:
 
-Não criar nem alterar a sessão real do WAHA nesta etapa caso isso envolva produção.
+- Hero com imagem profissional relacionada à tecnologia, SEO e análise de dados.
+- Título e subtítulo comerciais.
+- Benefícios empresariais.
+- Detalhamento dos serviços.
+- Explicação das modalidades.
+- Etapas da contratação.
+- Perguntas frequentes úteis.
+- CTA "Solicitar análise SEO".
+- Integração com o formulário de contato existente.
+- Links para os serviços de desenvolvimento de software, sites e integração.
 
-O sistema deve continuar lendo o nome da sessão pelas configurações da empresa, nunca hardcoded.
+Garantir responsividade, acessibilidade e SEO completo da própria página.
 
-O mesmo container WAHA continuará compartilhado entre os sistemas, mas cada aplicação deve usar sua própria sessão.
+Evitar seções repetitivas, excesso de cards e aparência genérica de template.
 
-Arquitetura desejada:
+## 5. Integração comercial
 
-WhatsApp institucional
-→ sessão `abrasil-atendimento`
-→ webhook direto WAHA
-→ `/api/whatsapp/waha/webhook`
-→ `whatsapp_conversations`
-→ `whatsapp_messages`
-→ `/atendimento`
+O formulário de solicitação deve identificar o interesse do visitante como "SEO Profissional".
 
-Resposta:
+Utilizar o sistema de atendimento existente da ABrasil.
 
-`/atendimento`
-→ `WahaService`
-→ WAHA
-→ WhatsApp do cliente.
+Preservar o registro da origem do contato, informações comerciais necessárias e consentimentos aplicáveis.
 
-Para esse atendimento não utilizar n8n.
+Não criar outro CRM ou sistema paralelo de leads.
 
-## 6. Configurações
+## 6. Preparação para Google Search Console
 
-A antiga seção "Configurações → Leads" deve ser revisada.
+Como a propriedade abrasilsistemas.com.br já foi cadastrada, verificar se o site está pronto para configuração e indexação após o deploy.
 
-Como o site não será mais CRM, renomear adequadamente para algo como:
+Validar tecnicamente:
 
-**Configurações → WhatsApp**
+- `/sitemap.xml`
+- `/robots.txt`
+- Canonical.
+- Diretivas robots.
+- Metadados.
+- HTTPS.
+- Redirecionamentos.
+- Dados estruturados.
+- Ausência de bloqueio indevido à indexação no domínio de produção.
 
-ou
+Examinar cuidadosamente `SEO_BLOCK_INDEXING`, `APP_URL` e o domínio canônico para evitar colocar `noindex` na produção.
 
-**Configurações → Atendimento**
+Preparar instruções para configurar o OAuth oficial do Search Console no Google Cloud.
 
-Manter:
+Não inserir credenciais no código ou nos relatórios.
 
-- número;
-- provider;
-- sessão;
-- status;
-- QR Code;
-- conectar;
-- desconectar.
+Não afirmar que a integração está ativa sem autorização e teste real.
 
-Remover referências visuais a "Leads" onde não fizer mais sentido.
+## 7. Melhorias para o blog
 
-Não expor API key do WAHA no navegador.
+Adicionar a categoria comercial/editorial SEO, se ainda não existir.
 
-## 7. Webhooks antigos do n8n
+Preparar pautas para artigos como:
 
-Auditar:
+- Por que sua empresa precisa de SEO técnico?
+- Como aparecer nas pesquisas do Google?
+- SEO para sites empresariais: o que realmente importa?
+- Como melhorar o desempenho e a indexação de um site?
+- Qual a diferença entre SEO técnico e anúncios pagos?
 
-- `CRM ABrasil - Enviar WhatsApp`
-- log de envio;
-- ACK;
-- `WAHA - Mensagens Recebidas → CRM`;
-- qualquer workflow apontando para `abrasilsistemas.com.br`.
+Antes de criar novos artigos, verificar os existentes para evitar duplicidade.
 
-Também conferir referências da extensão AB Prospect.
+Criar novos conteúdos como rascunho, sem publicação automática.
 
-Produzir uma tabela:
+## 8. Política obrigatória de ambiente
 
-| integração | origem | destino atual | ainda usada? | destino correto |
+**É expressamente proibido criar, iniciar, modificar ou reconstruir containers Docker ou Podman no ambiente local.**
 
-Se o destino correto for VetorLeads, registrar a necessidade de mudança.
+Não executar Docker Compose localmente.
 
-Não alterar workflow de produção sem necessidade nesta etapa.
+Não instalar serviços de infraestrutura para contornar problemas dos testes.
 
-## 8. Código legado
+Não modificar a configuração dos containers de produção.
 
-Depois de confirmar que determinada implementação não possui mais dependentes:
+Utilizar os recursos e serviços locais já disponíveis.
 
-remover código morto relacionado ao CRM institucional.
+Somente realizar alterações na VPS quando houver autorização específica.
 
-Mas não remover tabelas ou dados históricos.
+## 9. Política obrigatória de testes
 
-Pode permanecer temporariamente estrutura de banco legada se isso reduzir risco.
+Executar testes adequados à stack Laravel, React/Inertia e banco de dados existentes.
 
-O objetivo é limpar aplicação e interface, não fazer uma grande migration destrutiva.
+Priorizar:
 
-## 9. Site institucional
+- PHPUnit/Pest.
+- Testes de rotas e controladores.
+- Testes HTTP.
+- TypeScript.
+- ESLint.
+- PHPStan.
+- Build.
+- Validação de sitemap e JSON-LD.
+- Testes de interface quando o navegador estiver funcional.
 
-Preservar integralmente o trabalho aprovado da ABRASIL-WEB-01:
+### Regra de interrupção
 
-- home empresarial;
-- serviços;
-- sistemas prontos;
-- páginas próprias de serviços;
-- SEO;
-- navegação;
-- identidade visual;
-- formulários;
-- blog;
-- portfólio;
-- depoimentos.
+Se Playwright, navegador ou outra ferramenta apresentar falhas repetitivas de ambiente, fazer no máximo duas tentativas sem progresso.
 
-Não reescrever novamente o site institucional.
+Depois, mudar para outro método de validação funcional.
 
-Apenas corrigir inconsistências encontradas durante a consolidação.
+Não insistir indefinidamente em instalação de navegadores, bibliotecas ou reparos do ambiente.
 
-## 10. Pontos adicionais da auditoria
+Falhas reais da aplicação devem ser corrigidas, não ignoradas.
 
-Avaliar e, se forem mudanças locais seguras, corrigir:
+Testes HTTP ou builds não substituem a validação visual. Caso esta seja impossível, registrar a pendência.
 
-- menu/cabeçalho antigo do blog;
-- página 404 ainda no visual antigo;
-- referências antigas a CRM/Leads no painel;
-- nomes de menu que não representam mais a função atual.
+Não criar containers temporários para executar testes.
 
-Não criar CMS novo.
+## 10. Segurança
 
-## 11. Testes
+- Proteger rotas administrativas.
+- Validar entradas e URLs.
+- Evitar XSS e SSRF.
+- Proteger tokens e credenciais.
+- Respeitar LGPD e consentimento de cookies.
+- Verificar redirects para evitar loops.
+- Não introduzir indexação de ambientes privados.
+- Preservar os dados e URLs existentes.
 
-Executar:
+## 11. Entrega e relatório
 
-- suíte Laravel completa;
-- testes do atendimento;
-- testes das solicitações;
-- testes de autorização;
-- `npm run build`;
-- TypeScript;
-- Pint;
-- ESLint/Prettier nos arquivos alterados.
+Ao concluir, atualizar `executed.md` com:
 
-Verificar especialmente:
+1. Resumo da implementação.
+2. Funcionalidades já existentes e reaproveitadas.
+3. Correções executadas.
+4. Novas páginas e serviços.
+5. Arquivos modificados.
+6. Migrations, caso necessárias.
+7. Testes realizados e resultados.
+8. Testes não executados e motivos.
+9. Pendências de credenciais externas.
+10. Instruções para deploy e Search Console.
+11. Riscos ou limitações conhecidos.
 
-1. visitante não acessa administração;
-2. usuário sem permissão não acessa atendimento;
-3. somente solicitações do site aparecem na área de solicitações;
-4. histórico não foi apagado;
-5. `/atendimento` continua funcionando;
-6. sessão diferente não consegue acessar conversas de outra sessão;
-7. nenhum segredo WAHA aparece no frontend;
-8. nenhuma funcionalidade de prospecção permanece acessível pelo site institucional;
-9. rotas removidas realmente retornam 404 ou deixam de existir;
-10. site público continua funcionando e com SEO correto.
+Não executar commit, push ou deploy sem autorização.
 
-## 12. Não executar ainda
-
-Não fazer:
-
-- deploy;
-- push;
-- criação da sessão WAHA de produção;
-- alteração de webhooks WAHA de produção;
-- alteração de workflows n8n de produção;
-- exclusão de dados;
-- drop de tabelas.
-
-Commit também deve aguardar autorização.
-
-## 13. Relatório final
-
-Ao terminar, informar:
-
-1. arquivos criados;
-2. arquivos alterados;
-3. arquivos removidos;
-4. rotas removidas;
-5. rotas mantidas;
-6. como ficou a área Solicitações;
-7. como ficou o menu administrativo;
-8. referências antigas ao CRM que ainda permaneceram e por quê;
-9. integrações n8n/WAHA encontradas;
-10. o que precisa ser alterado no VetorLeads;
-11. testes executados e resultado;
-12. pendências para produção.
-
-O objetivo final é deixar clara esta divisão:
-
-**abrasilsistemas.com.br = institucional + solicitações + atendimento**
-
-**VetorLeads = prospecção + CRM + vendas + automação comercial**
-
-
-### ABRASIL-WEB-03 — Complemento: imagens institucionais e identidade visual
-
-Adicionar à implementação da ABRASIL-WEB-03 uma revisão completa das imagens dos heroes e cabeçalhos do site institucional.
-
-**Objetivo:** transmitir a imagem de uma empresa sólida, moderna e especializada em tecnologia empresarial.
-
-**Requisitos:**
-
-1. Cada página de serviço deve receber uma imagem institucional exclusiva e coerente com seu nicho.
-2. A home deve ter um hero de forte impacto visual, representando tecnologia e soluções empresariais.
-3. Substituir ou complementar as ilustrações HTML/CSS atuais por fotografias ou composições visuais profissionais.
-4. Utilizar imagens de qualidade, licenciadas para uso comercial, sem marcas de terceiros ou conteúdo genérico inadequado.
-5. Não repetir a mesma imagem em páginas diferentes.
-6. Preservar a paleta navy, branco e azul da ABrasil Sistemas, utilizando overlays discretos quando necessário.
-7. Garantir excelente legibilidade dos títulos e CTAs sobre as imagens.
-8. Otimizar imagens em WebP ou AVIF, com tamanhos responsivos, evitando aumentar excessivamente o carregamento.
-9. Aplicar `srcset`, `sizes`, dimensões explícitas e carregamento prioritário apenas para a imagem principal visível.
-10. Garantir compatibilidade com desktop, tablet e smartphone.
-11. Usar capturas reais dos sistemas VetorOS e VetorPet nas páginas específicas de produtos, quando disponíveis, sem inventar telas ou funcionalidades.
-12. Incluir textos alternativos descritivos e metadados adequados para SEO.
-13. Organizar as imagens em diretórios próprios, com nomes semânticos e manutenção simples.
-
-**Páginas contempladas:**
-
-- Home institucional
-- Sistemas prontos
-- Sistemas sob medida
-- Automação de processos
-- Integrações e APIs
-- Desenvolvimento de aplicativos
-- Desenvolvimento de sites empresariais
-- Landing pages
-- VetorOS
-- VetorPet
-- Sobre a ABrasil Sistemas
-- Contato
-
-Nas páginas VetorOS e VetorPet, priorizar a identidade e o segmento de atuação de cada produto.
-
-**Diretriz visual:** utilizar linguagem fotográfica corporativa contemporânea, com tecnologia real, ambientes de trabalho, desenvolvimento de software, operações empresariais e infraestrutura digital.
-
-Evitar robôs humanoides genéricos, cérebros brilhantes, mãos artificiais, excesso de circuitos luminosos e imagens artificiais repetitivas.
-
-As imagens devem valorizar a apresentação empresarial, sem transformar o site em um catálogo de fotografias.
-
-**Entrega:** implementar as imagens efetivamente, não apenas sugeri-las. Registrar a origem e a licença de cada imagem utilizada e informar eventuais imagens ainda pendentes. Manter o visual institucional já aprovado e validar a apresentação nas resoluções desktop e mobile.
-
-Esta exigência integra a ABRASIL-WEB-03 e deve ser executada antes do fechamento da etapa.
+**Critério final:** SEO interno consolidado, novo serviço comercial disponível no código, SEO técnico apresentado como diferencial dos projetos web e sistema preparado para publicação segura na VPS.

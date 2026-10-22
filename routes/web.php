@@ -6,19 +6,30 @@ use App\Http\Controllers\Admin\BlogImageController as AdminBlogImageController;
 use App\Http\Controllers\Admin\BlogPostController as AdminBlogPostController;
 use App\Http\Controllers\Admin\PortfolioImageController;
 use App\Http\Controllers\Admin\PortfolioItemController;
+use App\Http\Controllers\Admin\Seo\AnalyzeController as SeoAnalyzeController;
+use App\Http\Controllers\Admin\Seo\AuditController as SeoAuditController;
+use App\Http\Controllers\Admin\Seo\IndexingController as SeoIndexingController;
+use App\Http\Controllers\Admin\Seo\IntegrationController as SeoIntegrationController;
+use App\Http\Controllers\Admin\Seo\KeywordController as SeoKeywordController;
+use App\Http\Controllers\Admin\Seo\OverviewController as SeoOverviewController;
+use App\Http\Controllers\Admin\Seo\PageController as SeoPageController;
+use App\Http\Controllers\Admin\Seo\RedirectController as SeoRedirectController;
+use App\Http\Controllers\Admin\Seo\SettingsController as SeoSettingsController;
+use App\Http\Controllers\Admin\Seo\StructuredDataController as SeoStructuredDataController;
 use App\Http\Controllers\Admin\TestimonialController;
 use App\Http\Controllers\Admin\TestimonialImageController;
 use App\Http\Controllers\BlogCommentController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\EbookMercadoPagoWebhookController;
+use App\Http\Controllers\IndexNowKeyController;
 use App\Http\Controllers\PublicBlogController;
+use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SiteRequestController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhatsappInboxController;
 use App\Support\PublicPages;
-use App\Support\Seo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -37,37 +48,13 @@ foreach (array_keys(PublicPages::SERVICES) as $serviceSlug) {
 Route::get('sobre', [SiteController::class, 'about'])->name('sobre');
 Route::get('contato', [ContactController::class, 'create'])->name('contato');
 Route::post('contato', [ContactController::class, 'store'])->middleware('throttle:5,1')->name('contato.store');
-Route::get('politica-de-privacidade', function () {
-    return Inertia::render('legal/privacidade', [
-        'seo' => Seo::tags([
-            'title' => 'Política de Privacidade | ABrasil Sistemas',
-            'description' => 'Como a ABrasil Sistemas coleta, usa e protege dados pessoais no site e nos formulários de contato.',
-            'canonical' => url('/politica-de-privacidade'),
-            'robots' => 'noindex, follow',
-        ]),
-    ]);
-})->name('legal.privacidade');
-Route::get('termos-de-uso', function () {
-    return Inertia::render('legal/termos', [
-        'seo' => Seo::tags([
-            'title' => 'Termos de Uso | ABrasil Sistemas',
-            'description' => 'Termos de uso do site da ABrasil Sistemas.',
-            'canonical' => url('/termos-de-uso'),
-            'robots' => 'noindex, follow',
-        ]),
-    ]);
-})->name('legal.termos');
-Route::get('politica-de-cookies', function () {
-    return Inertia::render('legal/cookies', [
-        'seo' => Seo::tags([
-            'title' => 'Política de Cookies | ABrasil Sistemas',
-            'description' => 'Como a ABrasil Sistemas usa cookies no site.',
-            'canonical' => url('/politica-de-cookies'),
-            'robots' => 'noindex, follow',
-        ]),
-    ]);
-})->name('legal.cookies');
-Route::get('sitemap.xml', SitemapController::class)->name('sitemap');
+Route::get('politica-de-privacidade', [SiteController::class, 'legal'])->defaults('page', 'privacidade')->name('legal.privacidade');
+Route::get('termos-de-uso', [SiteController::class, 'legal'])->defaults('page', 'termos')->name('legal.termos');
+Route::get('politica-de-cookies', [SiteController::class, 'legal'])->defaults('page', 'cookies')->name('legal.cookies');
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('sitemaps/{part}.xml', [SitemapController::class, 'part'])->whereNumber('part')->name('sitemap.part');
+Route::get('robots.txt', RobotsController::class)->name('robots');
+Route::get('{key}.txt', IndexNowKeyController::class)->where('key', '[a-f0-9]{32}')->name('indexnow.key');
 Route::get('blog', [PublicBlogController::class, 'index'])->name('blog.index');
 Route::get('blog/{post:slug}', [PublicBlogController::class, 'show'])->name('blog.show');
 Route::get('area-restrita', function (Request $request) {
@@ -109,6 +96,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::post('portfolio/images', PortfolioImageController::class)->name('portfolio.images.store');
         Route::resource('portfolio', PortfolioItemController::class)->except('show');
+
+        // SEO (ABRASIL-SEO-02).
+        Route::prefix('admin/seo')->name('admin.seo.')->group(function () {
+            Route::get('/', SeoOverviewController::class)->name('overview');
+            Route::get('auditoria', [SeoAuditController::class, 'index'])->name('audits.index');
+            Route::post('auditoria', [SeoAuditController::class, 'store'])->middleware('throttle:6,1')->name('audits.store');
+            Route::get('auditoria/{audit}', [SeoAuditController::class, 'show'])->name('audits.show');
+            Route::get('paginas', [SeoPageController::class, 'index'])->name('pages.index');
+            Route::get('paginas/{key}', [SeoPageController::class, 'edit'])->where('key', '(page|post):[a-z0-9:_-]+')->name('pages.edit');
+            Route::put('paginas/{key}', [SeoPageController::class, 'update'])->where('key', 'page:[a-z0-9:_-]+')->name('pages.update');
+            Route::post('analisar', SeoAnalyzeController::class)->middleware('throttle:60,1')->name('analyze');
+            Route::get('palavras-chave', SeoKeywordController::class)->name('keywords');
+            Route::get('sitemap', SeoIndexingController::class)->name('indexing');
+            Route::resource('redirecionamentos', SeoRedirectController::class)->except('show')
+                ->parameters(['redirecionamentos' => 'redirect'])->names('redirects');
+            Route::get('dados-estruturados', SeoStructuredDataController::class)->name('structured-data');
+            Route::get('integracoes', [SeoIntegrationController::class, 'index'])->name('integrations');
+            Route::put('integracoes', [SeoIntegrationController::class, 'update'])->name('integrations.update');
+            Route::get('integracoes/google/conectar', [SeoIntegrationController::class, 'connect'])->name('integrations.google.connect');
+            Route::get('integracoes/google/callback', [SeoIntegrationController::class, 'callback'])->name('integrations.google.callback');
+            Route::delete('integracoes/google', [SeoIntegrationController::class, 'disconnect'])->name('integrations.google.disconnect');
+            Route::get('configuracoes', [SeoSettingsController::class, 'edit'])->name('settings');
+            Route::put('configuracoes', [SeoSettingsController::class, 'update'])->name('settings.update');
+        });
 
         Route::prefix('admin/blog')->name('admin.blog.')->group(function () {
             Route::post('images', AdminBlogImageController::class)->name('images.store');

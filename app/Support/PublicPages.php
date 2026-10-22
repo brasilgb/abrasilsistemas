@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Services\Seo\SitemapBuilder;
+use App\Services\Seo\StructuredData;
+
 /**
  * Catálogo das páginas institucionais do site: a fonte única dos slugs, do SEO
  * (title/description) e das entradas do sitemap. O conteúdo exibido em cada
@@ -10,9 +13,10 @@ namespace App\Support;
 class PublicPages
 {
     /**
-     * Páginas de serviço, renderizadas pelo componente `site/servico`.
+     * Páginas de serviço, renderizadas pelo componente `site/servico` (o SEO profissional tem
+     * landing page própria, `site/seo`). `catalog` lista as modalidades contratáveis, sem preço.
      *
-     * @var array<string, array{title: string, description: string, serviceType: string}>
+     * @var array<string, array{title: string, description: string, serviceType: string, catalog?: list<array{name: string, description: string}>}>
      */
     public const SERVICES = [
         'desenvolvimento-de-sistemas' => [
@@ -45,7 +49,20 @@ class PublicPages
             'description' => 'Integração entre ERP, CRM, e-commerce, WhatsApp, gateways e sistemas próprios por APIs e webhooks, sem redigitação de dados.',
             'serviceType' => 'Integração de sistemas e APIs',
         ],
+        self::SEO_SERVICE => [
+            'title' => 'SEO técnico, performance e otimização de sites | ABrasil Sistemas',
+            'description' => 'Auditoria, correções técnicas, dados estruturados, performance e acompanhamento orgânico para sites e aplicações web que já estão no ar. Sem promessa de posição.',
+            'serviceType' => 'SEO técnico e otimização de sites',
+            'catalog' => [
+                ['name' => 'SEO Essencial', 'description' => 'Auditoria e implantação técnica para empresas que já possuem um site.'],
+                ['name' => 'SEO Profissional', 'description' => 'Auditoria aprofundada, correções técnicas, dados estruturados, performance, otimização editorial e melhorias de indexabilidade.'],
+                ['name' => 'SEO Gerenciado', 'description' => 'Acompanhamento recorrente do desempenho orgânico, com recomendações, relatórios e melhorias contínuas.'],
+            ],
+        ],
     ];
+
+    /** Página do serviço de SEO profissional (landing page própria). */
+    public const SEO_SERVICE = 'seo-tecnico-e-otimizacao-de-sites';
 
     /**
      * Produtos próprios com página em /sistemas/{slug}. Só entram aqui sistemas
@@ -90,6 +107,7 @@ class PublicPages
         'vetorpet' => 'Cão deitado ao lado de um pote de ração em um ambiente doméstico',
         'sobre' => 'Dois colegas analisando juntos um projeto no notebook, com diagramas no quadro ao fundo',
         'contato' => 'Profissional conversando ao telefone com um cliente em frente ao notebook',
+        'seo' => 'Notebook exibindo gráficos de desempenho de um site, com tempo de carregamento e taxa de rejeição',
     ];
 
     /** Foto do hero de cada página de serviço. */
@@ -100,6 +118,7 @@ class PublicPages
         'desenvolvimento-de-aplicativos' => 'aplicativos',
         'automacao-de-processos' => 'automacao',
         'integracao-de-sistemas-e-apis' => 'integracoes',
+        self::SEO_SERVICE => 'seo',
     ];
 
     /**
@@ -116,23 +135,77 @@ class PublicPages
     }
 
     /**
-     * Dados da organização para schema.org, usados em todas as páginas públicas.
+     * Demais páginas públicas fixas, com o SEO padrão de cada uma. A chave é a mesma
+     * usada pelo SEO por página (seo_metas.subject_id) e pelo PageRegistry.
+     *
+     * @var array<string, array{path: string, label: string, group: string, title: string, description: string, hero?: string, robots?: string, changefreq: string, priority: string}>
+     */
+    public const PAGES = [
+        'home' => [
+            'path' => '/', 'label' => 'Página inicial', 'group' => 'Institucional', 'hero' => 'home',
+            'title' => 'ABrasil Sistemas — Software, sistemas e integração para empresas',
+            'description' => 'Empresa de tecnologia que desenvolve sistemas sob medida, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS e VetorPet.',
+            'changefreq' => 'weekly', 'priority' => '1.0',
+        ],
+        'sistemas' => [
+            'path' => '/sistemas', 'label' => 'Sistemas (produtos)', 'group' => 'Produtos', 'hero' => 'sistemas',
+            'title' => 'Sistemas prontos para empresas — VetorOS e VetorPet | ABrasil Sistemas',
+            'description' => 'Produtos de software da ABrasil Sistemas em operação: VetorOS para assistências técnicas e VetorPet para a gestão comercial no mercado pet.',
+            'changefreq' => 'monthly', 'priority' => '0.9',
+        ],
+        'servicos' => [
+            'path' => '/servicos', 'label' => 'Soluções (serviços)', 'group' => 'Serviços',
+            'title' => 'Soluções — sistemas, aplicativos, sites, automação e integrações | ABrasil Sistemas',
+            'description' => 'Desenvolvimento de sistemas sob medida, aplicativos, sites, landing pages, automação de processos e integração de sistemas para empresas.',
+            'changefreq' => 'monthly', 'priority' => '0.8',
+        ],
+        'sobre' => [
+            'path' => '/sobre', 'label' => 'Sobre', 'group' => 'Institucional', 'hero' => 'sobre',
+            'title' => 'Sobre a ABrasil Sistemas — empresa de tecnologia e software',
+            'description' => 'Conheça a ABrasil Sistemas: como trabalhamos, o que desenvolvemos e por que acompanhamos cada sistema depois que ele entra em operação.',
+            'changefreq' => 'monthly', 'priority' => '0.6',
+        ],
+        'contato' => [
+            'path' => '/contato', 'label' => 'Contato', 'group' => 'Institucional', 'hero' => 'contato',
+            'title' => 'Fale sobre o seu projeto | ABrasil Sistemas',
+            'description' => 'Conte o que sua empresa precisa: sistema pronto ou sob medida, site, landing page, aplicativo, automação ou integração. Resposta direta da equipe.',
+            'changefreq' => 'monthly', 'priority' => '0.6',
+        ],
+        'blog' => [
+            'path' => '/blog', 'label' => 'Blog', 'group' => 'Blog',
+            'title' => 'Blog sobre tecnologia e gestão | ABrasil Sistemas',
+            'description' => 'Informação prática para usar a tecnologia a favor da sua empresa.',
+            'changefreq' => 'weekly', 'priority' => '0.7',
+        ],
+        'privacidade' => [
+            'path' => '/politica-de-privacidade', 'label' => 'Política de Privacidade', 'group' => 'Legal', 'robots' => 'noindex, follow',
+            'title' => 'Política de Privacidade | ABrasil Sistemas',
+            'description' => 'Como a ABrasil Sistemas coleta, usa e protege dados pessoais no site e nos formulários de contato.',
+            'changefreq' => 'yearly', 'priority' => '0.2',
+        ],
+        'termos' => [
+            'path' => '/termos-de-uso', 'label' => 'Termos de Uso', 'group' => 'Legal', 'robots' => 'noindex, follow',
+            'title' => 'Termos de Uso | ABrasil Sistemas',
+            'description' => 'Termos de uso do site da ABrasil Sistemas.',
+            'changefreq' => 'yearly', 'priority' => '0.2',
+        ],
+        'cookies' => [
+            'path' => '/politica-de-cookies', 'label' => 'Política de Cookies', 'group' => 'Legal', 'robots' => 'noindex, follow',
+            'title' => 'Política de Cookies | ABrasil Sistemas',
+            'description' => 'Como a ABrasil Sistemas usa cookies no site.',
+            'changefreq' => 'yearly', 'priority' => '0.2',
+        ],
+    ];
+
+    /**
+     * Dados da organização para schema.org, usados em todas as páginas públicas. Vêm das
+     * configurações de SEO (painel → SEO → Configurações), só com dados reais da empresa.
      *
      * @return array<string, mixed>
      */
     public static function organization(): array
     {
-        return [
-            '@type' => 'Organization',
-            '@id' => url('/').'#organization',
-            'name' => 'ABrasil Sistemas',
-            'url' => url('/'),
-            'logo' => url('/images/logo_ab-512.png'),
-            'email' => config('contact.email'),
-            'telephone' => '+'.config('contact.whatsapp_number'),
-            'areaServed' => 'BR',
-            'description' => 'Empresa brasileira de tecnologia: produtos de software próprios, sistemas sob medida, aplicativos, sites, automação de processos e integração de sistemas.',
-        ];
+        return app(StructuredData::class)->organization();
     }
 
     /**
@@ -151,15 +224,27 @@ class PublicPages
                     'name' => $service['serviceType'],
                     'serviceType' => $service['serviceType'],
                     'description' => $service['description'],
-                    'url' => url('/'.$slug),
+                    'url' => StructuredData::url('/'.$slug),
                     'areaServed' => 'BR',
-                    'provider' => ['@id' => url('/').'#organization'],
+                    'provider' => ['@id' => StructuredData::organizationId()],
+                    ...isset($service['catalog']) ? ['hasOfferCatalog' => [
+                        '@type' => 'OfferCatalog',
+                        'name' => $service['serviceType'],
+                        'itemListElement' => array_map(fn (array $item) => [
+                            '@type' => 'Offer',
+                            'itemOffered' => ['@type' => 'Service', ...$item],
+                        ], $service['catalog']),
+                    ]] : [],
                 ],
+                StructuredData::breadcrumbs([['Soluções', '/servicos'], [$service['serviceType'], '/'.$slug]]),
             ],
         ];
     }
 
     /**
+     * SoftwareApplication só com o que é verificável: nome, categoria, sistema operacional e
+     * descrição. Sem preço, oferta ou avaliação (não há dados reais publicados para isso).
+     *
      * @return array<string, mixed>
      */
     public static function productJsonLd(string $slug): array
@@ -170,45 +255,38 @@ class PublicPages
             '@context' => 'https://schema.org',
             '@graph' => [
                 self::organization(),
-                [
-                    '@type' => 'SoftwareApplication',
-                    'name' => $product['name'],
-                    'applicationCategory' => $product['category'],
-                    'operatingSystem' => $product['os'],
-                    'description' => $product['description'],
-                    'url' => url('/sistemas/'.$slug),
-                    'publisher' => ['@id' => url('/').'#organization'],
-                ],
+                self::productNode($slug),
+                StructuredData::breadcrumbs([['Sistemas', '/sistemas'], [$product['name'], '/sistemas/'.$slug]]),
             ],
         ];
     }
 
     /**
-     * URLs institucionais do sitemap (o blog é acrescentado pelo SitemapController).
+     * @return array<string, mixed>
+     */
+    public static function productNode(string $slug): array
+    {
+        $product = self::PRODUCTS[$slug];
+
+        return [
+            '@type' => 'SoftwareApplication',
+            'name' => $product['name'],
+            'applicationCategory' => $product['category'],
+            'operatingSystem' => $product['os'],
+            'description' => $product['description'],
+            'url' => StructuredData::url('/sistemas/'.$slug),
+            'publisher' => ['@id' => StructuredData::organizationId()],
+        ];
+    }
+
+    /**
+     * URLs institucionais do sitemap: só as páginas canônicas e indexáveis (o blog é
+     * acrescentado pelo SitemapBuilder).
      *
      * @return list<array{loc: string, changefreq: string, priority: string}>
      */
     public static function sitemapUrls(): array
     {
-        $urls = [
-            ['loc' => url('/'), 'changefreq' => 'weekly', 'priority' => '1.0'],
-            ['loc' => url('/sistemas'), 'changefreq' => 'monthly', 'priority' => '0.9'],
-        ];
-
-        foreach (array_keys(self::PRODUCTS) as $slug) {
-            $urls[] = ['loc' => url('/sistemas/'.$slug), 'changefreq' => 'monthly', 'priority' => '0.8'];
-        }
-
-        $urls[] = ['loc' => url('/servicos'), 'changefreq' => 'monthly', 'priority' => '0.8'];
-
-        foreach (array_keys(self::SERVICES) as $slug) {
-            $urls[] = ['loc' => url('/'.$slug), 'changefreq' => 'monthly', 'priority' => '0.9'];
-        }
-
-        foreach (['/sobre' => '0.6', '/contato' => '0.6', '/blog' => '0.7'] as $path => $priority) {
-            $urls[] = ['loc' => url($path), 'changefreq' => $path === '/blog' ? 'weekly' : 'monthly', 'priority' => $priority];
-        }
-
-        return $urls;
+        return app(SitemapBuilder::class)->pageUrls();
     }
 }

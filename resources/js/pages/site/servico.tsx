@@ -10,6 +10,7 @@ import {
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
+import { SeoIncluded } from '@/components/site/seo-included';
 import { SiteLayout } from '@/components/site/site-layout';
 import { ServiceVisual } from '@/components/site/visuals';
 import { heroImages } from '@/data/hero-images';
@@ -132,6 +133,10 @@ export default function ServicePage({ slug }: { slug: string }) {
                     )}
                 </Container>
             </section>
+
+            {service.seoIncluded && (
+                <SeoIncluded className="border-y border-slate-200 bg-slate-50" />
+            )}
 
             {/* Processo */}
             <section

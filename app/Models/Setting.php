@@ -17,6 +17,11 @@ class Setting extends Model
 
     public const COMPANY_WHATSAPP_SESSION = 'company_whatsapp_session';
 
+    // SEO: configurações globais (JSON) e token OAuth do Search Console; ver App\Services\Seo.
+    public const SEO_SETTINGS = 'seo_settings';
+
+    public const SEO_GSC_TOKEN = 'seo_gsc_token';
+
     protected $fillable = [
         'key',
         'value',

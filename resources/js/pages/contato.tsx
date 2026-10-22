@@ -7,6 +7,7 @@ import { SiteLayout } from '@/components/site/site-layout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { heroImages } from '@/data/hero-images';
+import { trackEvent } from '@/lib/analytics';
 import { readSourcePage, useContact, useSiteWhatsappUrl } from '@/lib/contact';
 
 const fieldClass =
@@ -53,6 +54,12 @@ export default function Contato({
                         <Form
                             {...ContactController.store.form()}
                             resetOnSuccess
+                            onSuccess={() => {
+                                trackEvent('generate_lead', {
+                                    form: 'contato',
+                                });
+                                trackEvent('form_submit', { form: 'contato' });
+                            }}
                             // Página de origem lida no envio (sessionStorage), só no navegador.
                             transform={(data) => ({
                                 ...data,
@@ -167,7 +174,11 @@ export default function Contato({
                                             name="notes"
                                             required
                                             rows={5}
-                                            placeholder="Como o processo funciona hoje, o que precisa mudar e, se houver, prazos ou sistemas envolvidos."
+                                            placeholder={
+                                                selectedType === 'seo'
+                                                    ? 'Endereço do site, o que você espera da busca orgânica e, se houver, quem cuida do site hoje.'
+                                                    : 'Como o processo funciona hoje, o que precisa mudar e, se houver, prazos ou sistemas envolvidos.'
+                                            }
                                             className={`${fieldClass} py-2.5 placeholder:text-muted-foreground`}
                                         />
                                         <InputError message={errors.notes} />

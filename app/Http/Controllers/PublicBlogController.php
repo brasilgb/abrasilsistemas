@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
 use App\Models\BlogTag;
+use App\Services\Seo\SeoSettings;
+use App\Services\Seo\StructuredData;
+use App\Support\PublicPages;
 use App\Support\Seo;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -39,13 +42,7 @@ class PublicBlogController extends Controller
                 ->orderBy('name')->get(),
             'popularPosts' => BlogPost::query()->published()->orderByDesc('views')->limit(5)->get(['id', 'title', 'slug', 'views', 'published_at']),
             'filters' => $request->only(['category', 'tag', 'search']),
-            'seo' => Seo::tags([
-                'title' => 'Blog sobre tecnologia e gestão | ABrasil Sistemas',
-                'description' => 'Informação prática para usar a tecnologia a favor da sua empresa.',
-                'canonical' => url('/blog'),
-                'ogTitle' => 'Blog | ABrasil Sistemas',
-                'ogDescription' => 'Informação prática para usar a tecnologia a favor da sua empresa.',
-            ]),
+            'seo' => $this->indexSeo($request, $posts->currentPage()),
         ]);
     }
 
@@ -58,15 +55,53 @@ class PublicBlogController extends Controller
         return Inertia::render('blog/show', [
             'post' => $post,
             'relatedPosts' => BlogPost::query()->published()->whereKeyNot($post)->when($post->blog_category_id, fn ($query) => $query->where('blog_category_id', $post->blog_category_id))->latest('published_at')->limit(3)->get(['id', 'title', 'slug', 'excerpt', 'published_at']),
-            'seo' => Seo::tags([
-                'title' => $post->title.' | ABrasil Sistemas',
-                'description' => $post->excerpt,
-                'canonical' => url('/blog/'.$post->slug),
-                'ogType' => 'article',
-                'ogTitle' => $post->title,
-                'ogDescription' => $post->excerpt,
-                'ogImage' => $post->cover_image_url ?: url('/images/site/heroes/home-og.jpg'),
-            ]),
+            'seo' => Seo::post($post),
+        ]);
+    }
+
+    /**
+     * Política de indexação da listagem: busca e tags não são indexadas (conteúdo repetido),
+     * a categoria tem canonical próprio e as páginas seguintes da paginação apontam para si
+     * mesmas. Qualquer outro parâmetro de query sai do canonical.
+     *
+     * @return array<string, mixed>
+     */
+    private function indexSeo(Request $request, int $page): array
+    {
+        $query = array_filter([
+            'category' => $request->string('category')->trim()->toString() ?: null,
+            'page' => $page > 1 ? $page : null,
+        ]);
+        $noindex = $request->string('search')->isNotEmpty() || $request->string('tag')->isNotEmpty();
+        $category = isset($query['category']) ? BlogCategory::query()->where('slug', $query['category'])->first() : null;
+
+        // Categoria inexistente não vira uma URL canônica nova.
+        if (isset($query['category']) && $category === null) {
+            unset($query['category']);
+            $noindex = true;
+        }
+
+        $settings = app(SeoSettings::class);
+        $jsonLd = ['@context' => 'https://schema.org', '@graph' => [
+            PublicPages::organization(),
+            ['@type' => 'Blog', 'name' => 'Blog da '.$settings->get('company_name'), 'url' => StructuredData::url('/blog'), 'publisher' => ['@id' => StructuredData::organizationId()]],
+            StructuredData::breadcrumbs(array_values(array_filter([['Blog', '/blog'], $category ? [$category->name, '/blog?category='.$category->slug] : null]))),
+        ]];
+
+        // A listagem principal usa os metadados do painel; filtros e páginas seguintes derivam dela.
+        if ($query === [] && ! $noindex) {
+            return Seo::page('blog', ['jsonLd' => $jsonLd]);
+        }
+
+        $base = Seo::page('blog');
+        $title = trim(($category ? $category->name.' — ' : '').'Blog'.($page > 1 ? " (página {$page})" : ''));
+
+        return Seo::tags([
+            'title' => $settings->formatTitle($title),
+            'description' => $category?->description ?: $base['description'],
+            'canonical' => '/blog'.($query ? '?'.http_build_query($query) : ''),
+            'robots' => $noindex ? 'noindex, follow' : $base['robots'],
+            'jsonLd' => $jsonLd,
         ]);
     }
 }

@@ -5,22 +5,30 @@ import { SiteLayout } from '@/components/site/site-layout';
 import { services } from '@/data/site';
 import { useSiteWhatsappUrl } from '@/lib/contact';
 
-export default function NotFound() {
+export default function NotFound({ gone = false }: { gone?: boolean }) {
     const whatsappUrl = useSiteWhatsappUrl(
         'Olá, cheguei numa página que não existe mais no site da ABrasil.',
     );
 
     return (
         <SiteLayout>
-            <Head title="Página não encontrada | ABrasil Sistemas">
+            <Head
+                title={
+                    gone
+                        ? 'Página removida | ABrasil Sistemas'
+                        : 'Página não encontrada | ABrasil Sistemas'
+                }
+            >
                 <meta name="robots" content="noindex, nofollow" />
             </Head>
 
             <section className="bg-[#0b1220] pt-28 pb-16 text-white sm:pt-36 sm:pb-24">
                 <Container>
-                    <Eyebrow inverse>Erro 404</Eyebrow>
+                    <Eyebrow inverse>{gone ? 'Erro 410' : 'Erro 404'}</Eyebrow>
                     <h1 className="mt-4 max-w-3xl text-4xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-5xl">
-                        Página não encontrada.
+                        {gone
+                            ? 'Esta página foi removida.'
+                            : 'Página não encontrada.'}
                     </h1>
                     <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
                         O endereço que você tentou acessar não existe ou foi

@@ -8,6 +8,7 @@ import {
     Mail,
     MessageCircle,
     Plug,
+    Search,
     ShoppingCart,
     Smartphone,
     Users,
@@ -455,6 +456,62 @@ function LandingVisual() {
     );
 }
 
+function SeoVisual() {
+    const checks = [
+        'Título e descrição únicos',
+        'Canonical e sitemap XML',
+        'Dados estruturados válidos',
+        'Carregamento rápido no celular',
+        'Áreas privadas fora do índice',
+    ];
+
+    return (
+        <div className="relative pb-10">
+            <Panel className="overflow-hidden">
+                <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+                    <Search className="size-4 shrink-0 text-slate-400" />
+                    <span className="truncate text-xs text-slate-300">
+                        sistema para assistência técnica
+                    </span>
+                </div>
+                <div className="grid gap-5 p-5 sm:p-6">
+                    <div>
+                        <p className="text-[11px] text-slate-400">
+                            suaempresa.com.br › servicos
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-sky-300">
+                            Título claro, escrito para quem pesquisa
+                        </p>
+                        <span className="mt-2 block h-2 w-full rounded bg-white/15" />
+                        <span className="mt-1.5 block h-2 w-4/5 rounded bg-white/15" />
+                    </div>
+                    <div className="opacity-50">
+                        <span className="block h-2 w-1/3 rounded bg-white/15" />
+                        <span className="mt-2 block h-2.5 w-2/3 rounded bg-white/30" />
+                        <span className="mt-2 block h-2 w-full rounded bg-white/10" />
+                    </div>
+                </div>
+            </Panel>
+            <div className="absolute right-0 -bottom-1 w-60 rounded-md border border-white/10 bg-[#0e1626] p-4 shadow-2xl shadow-black/50 sm:right-6">
+                <p className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+                    Auditoria técnica
+                </p>
+                <ul className="mt-3 grid gap-2">
+                    {checks.map((check) => (
+                        <li
+                            key={check}
+                            className="flex items-center gap-2 text-[11px] text-slate-200"
+                        >
+                            <Check className="size-3.5 shrink-0 text-emerald-300" />
+                            {check}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    );
+}
+
 const visuals: Record<VisualKind, { label: string; render: () => ReactNode }> =
     {
         system: {
@@ -480,6 +537,10 @@ const visuals: Record<VisualKind, { label: string; render: () => ReactNode }> =
         landing: {
             label: 'Ilustração: landing page com formulário enviando o lead para o CRM',
             render: LandingVisual,
+        },
+        seo: {
+            label: 'Ilustração: resultado de busca com título e descrição claros, ao lado de uma auditoria técnica com as verificações aprovadas',
+            render: SeoVisual,
         },
     };
 

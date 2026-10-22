@@ -11,4 +11,6 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    /** Submenu (sidebar). No cabeçalho, o item leva ao href do pai. */
+    items?: NavItem[];
 };

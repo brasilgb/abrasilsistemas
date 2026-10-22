@@ -27,10 +27,11 @@ test('institutional pages render with their own seo', function (string $path, st
 
 test('every service page renders the shared service component with its slug', function () {
     foreach (array_keys(PublicPages::SERVICES) as $slug) {
+        // O SEO profissional é a única landing page própria.
         $this->get('/'.$slug)
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('site/servico')
+                ->component($slug === PublicPages::SEO_SERVICE ? 'site/seo' : 'site/servico')
                 ->where('slug', $slug)
                 ->where('seo.title', PublicPages::SERVICES[$slug]['title'])
                 ->where('seo.canonical', url('/'.$slug)));
@@ -135,6 +136,7 @@ test('each institutional page shares its own hero photo with alt text', function
     'aplicativos' => ['/desenvolvimento-de-aplicativos', 'aplicativos'],
     'sites' => ['/desenvolvimento-de-sites-para-empresas', 'sites'],
     'landing pages' => ['/criacao-de-landing-pages', 'landing-pages'],
+    'seo' => ['/seo-tecnico-e-otimizacao-de-sites', 'seo'],
     'vetoros' => ['/sistemas/vetoros', 'vetoros'],
     'vetorpet' => ['/sistemas/vetorpet', 'vetorpet'],
     'sobre' => ['/sobre', 'sobre'],
