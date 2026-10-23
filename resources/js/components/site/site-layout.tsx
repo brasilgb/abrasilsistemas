@@ -3,7 +3,6 @@ import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
 import { SeoHead } from '@/components/site/seo-head';
 import { SiteHeader } from '@/components/site/site-header';
-import { WhatsAppFloat } from '@/components/whatsapp-float';
 import { useRememberSourcePage } from '@/lib/contact';
 
 /**
@@ -27,7 +26,6 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 <SiteHeader />
                 <main id="conteudo">{children}</main>
                 <PublicFooter />
-                <WhatsAppFloat />
                 <CookieConsent />
             </div>
         </>

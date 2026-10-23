@@ -2,7 +2,6 @@ import type { PropsWithChildren } from 'react';
 import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
 import { SiteHeader } from '@/components/site/site-header';
-import { WhatsAppFloat } from '@/components/whatsapp-float';
 import { useRememberSourcePage } from '@/lib/contact';
 
 /**
@@ -27,7 +26,6 @@ export default function BlogPublicLayout({ children }: PropsWithChildren) {
                 {children}
             </div>
             <PublicFooter />
-            <WhatsAppFloat />
             <CookieConsent />
         </div>
     );

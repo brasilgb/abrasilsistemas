@@ -2,7 +2,6 @@ import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
 import { SeoHead } from '@/components/site/seo-head';
 import { SiteHeader } from '@/components/site/site-header';
-import { WhatsAppFloat } from '@/components/whatsapp-float';
 import { useContact } from '@/lib/contact';
 
 export default function PoliticaDePrivacidade() {
@@ -101,7 +100,6 @@ export default function PoliticaDePrivacidade() {
                 </main>
 
                 <PublicFooter />
-                <WhatsAppFloat />
                 <CookieConsent />
             </div>
         </>
