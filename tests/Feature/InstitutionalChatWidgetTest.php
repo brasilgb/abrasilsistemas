@@ -11,7 +11,8 @@ test('institutional installation uses only the public key and mounts on all publ
     expect(substr_count($html, 'data-widget-key='))->toBe(1)
         ->and($html)->toContain('src="https://chat.example/widget.js"')
         ->toContain('data-product="abrasil"')
-        ->toContain('data-position="left" data-z-index="50" async');
+        ->toContain('data-z-index="50" async')
+        ->not->toContain('data-position="left"');
 })->with(['/', '/contato', '/sistemas/vetoros', '/desenvolvimento-de-sites-para-empresas', '/automacao-de-processos', '/politica-de-privacidade']);
 
 test('invalid or missing public configuration leaves the installation inactive', function (?string $key, string $url) {
