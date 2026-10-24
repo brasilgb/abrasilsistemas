@@ -1,233 +1,216 @@
-# ABRASIL-SEO-FINAL-01 — Consolidação técnica e comercial do SEO
-
-**Projeto:** ABrasil Sistemas
-**Base:** ABRASIL-SEO-02 concluída em 21/10/2026
-**Prioridade:** Alta
+# ABRASIL-VETORCHAT-01 — Substituir botão WhatsApp antigo pelo VetorChat
 
 ## Objetivo
 
-Consolidar o sistema de SEO implementado na ABRASIL-SEO-02, corrigir pendências relevantes e incorporar SEO profissional ao portfólio comercial da ABrasil Sistemas.
+No site https://abrasilsistemas.com.br, remover o botão flutuante antigo do WhatsApp que redireciona o visitante para o WhatsApp Web.
 
-Não reconstruir o sistema existente nem duplicar funcionalidades.
+Substituir pelo widget oficial do VetorChat, fornecido pelo VetorLeads.
 
-A empresa adotará duas modalidades comerciais:
+## 1. Identificar a implementação antiga
 
-1. SEO técnico essencial incluído em todos os novos projetos de sites, landing pages, portais e sistemas web.
-2. SEO profissional contratado separadamente para otimização de sites e aplicações existentes, incluindo acompanhamento contínuo opcional.
+Localizar o componente que renderiza o botão flutuante, incluindo referências a:
 
----
+- whatsapp-float
+- wa.me
+- api.whatsapp.com
+- WhatsApp Web
+- Componentes globais do layout institucional
 
-## 1. Avaliação da implementação anterior
+Desativar apenas o botão flutuante antigo, preservando links de contato WhatsApp existentes em páginas onde forem intencionais.
 
-Ler o relatório ABRASIL-SEO-02 e auditar os arquivos efetivamente implementados.
+## 2. Ativar o VetorChat
 
-Confirmar:
+Utilizar a integração já implementada:
 
-- Funcionamento das nove seções administrativas.
-- Integridade das migrations e configurações.
-- Sitemap e robots.txt dinâmicos.
-- Metadados e canonical.
-- Redirecionamentos.
-- Auditoria interna.
-- JSON-LD.
-- Análise editorial.
-- Integrações do Search Console, GA4 e Bing.
-- Compatibilidade com a infraestrutura de produção existente.
+VETORCHAT_SCRIPT_URL=https://vetorleads.com.br/widget.js
 
-Corrigir problemas reais encontrados sem reescrever módulos funcionais.
+VETORCHAT_WIDGET_KEY deve utilizar a chave de instalação já cadastrada no VetorLeads.
 
-Revisar os avisos PHPStan referentes ao novo código, priorizando os que indiquem riscos efetivos.
+A instalação deve equivaler a:
 
-## 2. SEO incluído no desenvolvimento
+```html
+<script src="https://vetorleads.com.br/widget.js" data-widget-key="CHAVE_CONFIGURADA" async></script>
+```
 
-Atualizar a apresentação dos serviços da ABrasil para informar:
+Não adicionar o script duas vezes.
 
-**"SEO técnico incluído em todos os nossos projetos web."**
+Não incluir chaves privadas WAHA no frontend.
 
-Explicar que sites e sistemas públicos são desenvolvidos com:
+## 3. Comportamento esperado
 
-- Estrutura HTML apropriada.
-- Metadados individualizados.
-- Sitemap XML.
-- URLs amigáveis.
-- Canonical.
-- Dados estruturados pertinentes.
-- Otimização técnica de carregamento.
-- Configuração de indexabilidade.
-- Compatibilidade com mecanismos de busca.
+- Um único botão flutuante de atendimento.
+- Abrir o VetorChat dentro da própria página.
+- Interface responsiva em desktop e dispositivos móveis.
+- Não redirecionar automaticamente ao WhatsApp Web.
+- Identificar o tenant institucional ABrasil.
+- Identificar o produto ABrasil Sistemas.
+- Registrar mensagens no inbox correspondente do VetorLeads.
+- Preservar isolamento multitenant.
 
-Nos sistemas web, aplicar indexação somente às páginas públicas relevantes.
+## 4. Verificação da VPS
 
-Não permitir indexação de dashboards, informações comerciais privadas, dados de clientes ou áreas autenticadas.
+Confirmar se o container ABrasil está executando o código atualizado.
 
-Distinguir SEO técnico incluído de serviços contínuos de conteúdo, monitoramento e consultoria.
+Verificar se VETORCHAT_WIDGET_KEY está efetivamente disponível ao Laravel.
 
-## 3. Criar o serviço SEO Profissional
+Verificar cache de configuração, layout Blade, componentes React e artefatos frontend.
 
-Adicionar ao portfólio institucional:
+Se a imagem estiver desatualizada, gerar o build e atualizar exclusivamente o serviço ABrasil Sistemas, mediante verificação de segurança.
 
-**SEO Técnico, Performance e Otimização Digital**
+Não reconstruir outros containers.
 
-Criar uma landing page com identidade visual profissional e tecnológica, compatível com a identidade atual da ABrasil.
+## 5. Homologação objetiva
 
-A página deve apresentar três modalidades:
+Verificar:
 
-### SEO Essencial
+1. Botão WhatsApp antigo ausente.
+2. VetorChat visível na página inicial.
+3. Clique abre janela de conversa dentro do site.
+4. Widget carrega sem erro.
+5. Mensagem de teste chega ao VetorLeads.
+6. Resposta retorna ao visitante.
 
-Auditoria e implantação técnica para empresas que já possuem um site.
+Se os testes de navegador estiverem indisponíveis, utilizar HTTP, código renderizado, APIs e logs, registrando o que não foi visualmente confirmado.
 
-### SEO Profissional
+## 6. Restrições
 
-Auditoria aprofundada, correções técnicas, dados estruturados, performance, otimização editorial e melhorias de indexabilidade.
+Não alterar VetorOS, VetorPet ou Desgarrados.
 
-### SEO Gerenciado
+Não instalar Docker local.
 
-Acompanhamento recorrente de desempenho orgânico, recomendações, relatórios e melhorias contínuas.
+Não repetir suítes extensas.
 
-Não estabelecer preços fixos.
+Não modificar configurações válidas de SEO e Google.
 
-Não prometer posições garantidas no Google.
+Não habilitar envio automático para contatos reais sem validação.
 
-## 4. Página comercial
+## Resultado
 
-A landing page deverá possuir:
+Registrar em executed.md o componente removido, a versão publicada, o widget ativado e os resultados operacionais.
 
-- Hero com imagem profissional relacionada à tecnologia, SEO e análise de dados.
-- Título e subtítulo comerciais.
-- Benefícios empresariais.
-- Detalhamento dos serviços.
-- Explicação das modalidades.
-- Etapas da contratação.
-- Perguntas frequentes úteis.
-- CTA "Solicitar análise SEO".
-- Integração com o formulário de contato existente.
-- Links para os serviços de desenvolvimento de software, sites e integração.
+Concluir a substituição e publicação, sem iniciar outra auditoria geral.
 
-Garantir responsividade, acessibilidade e SEO completo da própria página.
 
-Evitar seções repetitivas, excesso de cards e aparência genérica de template.
+# VETOROS-CHAT-13 — Substituição do WhatsApp antigo pelo VetorChat
 
-## 5. Integração comercial
+## Objetivo
 
-O formulário de solicitação deve identificar o interesse do visitante como "SEO Profissional".
+Substituir o botão flutuante antigo do WhatsApp no site público do VetorOS pelo widget oficial do VetorChat SaaS, centralizado no VetorLeads.
 
-Utilizar o sistema de atendimento existente da ABrasil.
+Utilizar a implementação já desenvolvida e publicada, sem criar outro sistema de atendimento.
 
-Preservar o registro da origem do contato, informações comerciais necessárias e consentimentos aplicáveis.
+## 1. Revisar o site público
 
-Não criar outro CRM ou sistema paralelo de leads.
+Localizar todos os componentes responsáveis pelo botão flutuante do WhatsApp, inclusive:
 
-## 6. Preparação para Google Search Console
+- Layout público.
+- Componentes React.
+- Views Blade.
+- Scripts globais.
+- Links `wa.me` e `api.whatsapp.com`.
 
-Como a propriedade abrasilsistemas.com.br já foi cadastrada, verificar se o site está pronto para configuração e indexação após o deploy.
+Remover somente o botão flutuante antigo.
 
-Validar tecnicamente:
+Preservar links de WhatsApp que façam parte de funcionalidades comerciais intencionais e do uso operacional do VetorOS.
 
-- `/sitemap.xml`
-- `/robots.txt`
-- Canonical.
-- Diretivas robots.
-- Metadados.
-- HTTPS.
-- Redirecionamentos.
-- Dados estruturados.
-- Ausência de bloqueio indevido à indexação no domínio de produção.
+Não modificar o WhatsApp dos clientes das assistências técnicas.
 
-Examinar cuidadosamente `SEO_BLOCK_INDEXING`, `APP_URL` e o domínio canônico para evitar colocar `noindex` na produção.
+## 2. Integrar o widget oficial
 
-Preparar instruções para configurar o OAuth oficial do Search Console no Google Cloud.
+Utilizar as variáveis já existentes:
 
-Não inserir credenciais no código ou nos relatórios.
+```dotenv
+VETORCHAT_SCRIPT_URL=https://vetorleads.com.br/widget.js
+VETORCHAT_WIDGET_KEY=CHAVE_PUBLICA_DA_INSTALACAO
+```
 
-Não afirmar que a integração está ativa sem autorização e teste real.
+O resultado deve equivaler a:
 
-## 7. Melhorias para o blog
+```html
+<script src="https://vetorleads.com.br/widget.js"
+        data-widget-key="CHAVE_PUBLICA_DA_INSTALACAO"
+        async></script>
+```
 
-Adicionar a categoria comercial/editorial SEO, se ainda não existir.
+Reutilizar a integração de `resources/views/app.blade.php` já implementada.
 
-Preparar pautas para artigos como:
+Não duplicar scripts.
 
-- Por que sua empresa precisa de SEO técnico?
-- Como aparecer nas pesquisas do Google?
-- SEO para sites empresariais: o que realmente importa?
-- Como melhorar o desempenho e a indexação de um site?
-- Qual a diferença entre SEO técnico e anúncios pagos?
+Não incluir tokens privados WAHA no frontend.
 
-Antes de criar novos artigos, verificar os existentes para evitar duplicidade.
+## 3. Identificação do atendimento
 
-Criar novos conteúdos como rascunho, sem publicação automática.
+Configurar a instalação para:
 
-## 8. Política obrigatória de ambiente
+- Tenant: ABrasil Sistemas.
+- Produto: VetorOS.
+- Origem: domínio público do VetorOS.
+- Canal: Webchat.
+- Inbox: atendimento do VetorLeads.
 
-**É expressamente proibido criar, iniciar, modificar ou reconstruir containers Docker ou Podman no ambiente local.**
+Utilizar a chave de instalação correspondente ao produto VetorOS. Compartilhar a mesma chave institucional somente se o modelo de autorização e identificação de produtos do VetorLeads permitir.
 
-Não executar Docker Compose localmente.
+As mensagens recebidas devem indicar claramente que o visitante está interessado no VetorOS.
 
-Não instalar serviços de infraestrutura para contornar problemas dos testes.
+## 4. Comportamento visual
 
-Não modificar a configuração dos containers de produção.
+O novo widget deve:
 
-Utilizar os recursos e serviços locais já disponíveis.
+- Substituir o botão flutuante anterior.
+- Aparecer uma única vez.
+- Abrir o atendimento dentro do próprio site.
+- Funcionar em desktop e dispositivos móveis.
+- Não atrapalhar menus, formulários ou navegação.
+- Não abrir WhatsApp Web automaticamente.
 
-Somente realizar alterações na VPS quando houver autorização específica.
+O design deve ser consistente com o widget utilizado no ABrasil Sistemas.
 
-## 9. Política obrigatória de testes
+## 5. Segurança
 
-Executar testes adequados à stack Laravel, React/Inertia e banco de dados existentes.
+- Respeitar os domínios autorizados da instalação.
+- Preservar isolamento entre tenants.
+- Não expor chaves privadas ou tokens de serviço.
+- Não alterar automações comerciais existentes.
+- Não modificar conversas reais de clientes.
+- Não habilitar respostas automáticas não homologadas.
 
-Priorizar:
+## 6. Publicação
 
-- PHPUnit/Pest.
-- Testes de rotas e controladores.
-- Testes HTTP.
-- TypeScript.
-- ESLint.
-- PHPStan.
-- Build.
-- Validação de sitemap e JSON-LD.
-- Testes de interface quando o navegador estiver funcional.
+Trabalhar exclusivamente no VetorOS.
 
-### Regra de interrupção
+Verificar o commit existente e o estado da imagem de produção.
 
-Se Playwright, navegador ou outra ferramenta apresentar falhas repetitivas de ambiente, fazer no máximo duas tentativas sem progresso.
+Se houver alterações necessárias, criar commit e push seletivos antes do deploy.
 
-Depois, mudar para outro método de validação funcional.
+Na VPS, atualizar somente o serviço VetorOS, após verificar backup, configuração e rollback.
 
-Não insistir indefinidamente em instalação de navegadores, bibliotecas ou reparos do ambiente.
+Não reiniciar MySQL, Redis, WAHA, VetorLeads ou outros serviços desnecessariamente.
 
-Falhas reais da aplicação devem ser corrigidas, não ignoradas.
+Não executar Docker local.
 
-Testes HTTP ou builds não substituem a validação visual. Caso esta seja impossível, registrar a pendência.
+## 7. Homologação
 
-Não criar containers temporários para executar testes.
+Verificar:
 
-## 10. Segurança
+1. Botão antigo removido.
+2. Widget VetorChat carregando.
+3. Produto VetorOS identificado.
+4. Mensagem chegando ao inbox correto.
+5. Resposta retornando ao visitante.
+6. Site e painel VetorOS funcionando normalmente.
 
-- Proteger rotas administrativas.
-- Validar entradas e URLs.
-- Evitar XSS e SSRF.
-- Proteger tokens e credenciais.
-- Respeitar LGPD e consentimento de cookies.
-- Verificar redirects para evitar loops.
-- Não introduzir indexação de ambientes privados.
-- Preservar os dados e URLs existentes.
+Utilizar identidade de teste autorizada para validar mensagens.
 
-## 11. Entrega e relatório
+Se o navegador não estiver disponível, utilizar verificações HTTP, API e logs sem insistir em instalações de navegadores.
 
-Ao concluir, atualizar `executed.md` com:
+## 8. Resultado
 
-1. Resumo da implementação.
-2. Funcionalidades já existentes e reaproveitadas.
-3. Correções executadas.
-4. Novas páginas e serviços.
-5. Arquivos modificados.
-6. Migrations, caso necessárias.
-7. Testes realizados e resultados.
-8. Testes não executados e motivos.
-9. Pendências de credenciais externas.
-10. Instruções para deploy e Search Console.
-11. Riscos ou limitações conhecidos.
+Registrar em `executed.md`:
 
-Não executar commit, push ou deploy sem autorização.
+- Arquivos modificados.
+- Commit e versão publicada.
+- Estado do widget.
+- Resultado dos testes.
+- Pendências reais.
 
-**Critério final:** SEO interno consolidado, novo serviço comercial disponível no código, SEO técnico apresentado como diferencial dos projetos web e sistema preparado para publicação segura na VPS.
+**Objetivo: disponibilizar um único canal de atendimento web integrado ao VetorLeads, preservando o WhatsApp operacional dos clientes do VetorOS.**

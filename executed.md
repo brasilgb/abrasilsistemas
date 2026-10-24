@@ -1,160 +1,83 @@
-# Execução de `correio.md`: ABRASIL-SEO-FINAL-01, consolidação técnica e comercial do SEO
+# Execução de `correio.md`: ABRASIL-PROD-CONFIG-01, correção do ambiente e ativação de integrações
 
-Data: 2026-10-21. Base: ABRASIL-SEO-02 (relatório anterior deste arquivo).
+Data: 2026-10-22. Base: `correio.md` alterado em relação à execução anterior (ABRASIL-SEO-FINAL-01).
 
-## 1. Resumo da implementação
+**Status: execução concluída no que depende da infra, com uma pendência externa.** O ambiente de produção foi corrigido, as três chaves foram ligadas ao container e os containers do ABrasil foram recriados. Falta apenas validar o reconhecimento do OAuth no painel SEO, que exige login no painel administrativo.
 
-- **Novo serviço:** landing page de **SEO Técnico, Performance e Otimização Digital** em `/seo-tecnico-e-otimizacao-de-sites`. Apresenta as três modalidades (SEO Essencial, Profissional e Gerenciado), sem preço e sem promessa de posição, e o CTA "Solicitar análise SEO" leva ao formulário de contato existente.
-- **SEO técnico incluído:** um bloco que diz "SEO técnico incluído em todos os nossos projetos web." aparece em `/servicos` e nas páginas de sistemas sob medida, sites e landing pages. O bloco lista os 9 itens do correio, avisa que áreas privadas não são indexadas e separa esse SEO do serviço contínuo, que é contratado à parte.
-- **Blog:** categoria "SEO e performance" e 5 pautas criadas como **rascunho** pelo comando `blog:seo-drafts`, com verificação de duplicidade. Nada é publicado automaticamente.
-- **Search Console:** o comando `seo:check` confere se a produção está indexável, e o guia `docs/seo-deploy-e-search-console.md` cobre o deploy e o OAuth.
-- **Risco real encontrado na produção (ver §11):** se `ABRASILSISTEMA_APP_URL` não estiver no `.env` da VPS, o compose define `APP_URL=http://abrasilsistema.localhost` e o site inteiro sai com `noindex`. O `seo:check` detecta esse caso.
-- **Testes:** 264/264 (1.805 asserções). TypeScript, ESLint, Prettier, Pint e build ok, e validação visual feita (desktop 1440 px e celular 390 px).
-- **Não feito:** deploy, push, commit e qualquer alteração na VPS ou em containers.
+## 1. Segurança de produção
 
-## 2. Funcionalidades existentes reaproveitadas
+- Ambiente efetivo antes da correção: `local`, confirmado com `php artisan about --only=environment` no container `infra-abrasil-abrasilsistema-1`. Debug estava OFF.
+- `APP_ENV=local` vinha do `.env` da raiz e do padrão `${APP_ENV:-local}` do bloco `laravel-environment`. `LOG_LEVEL=debug` vinha do `.env.example` referenciado pelo `env_file`.
+- **Correção aplicada** em `/opt/infra-abrasil/docker-compose.yml`, somente no serviço `abrasilsistema` (o `environment` sobrescreve o `env_file`):
+  - `APP_ENV: production`
+  - `APP_DEBUG: "false"`
+  - `LOG_LEVEL: warning`
+- O bloco compartilhado `laravel-environment` não foi alterado, então VetorOS, VetorPet e Desgarrados mantêm os valores anteriores.
+- `APP_KEY`, `APP_URL`, credenciais, banco e demais variáveis não foram alterados.
+- Após a recriação, `php artisan about --only=environment` no container: **Environment: production**, **Debug Mode: OFF**.
 
-- **Infra de SEO da SEO-02 sem reescrita:** `PublicPages`, `PageRegistry`, `SitemapBuilder`, `StructuredData`, `Seo::page`, robots dinâmico, `ContentAnalyzer` e `SeoMetaStore`. A página nova entra no sitemap, no painel "Páginas e metadados", na auditoria e em "Palavras-chave" sem código novo para isso.
-- **Lista `services` de `resources/js/data/site.ts`:** o serviço novo aparece sozinho no menu Soluções, na home (grupo Presença digital), no rodapé e em `/servicos`.
-- **Formulário de contato e Solicitações:** `?tipo=seo` pré-seleciona o tipo, e a solicitação entra como `source=site` com `source_page`, consentimento e e-mail à equipe, como as demais. Não houve CRM novo.
-- **Hero com foto e véu navy (`PageHero`/`HeroBackdrop`), `ProcessSteps`, `FaqList` e `CtaBand`.**
+## 2. Configuração Laravel e containers
 
-## 3. Auditoria da SEO-02 e correções executadas
+- Cache de configuração: não existia (`bootstrap/cache` sem `config.php`). `config:cache` não foi gerado, porque a configuração é lida do ambiente a cada requisição.
+- **Primeira recriação:** `docker compose up -d --no-deps --force-recreate abrasilsistema abrasilsistema-worker abrasilsistema-scheduler`, sem build. Aplicou o ambiente de produção.
+- **Segunda recriação:** mesmo comando, após vincular as chaves do Google Search Console e do VetorChat (ver item 3 e 4).
+- Não foram recriados outros serviços (VetorOS, VetorPet, Desgarrados, VetorLeads, WAHA, MySQL).
+- Estado final: `infra-abrasil-abrasilsistema-1`, `-worker-1` e `-scheduler-1` estão `Up` e `healthy`.
+- `storage/logs` está vazio no container. Não há `laravel.log` para analisar.
 
-| Item do correio | Situação |
+## 3. Google Search Console
+
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_ID`: presente no container (72 caracteres).
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`: presente no container (35 caracteres).
+- Causa do valor vazio antes: as chaves estavam só no `.env` da aplicação, que o container não lê. Foram movidas para o `.env` da raiz, e o serviço `abrasilsistema` no `docker-compose.yml` passou a referenciá-las com `${VAR:-}`.
+- Reconhecimento no painel SEO → Integrações e URI OAuth `https://abrasilsistemas.com.br/admin/seo/integracoes/google/callback`: **não verificados** (exige login no painel administrativo). Nenhuma credencial foi alterada.
+
+## 4. VetorChat
+
+- `VETORCHAT_SCRIPT_URL`: presente (`https://vetorleads.com.br/widget.js`).
+- `VETORCHAT_WIDGET_KEY`: presente no container (48 caracteres), com a mesma causa e correção da seção 3.
+- A home pública já referencia o `widget.js` (1 ocorrência no HTML).
+- Registro do widget no tenant, domínio autorizado e produto ABrasil: não verificados (dependem do painel VetorLeads).
+
+## 5. WAHA e n8n
+
+- `WAHA_BASE_URL=http://waha:3000`, com `WAHA_API_KEY` e `WAHA_WEBHOOK_HMAC_KEY` presentes.
+- `N8N_WHATSAPP_WEBHOOK_URL` e `N8N_WHATSAPP_WEBHOOK_TOKEN` presentes.
+- Nada removido e nenhum envio automático ativado.
+
+## 6. Validação objetiva
+
+| Item | Resultado |
 |---|---|
-| 9 seções administrativas | ok. O teste "administrador abre todas as telas de SEO" passa |
-| Migrations/configurações | ok, idempotentes (`hasTable` / checagem antes de inserir) |
-| Sitemap e robots dinâmicos | ok. A página nova entra no sitemap, e as áreas privadas (`/atendimento`, `/solicitacoes`, `/admin`…) ficam com `Disallow` e `X-Robots-Tag: noindex` |
-| Metadados, canonical, JSON-LD | ok no HTML inicial (verificado na página nova) |
-| Redirecionamentos, auditoria, análise editorial | ok (testes da SEO-02 passando) |
-| Search Console / GA4 / Bing | código pronto, **não ativo**: depende de credenciais (§9) |
-| Compatibilidade com a produção | risco de `APP_URL` encontrado (§11) |
+| Laravel em modo produção | Sim (`production`) |
+| Debug desativado | Sim (OFF) |
+| Página pública funcionando | Sim: `https://abrasilsistemas.com.br/` responde HTTP 200 |
+| `https://vetorleads.com.br/widget.js` | HTTP 200 |
+| Widget referenciado na home | Sim (script presente no HTML) |
+| Painel SEO reconhecendo OAuth | Não verificado (exige login no painel) |
+| Erros críticos nos logs | Sem `error`, `critical`, `emergency` ou `alert` nas últimas 300 linhas de `docker logs infra-abrasil-abrasilsistema-1` |
 
-**PHPStan:** os avisos nos arquivos de SEO caíram de 41 para 17, e o total do projeto, de 97 para 75. Correções sem mudança de comportamento:
+Testes não foram executados (conforme o item 6 do correio).
 
-- Tipo `Check` no `ContentAnalyzer` (11 métodos sem tipo de retorno).
-- `array_filter` com callback que devolvia `0|1|false` passou a comparar `=== 1`.
-- `HtmlInspector`: `xpath->query()` podia devolver `false`, e o `?->` não tratava esse caso.
-- `SitemapBuilder::limit()` anotado como `int<1, max>`.
-- Docblocks de uma linha que o PHPStan não lia (`ga4Events`, `types`, `findByPath`).
-- `is_string()` redundante no `SeoChangeLogger`.
+## 7. Relatório
 
-Os 17 restantes são de covariância de `Collection` e falsos positivos. No `KeywordController`, o `?->` é necessário, porque o `meta` pode ser null em execução. Nenhum indica risco.
+**Configurações corrigidas:**
+- `APP_ENV=production`, `APP_DEBUG=false` e `LOG_LEVEL=warning` no serviço `abrasilsistema` do `docker-compose.yml`.
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_ID`, `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET` e `VETORCHAT_WIDGET_KEY` passaram a ser lidas do `.env` da raiz e chegam ao container.
 
-## 4. Novas páginas e serviços
+**Ambiente efetivo identificado:** antes, container `infra-abrasil-abrasilsistema-1` em `local`, debug OFF. Depois, `production`, debug OFF.
 
-**`/seo-tecnico-e-otimizacao-de-sites`** (componente `site/seo`), seção por seção:
+**Chaves presentes ou ausentes (sem valores):**
+- Presentes no container: `GOOGLE_SEARCH_CONSOLE_CLIENT_ID`, `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`, `VETORCHAT_WIDGET_KEY`, `VETORCHAT_SCRIPT_URL`, `WAHA_API_KEY`, `WAHA_WEBHOOK_HMAC_KEY`, `N8N_WHATSAPP_WEBHOOK_URL`, `N8N_WHATSAPP_WEBHOOK_TOKEN`, `APP_KEY`.
+- Ausentes ou vazias: nenhuma.
 
-1. Hero com foto de painel de desempenho, ilustração de resultado de busca + auditoria, e os botões "Solicitar análise SEO" e "Ver modalidades".
-2. Benefícios empresariais, com os sinais de que o site precisa de SEO ao lado.
-3. O que o trabalho cobre: 6 frentes em lista numerada, sem cards.
-4. Modalidades (Essencial, Profissional em destaque e Gerenciado), cada uma com seu CTA. Abaixo, a nota de que ninguém garante posição no Google.
-5. Bloco "SEO técnico incluído", separando o SEO incluído do contratado.
-6. Etapas da contratação: solicitação → análise inicial → proposta → correções → acompanhamento.
-7. FAQ com 6 perguntas (garantia, prazo, site de terceiros, SEO × anúncios, custo, SEO nos projetos novos) e links para Sistemas sob medida, Sites empresariais e Integrações e APIs.
-8. Faixa final com o CTA.
+**Rebuild ou restart:** recriados apenas `abrasilsistema`, `abrasilsistema-worker` e `abrasilsistema-scheduler`, sem build de imagem, em duas etapas.
 
-SEO da própria página:
+**Resultado das verificações:** ambiente production e debug OFF confirmados; página pública e `widget.js` com HTTP 200; widget referenciado na home; containers `healthy`; logs sem erros críticos recentes. Painel SEO/OAuth não verificado.
 
-- Título e descrição próprios, canonical, `index, follow` e og:image 1200×630 com alt.
-- JSON-LD com `Service` + `OfferCatalog` das 3 modalidades, sem preço e sem avaliação, e `BreadcrumbList`.
-- Intenção de busca nova, "SEO e performance", com os temas em Palavras-chave.
+**Pendências:**
+1. Validar no painel SEO → Integrações que as credenciais são reconhecidas e que a URI `https://abrasilsistemas.com.br/admin/seo/integracoes/google/callback` está cadastrada no Google.
+2. Confirmar no VetorLeads que o widget está registrado no tenant institucional, com o domínio autorizado e o produto ABrasil identificado. Sem isso, o widget pode não carregar a configuração completa.
+3. Limpar a duplicidade das três chaves no `.env` local da aplicação (`gateway/abrasilsistemas/.env`), que já não é lido pelo container.
 
-**Tipo de projeto "SEO Profissional"** (`seo`) no formulário e em Solicitações. Com `?tipo=seo`, o texto de ajuda pede o endereço do site.
-
-## 5. Arquivos modificados
-
-**Novos:**
-
-- `resources/js/pages/site/seo.tsx`
-- `resources/js/components/site/seo-included.tsx`
-- `app/Console/Commands/BlogSeoDraftsCommand.php`
-- `app/Console/Commands/SeoCheckCommand.php`
-- `database/data/blog-seo-drafts.php` (as 5 pautas)
-- `database/migrations/2026_10_21_140000_add_seo_blog_category.php`
-- `public/images/site/heroes/seo-{640,1280,1920}.{avif,webp}` e `seo-og.jpg`
-- `docs/seo-deploy-e-search-console.md`
-- `tests/Feature/SeoServiceTest.php`
-
-**Alterados nesta etapa:**
-
-- `app/Support/PublicPages.php`: serviço, `SEO_SERVICE`, foto e `hasOfferCatalog`.
-- `app/Http/Controllers/SiteController.php`: renderiza `site/seo` para o slug.
-- `app/Models/Lead.php`: tipo `seo`.
-- `app/Models/SeoMeta.php`: intenção `seo`.
-- `app/Http/Controllers/Admin/Seo/KeywordController.php`.
-- `app/Services/Seo/{ContentAnalyzer,HtmlInspector,SitemapBuilder,SeoSettings,SeoChangeLogger,StructuredData,PageRegistry}.php`: só anotações e as correções do §3.
-- `resources/js/data/site.ts`: serviço, `includedSeo`, `seoOffer` e `seoIncluded` nos serviços web.
-- `resources/js/data/hero-images.ts`.
-- `resources/js/components/site/visuals.tsx`: visual `seo`.
-- `resources/js/pages/site/servico.tsx` e `resources/js/pages/servicos.tsx`: bloco incluído.
-- `resources/js/pages/contato.tsx`: texto de ajuda do SEO.
-- `tests/Feature/PublicSiteTest.php`: exceção `site/seo` e foto `seo`.
-- `docs/imagens-do-site.md`: origem e licença da foto.
-- `public/build/*`, regenerado pelo build.
-
-Os demais arquivos que aparecem no `git status` são da SEO-02, ainda não commitada. `tests/Feature/InstitutionalChatWidgetTest.php` (não rastreado) não foi criado nem alterado nesta etapa.
-
-**Foto do hero:** Luke Chesser, Unsplash [JKUTrJ4vK00](https://unsplash.com/photos/graphs-of-performance-analytics-on-a-laptop-screen-JKUTrJ4vK00), Licença Unsplash (uso comercial livre, não é Unsplash+). Ela não repete nenhuma outra foto do site, e um teste garante isso.
-
-## 6. Migrations
-
-- `2026_10_21_140000_add_seo_blog_category`: cria a categoria "SEO e performance" (`seo-e-performance`) **só se** ainda não houver categoria de SEO (pelo slug `seo`/`seo-*` ou pelo nome com a palavra SEO). O `down` só remove a categoria se ela não tiver artigos.
-- Foi aplicada no banco **local** (`absistemas`). Também rodei `blog:seo-drafts` localmente: 5 rascunhos, com avaliação editorial entre 85 e 95. A segunda execução não criou nada.
-
-## 7. Testes realizados e resultados
-
-| Verificação | Resultado |
-|---|---|
-| Pest (suíte completa) | **264/264**, 1.805 asserções |
-| Novos (`SeoServiceTest`, 8 testes) | landing com SEO e JSON-LD sem preço ou avaliação; HTML inicial com canonical e JSON-LD; sitemap e robots; `noindex` com o bloqueio ligado; formulário `?tipo=seo` → solicitação "SEO Profissional" com origem; categoria + rascunhos sem duplicar, não públicos e fora do sitemap; bloco incluído nos serviços web; `seo:check` aprovando a produção e acusando `APP_URL` localhost e `SEO_BLOCK_INDEXING` |
-| TypeScript (`tsc --noEmit`) | sem erros |
-| ESLint e Prettier (arquivos alterados) | limpos |
-| Pint (PHP alterado) | limpo |
-| PHPStan (arquivos novos) | 0 erros |
-| `npm run build` | ok |
-| Validação de sitemap e JSON-LD | por teste e pelo `seo:check` |
-| **Validação visual** | Chromium headless do Playwright já instalado. A primeira tentativa, pelo Chrome do MCP, falhou por falta do Chrome; a segunda funcionou. Telas conferidas: landing de SEO em 1440 e 390 px, página de Sites com o bloco incluído e contato com `?tipo=seo`. Hero legível, sem rolagem horizontal e modalidades empilhadas no celular |
-
-## 8. Testes não executados e motivos
-
-- **Testes com navegador interativo (cliques, envio real do formulário no browser):** só fiz capturas de tela. O envio do formulário está coberto por teste HTTP.
-- **`seo:check --live`:** depende do site publicado com esta versão.
-- **Rich Results Test do Google:** externo, fazer depois do deploy (o painel tem o link).
-- Nenhum container foi criado, iniciado ou alterado e nada foi instalado. Usei o `php artisan serve` local, já encerrado.
-
-## 9. Pendências de credenciais externas
-
-- `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` e `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`: cliente OAuth "Aplicativo da Web" no Google Cloud. O passo a passo está em `docs/seo-deploy-e-search-console.md` §4.
-  - **Atenção:** o container lê o `.env.example`, que é versionado. As credenciais **não** devem ir para ele. O caminho seguro é mapeá-las no bloco `environment` do compose a partir do `.env` da infra, o que altera a configuração do container e depende da sua autorização.
-- Verificação do Google e do Bing e IDs do GA4: pelo painel (SEO → Integrações).
-- **A integração com o Search Console e o GA4 não está ativa.** Nada foi conectado nem testado com credenciais reais.
-
-## 10. Instruções para deploy e Search Console
-
-Detalhes em `docs/seo-deploy-e-search-console.md`.
-
-1. **Na VPS, confirme `ABRASILSISTEMA_APP_URL=https://abrasilsistemas.com.br` no `.env` da infra** e `SEO_BLOCK_INDEXING=false`.
-2. Depois do deploy autorizado, rode no container:
-   - `php artisan migrate --force`
-   - `php artisan optimize:clear`
-   - `php artisan blog:seo-drafts --dry-run`, depois `php artisan blog:seo-drafts`
-   - `php artisan seo:check` e `php artisan seo:check --live`. Os dois precisam terminar em "Pronto para indexação."
-3. No Search Console (propriedade já cadastrada):
-   - Envie `https://abrasilsistemas.com.br/sitemap.xml`.
-   - Inspecione a home e `/seo-tecnico-e-otimizacao-de-sites` e peça a indexação.
-4. Revise e publique os 5 rascunhos de SEO pelo painel, um por vez.
-
-## 11. Riscos e limitações conhecidos
-
-- **`APP_URL` em produção (o mais importante).** O `docker-compose.yml` da infra define `APP_URL: ${ABRASILSISTEMA_APP_URL:-http://abrasilsistema.localhost}`. Se a variável faltar no `.env` da VPS, o domínio canônico vira `abrasilsistema.localhost` e o site sai com `noindex` + `Disallow: /`.
-  - O `.env.example` da infra traz o valor certo, mas não consegui ver o `.env` real da VPS.
-  - O `seo:check` detecta o problema, e uma alternativa é preencher o domínio canônico no painel.
-- **Foto do hero:** a tela fotografada mostra números de demonstração do fotógrafo (`479K`, `17min`). Eles não são resultados da ABrasil e ficam atenuados pelo véu navy, mas são legíveis no desktop. Está registrado em `docs/imagens-do-site.md`, com o passo a passo para trocar a foto se incomodar.
-- **Duplicidade das pautas em produção:** só a execução lá confirma, porque o banco local não tinha artigos. O comando compara slug, título parecido (≥ 70%) e palavra-chave principal, e pula o que coincidir.
-- **"Sites empresariais":** troquei um dos links relacionados (Automação → SEO e performance).
-- **Indexação real e posições:** só o Search Console confirma, e nenhum texto do site promete posição.
-- **PHPStan:** restam 75 avisos no projeto (17 nos arquivos de SEO, sem risco de execução).
-
-**Não houve commit, push, deploy nem alteração na VPS ou em containers.**
+**Reversão:** remover as três linhas de ambiente (`APP_ENV`, `APP_DEBUG`, `LOG_LEVEL`) e as três de integração do serviço `abrasilsistema` no `docker-compose.yml` e recriar os containers.
