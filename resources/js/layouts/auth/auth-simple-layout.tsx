@@ -17,10 +17,15 @@ export default function AuthSimpleLayout({
     return (
         <div className="relative flex min-h-svh min-w-0 items-center justify-center overflow-hidden bg-[#020817] p-3 sm:p-6">
             <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
-                style={{ backgroundImage: "url('/images/logo_ab.png')" }}
+                className="absolute inset-0 bg-cover bg-no-repeat"
+                style={{
+                    backgroundImage:
+                        "url('/images/site/heroes/home-1920.webp')",
+                    backgroundPosition: '62% 40%',
+                }}
+                aria-hidden="true"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(2,8,23,0.92),rgba(15,23,42,0.84),rgba(2,8,23,0.92))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(2,8,23,0.88),rgba(15,23,42,0.6),rgba(2,8,23,0.88))]" />
 
             <Card
                 className={cn(
