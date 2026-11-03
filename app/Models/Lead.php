@@ -67,7 +67,10 @@ class Lead extends Model
 
     public const PRODUCTS = [
         'vetoros' => 'VetorOS',
-        'vetorpet' => 'VetorPet',
+        'vetorsales' => 'VetorSales',
+        'vetorleads' => 'VetorLeads',
+        // Nome anterior do VetorSales: mantido para os leads já gravados e para as importações que ainda o enviam.
+        'vetorpet' => 'VetorPet (atual VetorSales)',
         'site' => 'Site institucional',
         'landing_page' => 'Landing Page',
         'sistema_sob_medida' => 'Sistema sob medida',
@@ -84,7 +87,8 @@ class Lead extends Model
      */
     public const CONTACT_PROJECT_TYPES = [
         'vetoros' => 'Sistema pronto — VetorOS',
-        'vetorpet' => 'Sistema pronto — VetorPet',
+        'vetorsales' => 'Sistema pronto — VetorSales',
+        'vetorleads' => 'Sistema pronto — VetorLeads',
         'sistema_sob_medida' => 'Sistema sob medida',
         'site' => 'Site',
         'landing_page' => 'Landing Page',

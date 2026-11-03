@@ -317,7 +317,7 @@ function AppVisual() {
                                     'text-sky-300',
                                 ],
                                 [
-                                    'Clínica veterinária',
+                                    'Atacadista · Distrito industrial',
                                     'Agendada 15h',
                                     'text-slate-400',
                                 ],

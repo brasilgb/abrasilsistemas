@@ -19,7 +19,8 @@ test('institutional pages render with their own seo', function (string $path, st
     'home' => ['/', 'welcome'],
     'sistemas' => ['/sistemas', 'site/sistemas'],
     'vetoros' => ['/sistemas/vetoros', 'site/sistema'],
-    'vetorpet' => ['/sistemas/vetorpet', 'site/sistema'],
+    'vetorsales' => ['/sistemas/vetorsales', 'site/sistema'],
+    'vetorleads' => ['/sistemas/vetorleads', 'site/sistema'],
     'soluções' => ['/servicos', 'servicos'],
     'sobre' => ['/sobre', 'sobre'],
     'contato' => ['/contato', 'contato'],
@@ -50,6 +51,19 @@ test('unknown products return 404', function () {
 
 test('the old products page redirects permanently to the systems page', function () {
     $this->get('/produtos')->assertStatus(301)->assertRedirect('/sistemas');
+});
+
+test('the old VetorPet page redirects permanently to VetorSales', function () {
+    $this->get('/sistemas/vetorpet')->assertStatus(301)->assertRedirect('/sistemas/vetorsales');
+});
+
+test('VetorSales replaces VetorPet in the public pages and the sitemap', function () {
+    expect(PublicPages::PRODUCTS)->toHaveKey('vetorsales')->not->toHaveKey('vetorpet');
+    expect(Lead::CONTACT_PROJECT_TYPES)->toHaveKey('vetorsales')->not->toHaveKey('vetorpet');
+
+    $this->get('/sitemap.xml')->assertOk()
+        ->assertSee(url('/sistemas/vetorsales'), false)
+        ->assertDontSee('vetorpet', false);
 });
 
 test('the initial html carries one description, canonical and json-ld per page', function () {
@@ -138,7 +152,8 @@ test('each institutional page shares its own hero photo with alt text', function
     'landing pages' => ['/criacao-de-landing-pages', 'landing-pages'],
     'seo' => ['/seo-tecnico-e-otimizacao-de-sites', 'seo'],
     'vetoros' => ['/sistemas/vetoros', 'vetoros'],
-    'vetorpet' => ['/sistemas/vetorpet', 'vetorpet'],
+    'vetorsales' => ['/sistemas/vetorsales', 'vetorsales'],
+    'vetorleads' => ['/sistemas/vetorleads', 'vetorleads'],
     'sobre' => ['/sobre', 'sobre'],
     'contato' => ['/contato', 'contato'],
 ]);

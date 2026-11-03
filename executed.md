@@ -1,160 +1,92 @@
-# Execução de `correio.md`: ABRASIL-SEO-FINAL-01, consolidação técnica e comercial do SEO
+# Execução de `correio.md`: ABRASIL-SITE — VetorSales e VetorLeads
 
-Data: 2026-10-21. Base: ABRASIL-SEO-02 (relatório anterior deste arquivo).
+Data: 2026-11-03.
+
+**Situação: alterações apenas no código local. Nada foi commitado, enviado, publicado nem levado à VPS.**
 
 ## 1. Resumo da implementação
 
-- **Novo serviço:** landing page de **SEO Técnico, Performance e Otimização Digital** em `/seo-tecnico-e-otimizacao-de-sites`. Apresenta as três modalidades (SEO Essencial, Profissional e Gerenciado), sem preço e sem promessa de posição, e o CTA "Solicitar análise SEO" leva ao formulário de contato existente.
-- **SEO técnico incluído:** um bloco que diz "SEO técnico incluído em todos os nossos projetos web." aparece em `/servicos` e nas páginas de sistemas sob medida, sites e landing pages. O bloco lista os 9 itens do correio, avisa que áreas privadas não são indexadas e separa esse SEO do serviço contínuo, que é contratado à parte.
-- **Blog:** categoria "SEO e performance" e 5 pautas criadas como **rascunho** pelo comando `blog:seo-drafts`, com verificação de duplicidade. Nada é publicado automaticamente.
-- **Search Console:** o comando `seo:check` confere se a produção está indexável, e o guia `docs/seo-deploy-e-search-console.md` cobre o deploy e o OAuth.
-- **Risco real encontrado na produção (ver §11):** se `ABRASILSISTEMA_APP_URL` não estiver no `.env` da VPS, o compose define `APP_URL=http://abrasilsistema.localhost` e o site inteiro sai com `noindex`. O `seo:check` detecta esse caso.
-- **Testes:** 264/264 (1.805 asserções). TypeScript, ESLint, Prettier, Pint e build ok, e validação visual feita (desktop 1440 px e celular 390 px).
-- **Não feito:** deploy, push, commit e qualquer alteração na VPS ou em containers.
+- **VetorPet → VetorSales**: já estava aplicado pela execução anterior. Nesta rodada foi conferido de novo: não há mais menção ao VetorPet nas páginas públicas, no sitemap, nas metas, nem nos links. Os únicos usos restantes são técnicos (valor `vetorpet` aceito em `Lead::PRODUCTS` e importações) e o redirect 301.
+- **VetorLeads incluído no portfólio**: nova página `/sistemas/vetorleads`, listada em `/sistemas` e na home (via `PublicPages`), com logotipo e captura reais do produto.
+- **Apresentação e SEO**: título, descrição, og:image, alt do hero, JSON-LD e sitemap da página nova; títulos e descrições da home e de `/sistemas` atualizados para VetorOS, VetorSales e VetorLeads; termos de uso citam os três produtos.
+- **Diferenciação**: a página do VetorLeads trata de prospecção e funil; a do VetorSales, de carteira, pedidos e comissões. Há uma pergunta frequente comparando os dois.
 
-## 2. Funcionalidades existentes reaproveitadas
+## 2. Funcionalidades já existentes e reaproveitadas
 
-- **Infra de SEO da SEO-02 sem reescrita:** `PublicPages`, `PageRegistry`, `SitemapBuilder`, `StructuredData`, `Seo::page`, robots dinâmico, `ContentAnalyzer` e `SeoMetaStore`. A página nova entra no sitemap, no painel "Páginas e metadados", na auditoria e em "Palavras-chave" sem código novo para isso.
-- **Lista `services` de `resources/js/data/site.ts`:** o serviço novo aparece sozinho no menu Soluções, na home (grupo Presença digital), no rodapé e em `/servicos`.
-- **Formulário de contato e Solicitações:** `?tipo=seo` pré-seleciona o tipo, e a solicitação entra como `source=site` com `source_page`, consentimento e e-mail à equipe, como as demais. Não houve CRM novo.
-- **Hero com foto e véu navy (`PageHero`/`HeroBackdrop`), `ProcessSteps`, `FaqList` e `CtaBand`.**
+- Template `site/sistema` (hero, funcionalidades, FAQ, bloco de chamada final) e a rota `/sistemas/{product}`.
+- Formulário de contato da ABrasil com `?tipo=vetorleads` (botão "Solicitar demonstração"), que grava o tipo em `Lead::CONTACT_PROJECT_TYPES`.
+- Sitemap, canonical e JSON-LD gerados a partir de `PublicPages::PRODUCTS`.
+- Redirect 301 de `/sistemas/vetorpet` para `/sistemas/vetorsales`, da execução anterior.
 
-## 3. Auditoria da SEO-02 e correções executadas
+## 3. Correções executadas
 
-| Item do correio | Situação |
-|---|---|
-| 9 seções administrativas | ok. O teste "administrador abre todas as telas de SEO" passa |
-| Migrations/configurações | ok, idempotentes (`hasTable` / checagem antes de inserir) |
-| Sitemap e robots dinâmicos | ok. A página nova entra no sitemap, e as áreas privadas (`/atendimento`, `/solicitacoes`, `/admin`…) ficam com `Disallow` e `X-Robots-Tag: noindex` |
-| Metadados, canonical, JSON-LD | ok no HTML inicial (verificado na página nova) |
-| Redirecionamentos, auditoria, análise editorial | ok (testes da SEO-02 passando) |
-| Search Console / GA4 / Bing | código pronto, **não ativo**: depende de credenciais (§9) |
-| Compatibilidade com a produção | risco de `APP_URL` encontrado (§11) |
-
-**PHPStan:** os avisos nos arquivos de SEO caíram de 41 para 17, e o total do projeto, de 97 para 75. Correções sem mudança de comportamento:
-
-- Tipo `Check` no `ContentAnalyzer` (11 métodos sem tipo de retorno).
-- `array_filter` com callback que devolvia `0|1|false` passou a comparar `=== 1`.
-- `HtmlInspector`: `xpath->query()` podia devolver `false`, e o `?->` não tratava esse caso.
-- `SitemapBuilder::limit()` anotado como `int<1, max>`.
-- Docblocks de uma linha que o PHPStan não lia (`ga4Events`, `types`, `findByPath`).
-- `is_string()` redundante no `SeoChangeLogger`.
-
-Os 17 restantes são de covariância de `Collection` e falsos positivos. No `KeywordController`, o `?->` é necessário, porque o `meta` pode ser null em execução. Nenhum indica risco.
+- Nenhuma correção estrutural. Ajuste de texto do bloco de termos (`termos.tsx`) para citar o VetorLeads.
+- Painel de SEO: `KeywordController` passa a acompanhar `page:sistema:vetorleads` (tema "produtos").
+- Descrição padrão de SEO (`SeoSettings`) e da home atualizadas para citar os três produtos.
 
 ## 4. Novas páginas e serviços
 
-**`/seo-tecnico-e-otimizacao-de-sites`** (componente `site/seo`), seção por seção:
-
-1. Hero com foto de painel de desempenho, ilustração de resultado de busca + auditoria, e os botões "Solicitar análise SEO" e "Ver modalidades".
-2. Benefícios empresariais, com os sinais de que o site precisa de SEO ao lado.
-3. O que o trabalho cobre: 6 frentes em lista numerada, sem cards.
-4. Modalidades (Essencial, Profissional em destaque e Gerenciado), cada uma com seu CTA. Abaixo, a nota de que ninguém garante posição no Google.
-5. Bloco "SEO técnico incluído", separando o SEO incluído do contratado.
-6. Etapas da contratação: solicitação → análise inicial → proposta → correções → acompanhamento.
-7. FAQ com 6 perguntas (garantia, prazo, site de terceiros, SEO × anúncios, custo, SEO nos projetos novos) e links para Sistemas sob medida, Sites empresariais e Integrações e APIs.
-8. Faixa final com o CTA.
-
-SEO da própria página:
-
-- Título e descrição próprios, canonical, `index, follow` e og:image 1200×630 com alt.
-- JSON-LD com `Service` + `OfferCatalog` das 3 modalidades, sem preço e sem avaliação, e `BreadcrumbList`.
-- Intenção de busca nova, "SEO e performance", com os temas em Palavras-chave.
-
-**Tipo de projeto "SEO Profissional"** (`seo`) no formulário e em Solicitações. Com `?tipo=seo`, o texto de ajuda pede o endereço do site.
+- **`/sistemas/vetorleads`** (produto `vetorleads`):
+  - Descrição base, conforme o correio: "Plataforma para organizar a prospecção e acompanhar oportunidades comerciais, reunindo gestão de leads, funil de vendas, atendimento por WebChat e WhatsApp e recursos de inteligência artificial para apoio comercial."
+  - Benefícios e funcionalidades tirados da própria landing e do painel do VetorLeads: captura via extensão AB Prospect, score de aderência, funil Kanban com motivo de perda, follow-ups, central de atendimento (WebChat e WhatsApp) e atendimento com IA conforme a franquia.
+  - Botões: "Solicitar demonstração" (formulário ABrasil) e "Conhecer o sistema" (link para https://vetorleads.com.br).
+  - Não há botão de teste gratuito, porque não foi confirmado que o produto oferece teste.
+- Campo opcional `secondaryCtaLabel` em `Product` (`resources/js/data/site.ts`), usado no botão da hero e no bloco final da página de produto. Os produtos existentes mantêm os rótulos anteriores.
 
 ## 5. Arquivos modificados
 
-**Novos:**
+Código e conteúdo:
+- `resources/js/data/site.ts`: produto VetorLeads, tipo `Product.secondaryCtaLabel`.
+- `resources/js/data/hero-images.ts`: chave e alt do hero `vetorleads`.
+- `resources/js/pages/site/sistema.tsx`: rótulo secundário configurável.
+- `resources/js/pages/legal/termos.tsx`: menção ao VetorLeads e ao domínio vetorleads.com.br.
+- `app/Support/PublicPages.php`: produto, alt do hero, títulos e descrições de home e `/sistemas`.
+- `app/Services/Seo/SeoSettings.php`: descrição padrão.
+- `app/Models/Lead.php`: `vetorleads` em `PRODUCTS` e `CONTACT_PROJECT_TYPES`.
+- `app/Http/Controllers/Admin/Seo/KeywordController.php`: palavra-chave da página.
+- `tests/Feature/PublicSiteTest.php`: páginas, heroes e 301 incluindo o VetorLeads.
+- `docs/imagens-do-site.md`: origem das imagens do VetorLeads.
 
-- `resources/js/pages/site/seo.tsx`
-- `resources/js/components/site/seo-included.tsx`
-- `app/Console/Commands/BlogSeoDraftsCommand.php`
-- `app/Console/Commands/SeoCheckCommand.php`
-- `database/data/blog-seo-drafts.php` (as 5 pautas)
-- `database/migrations/2026_10_21_140000_add_seo_blog_category.php`
-- `public/images/site/heroes/seo-{640,1280,1920}.{avif,webp}` e `seo-og.jpg`
-- `docs/seo-deploy-e-search-console.md`
-- `tests/Feature/SeoServiceTest.php`
-
-**Alterados nesta etapa:**
-
-- `app/Support/PublicPages.php`: serviço, `SEO_SERVICE`, foto e `hasOfferCatalog`.
-- `app/Http/Controllers/SiteController.php`: renderiza `site/seo` para o slug.
-- `app/Models/Lead.php`: tipo `seo`.
-- `app/Models/SeoMeta.php`: intenção `seo`.
-- `app/Http/Controllers/Admin/Seo/KeywordController.php`.
-- `app/Services/Seo/{ContentAnalyzer,HtmlInspector,SitemapBuilder,SeoSettings,SeoChangeLogger,StructuredData,PageRegistry}.php`: só anotações e as correções do §3.
-- `resources/js/data/site.ts`: serviço, `includedSeo`, `seoOffer` e `seoIncluded` nos serviços web.
-- `resources/js/data/hero-images.ts`.
-- `resources/js/components/site/visuals.tsx`: visual `seo`.
-- `resources/js/pages/site/servico.tsx` e `resources/js/pages/servicos.tsx`: bloco incluído.
-- `resources/js/pages/contato.tsx`: texto de ajuda do SEO.
-- `tests/Feature/PublicSiteTest.php`: exceção `site/seo` e foto `seo`.
-- `docs/imagens-do-site.md`: origem e licença da foto.
-- `public/build/*`, regenerado pelo build.
-
-Os demais arquivos que aparecem no `git status` são da SEO-02, ainda não commitada. `tests/Feature/InstitutionalChatWidgetTest.php` (não rastreado) não foi criado nem alterado nesta etapa.
-
-**Foto do hero:** Luke Chesser, Unsplash [JKUTrJ4vK00](https://unsplash.com/photos/graphs-of-performance-analytics-on-a-laptop-screen-JKUTrJ4vK00), Licença Unsplash (uso comercial livre, não é Unsplash+). Ela não repete nenhuma outra foto do site, e um teste garante isso.
+Imagens:
+- Novos: `public/images/logo_vetorleads.webp`, `public/images/dashboard-vetorleads.webp`, `public/images/site/heroes/vetorleads-{640,1280,1920}.{avif,webp}` e `vetorleads-og.jpg`.
+- Gerado com PHP GD a partir de `gateway/vetorleads/public/images/vetorleads-hero-green-1280.webp` (recorte 16:9 de 1280×720).
+- Compilação: `public/build/` regenerado com `npm run build`.
 
 ## 6. Migrations
 
-- `2026_10_21_140000_add_seo_blog_category`: cria a categoria "SEO e performance" (`seo-e-performance`) **só se** ainda não houver categoria de SEO (pelo slug `seo`/`seo-*` ou pelo nome com a palavra SEO). O `down` só remove a categoria se ela não tiver artigos.
-- Foi aplicada no banco **local** (`absistemas`). Também rodei `blog:seo-drafts` localmente: 5 rascunhos, com avaliação editorial entre 85 e 95. A segunda execução não criou nada.
+Nenhuma.
 
 ## 7. Testes realizados e resultados
 
-| Verificação | Resultado |
-|---|---|
-| Pest (suíte completa) | **264/264**, 1.805 asserções |
-| Novos (`SeoServiceTest`, 8 testes) | landing com SEO e JSON-LD sem preço ou avaliação; HTML inicial com canonical e JSON-LD; sitemap e robots; `noindex` com o bloqueio ligado; formulário `?tipo=seo` → solicitação "SEO Profissional" com origem; categoria + rascunhos sem duplicar, não públicos e fora do sitemap; bloco incluído nos serviços web; `seo:check` aprovando a produção e acusando `APP_URL` localhost e `SEO_BLOCK_INDEXING` |
-| TypeScript (`tsc --noEmit`) | sem erros |
-| ESLint e Prettier (arquivos alterados) | limpos |
-| Pint (PHP alterado) | limpo |
-| PHPStan (arquivos novos) | 0 erros |
-| `npm run build` | ok |
-| Validação de sitemap e JSON-LD | por teste e pelo `seo:check` |
-| **Validação visual** | Chromium headless do Playwright já instalado. A primeira tentativa, pelo Chrome do MCP, falhou por falta do Chrome; a segunda funcionou. Telas conferidas: landing de SEO em 1440 e 390 px, página de Sites com o bloco incluído e contato com `?tipo=seo`. Hero legível, sem rolagem horizontal e modalidades empilhadas no celular |
+- **Pest** (`vendor/bin/pest`): 268 testes, 1863 asserções, todos passaram.
+- **TypeScript** (`tsc --noEmit`): sem erros.
+- **ESLint** nos arquivos alterados: sem erros.
+- **Build** (`npm run build`): concluído.
+- **HTTP** (servidor local `php artisan serve`): `/`, `/sistemas`, `/sistemas/vetorleads`, `/sistemas/vetorsales`, `/termos-de-uso`, `/contato?tipo=vetorleads` e `/sitemap.xml` → 200. `/sistemas/vetorpet` → 301.
+- **Navegador** (Chromium do Playwright já em cache, binário da versão 1243): `/sistemas/vetorleads` em 1440 px e 390 px, e `/sistemas` em 1440 px. Sem overflow horizontal; hero, logotipo, captura e botões renderizados corretamente. Revisão visual feita pelas capturas. Os heroes de VetorSales e VetorLeads também foram conferidos pelos testes de tamanho e formato.
 
 ## 8. Testes não executados e motivos
 
-- **Testes com navegador interativo (cliques, envio real do formulário no browser):** só fiz capturas de tela. O envio do formulário está coberto por teste HTTP.
-- **`seo:check --live`:** depende do site publicado com esta versão.
-- **Rich Results Test do Google:** externo, fazer depois do deploy (o painel tem o link).
-- Nenhum container foi criado, iniciado ou alterado e nada foi instalado. Usei o `php artisan serve` local, já encerrado.
+- **Pint e PHPStan**: não rodados nesta rodada. A execução anterior registrou avisos pré-existentes em linhas não alteradas.
+- **Teste de interação completo no navegador** (formulário de contato com `?tipo=vetorleads`, navegação do menu): não executado; verificado apenas o carregamento e o layout.
+- **Sem containers**: nenhum container foi criado ou executado, conforme a política do correio.
 
 ## 9. Pendências de credenciais externas
 
-- `GOOGLE_SEARCH_CONSOLE_CLIENT_ID` e `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`: cliente OAuth "Aplicativo da Web" no Google Cloud. O passo a passo está em `docs/seo-deploy-e-search-console.md` §4.
-  - **Atenção:** o container lê o `.env.example`, que é versionado. As credenciais **não** devem ir para ele. O caminho seguro é mapeá-las no bloco `environment` do compose a partir do `.env` da infra, o que altera a configuração do container e depende da sua autorização.
-- Verificação do Google e do Bing e IDs do GA4: pelo painel (SEO → Integrações).
-- **A integração com o Search Console e o GA4 não está ativa.** Nada foi conectado nem testado com credenciais reais.
+- Nenhuma credencial foi necessária.
+- Search Console: após o deploy, pedir reindexação de `/sistemas/vetorleads` e reenviar o sitemap (mesmo procedimento do VetorSales).
 
 ## 10. Instruções para deploy e Search Console
 
-Detalhes em `docs/seo-deploy-e-search-console.md`.
-
-1. **Na VPS, confirme `ABRASILSISTEMA_APP_URL=https://abrasilsistemas.com.br` no `.env` da infra** e `SEO_BLOCK_INDEXING=false`.
-2. Depois do deploy autorizado, rode no container:
-   - `php artisan migrate --force`
-   - `php artisan optimize:clear`
-   - `php artisan blog:seo-drafts --dry-run`, depois `php artisan blog:seo-drafts`
-   - `php artisan seo:check` e `php artisan seo:check --live`. Os dois precisam terminar em "Pronto para indexação."
-3. No Search Console (propriedade já cadastrada):
-   - Envie `https://abrasilsistemas.com.br/sitemap.xml`.
-   - Inspecione a home e `/seo-tecnico-e-otimizacao-de-sites` e peça a indexação.
-4. Revise e publique os 5 rascunhos de SEO pelo painel, um por vez.
+- Não executado. Para publicar: commit das alterações, build e deploy na VPS, somente após autorização específica.
+- Após o deploy: validar `https://abrasilsistemas.com.br/sistemas/vetorleads` e `/sitemap.xml`, e solicitar indexação no Search Console.
+- Revisar no painel de SEO da produção se há metas personalizadas para `sistema:vetorleads` ou descrições padrão antigas.
 
 ## 11. Riscos e limitações conhecidos
 
-- **`APP_URL` em produção (o mais importante).** O `docker-compose.yml` da infra define `APP_URL: ${ABRASILSISTEMA_APP_URL:-http://abrasilsistema.localhost}`. Se a variável faltar no `.env` da VPS, o domínio canônico vira `abrasilsistema.localhost` e o site sai com `noindex` + `Disallow: /`.
-  - O `.env.example` da infra traz o valor certo, mas não consegui ver o `.env` real da VPS.
-  - O `seo:check` detecta o problema, e uma alternativa é preencher o domínio canônico no painel.
-- **Foto do hero:** a tela fotografada mostra números de demonstração do fotógrafo (`479K`, `17min`). Eles não são resultados da ABrasil e ficam atenuados pelo véu navy, mas são legíveis no desktop. Está registrado em `docs/imagens-do-site.md`, com o passo a passo para trocar a foto se incomodar.
-- **Duplicidade das pautas em produção:** só a execução lá confirma, porque o banco local não tinha artigos. O comando compara slug, título parecido (≥ 70%) e palavra-chave principal, e pula o que coincidir.
-- **"Sites empresariais":** troquei um dos links relacionados (Automação → SEO e performance).
-- **Indexação real e posições:** só o Search Console confirma, e nenhum texto do site promete posição.
-- **PHPStan:** restam 75 avisos no projeto (17 nos arquivos de SEO, sem risco de execução).
-
-**Não houve commit, push, deploy nem alteração na VPS ou em containers.**
+- **Hero do VetorLeads**: a foto original tem 1280 px de largura. A variante de 1920 px é ampliada e pode aparecer um pouco suavizada.
+- **Afirmações sobre o produto**: as funcionalidades foram copiadas da landing e do painel do VetorLeads. WhatsApp e atendimento com IA dependem de liberação ou franquia por empresa, e a página informa isso. Vale confirmar com a equipe do VetorLeads antes de publicar.
+- **Bloco final da página**: o texto "crie sua conta e teste por conta própria" é compartilhado pelos produtos, e para o VetorLeads não há teste gratuito confirmado. O botão, porém, já leva ao site do produto.
+- **Ambiente local**: o sitemap local mostra `http://localhost:8000` nas URLs porque `APP_URL` está configurado assim no ambiente. Isso não é código do site; em produção a URL deve sair correta.
+- **Domínio vetorpet.com.br**: continua respondendo (fora deste site). Redirecioná-lo para vetorsales.com.br depende de outro projeto.
+- **Links antigos** `/contato?tipo=vetorpet` abrem o formulário sem tipo pré-selecionado.

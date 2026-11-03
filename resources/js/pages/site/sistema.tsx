@@ -63,10 +63,11 @@ export default function SistemaPage({ slug }: { slug: string }) {
                                     Solicitar demonstração
                                 </ButtonLink>
                                 <ButtonLink
-                                    href={product.externalUrl}
+                                    href={product.signupUrl ?? product.externalUrl}
                                     variant="ghostInverse"
                                 >
-                                    Criar conta e testar grátis
+                                    {product.secondaryCtaLabel ??
+                                        'Criar conta e testar grátis'}
                                 </ButtonLink>
                             </div>
                         </div>
@@ -192,8 +193,8 @@ export default function SistemaPage({ slug }: { slug: string }) {
                     href: contactHref(product.contactType),
                 }}
                 secondary={{
-                    label: 'Testar grátis',
-                    href: product.externalUrl,
+                    label: product.secondaryCtaLabel ?? 'Testar grátis',
+                    href: product.signupUrl ?? product.externalUrl,
                 }}
             />
         </SiteLayout>

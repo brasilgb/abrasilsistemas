@@ -27,7 +27,7 @@ export default function TermosDeUso() {
                             <h2 className="text-xl font-black text-slate-950">1. Finalidade do site</h2>
                             <p>
                                 Este site apresenta a ABrasil Sistemas, seus serviços de desenvolvimento de software, sites e aplicativos, e
-                                seus produtos próprios (VetorOS e VetorPet), além de servir como canal de contato comercial.
+                                seus produtos próprios (VetorOS, VetorSales e VetorLeads), além de servir como canal de contato comercial.
                             </p>
                         </section>
 
@@ -47,7 +47,7 @@ export default function TermosDeUso() {
                         <section>
                             <h2 className="text-xl font-black text-slate-950">4. Links externos</h2>
                             <p>
-                                Este site pode conter links para outros sites, como o VetorOS (vetoros.com.br) e o VetorPet, ou perfis em
+                                Este site pode conter links para outros sites, como o VetorOS (vetoros.com.br) e o VetorSales (vetorsales.com.br), o VetorLeads (vetorleads.com.br), ou perfis em
                                 redes sociais. Não nos responsabilizamos pelo conteúdo ou pelas políticas de privacidade desses sites de
                                 terceiros.
                             </p>
