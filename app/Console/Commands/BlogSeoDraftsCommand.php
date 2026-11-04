@@ -27,19 +27,17 @@ class BlogSeoDraftsCommand extends Command
 
     public function handle(SeoMetaStore $store, ContentAnalyzer $analyzer): int
     {
-        /** @var list<array{slug: string, title: string, excerpt: string, focus_keyword: string, secondary_keywords: list<string>, body: string}> $drafts */
-        $drafts = require database_path('data/blog-seo-drafts.php');
+        /** @var list<array{slug: string, title: string, excerpt: string, focus_keyword: string, secondary_keywords: list<string>, body: string, category?: string, search_intent?: string, related_pages?: list<string>}> $drafts */
+        $drafts = [
+            ...require database_path('data/blog-seo-drafts.php'),
+            ...require database_path('data/blog-service-drafts.php'),
+        ];
         $author = User::query()->where('role', 'admin')->orderBy('id')->first();
-        $category = BlogCategory::query()->where('slug', 'seo-e-performance')->first();
 
         if ($author === null) {
             $this->error('Nenhum usuário admin encontrado para ser o autor dos rascunhos.');
 
             return self::FAILURE;
-        }
-
-        if ($category === null) {
-            $this->warn('Categoria "SEO e performance" não encontrada (rode php artisan migrate). Os rascunhos ficarão sem categoria.');
         }
 
         $existing = BlogPost::query()->get(['id', 'title', 'slug']);
@@ -61,6 +59,13 @@ class BlogSeoDraftsCommand extends Command
                 continue;
             }
 
+            $categorySlug = $draft['category'] ?? 'seo-e-performance';
+            $category = BlogCategory::query()->where('slug', $categorySlug)->first();
+
+            if ($category === null) {
+                $this->warn("Categoria \"{$categorySlug}\" não encontrada. O rascunho \"{$draft['title']}\" ficará sem categoria.");
+            }
+
             $post = BlogPost::query()->create([
                 'user_id' => $author->id,
                 'blog_category_id' => $category?->id,
@@ -77,8 +82,8 @@ class BlogSeoDraftsCommand extends Command
                 'meta_description' => $draft['excerpt'],
                 'focus_keyword' => $draft['focus_keyword'],
                 'secondary_keywords' => $draft['secondary_keywords'],
-                'search_intent' => 'seo',
-                'related_pages' => ['page:servico:seo-tecnico-e-otimizacao-de-sites'],
+                'search_intent' => $draft['search_intent'] ?? 'seo',
+                'related_pages' => $draft['related_pages'] ?? ['page:servico:seo-tecnico-e-otimizacao-de-sites'],
             ];
             $analysis = $analyzer->analyze([...$seo, 'title' => $draft['title'], 'excerpt' => $draft['excerpt'], 'slug' => $draft['slug'], 'body' => $draft['body'], 'post_id' => $post->id]);
             $store->save(SeoMeta::TYPE_POST, $post->id, $seo, $author->id, $analysis['score']);
