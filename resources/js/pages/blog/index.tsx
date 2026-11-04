@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowRight, BookOpen, Eye, Pin, Search, UserPlus } from 'lucide-react';
+import { ArrowRight, BookOpen, Eye, Search, UserPlus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import BlogPublicLayout from '@/components/blog-public-layout';
 import InputError from '@/components/input-error';
@@ -77,7 +77,7 @@ export default function BlogIndex({ posts, categories, tags, popularPosts, filte
             <main className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-12">
                 {featured && (
                     <section>
-                        <div className="mb-5 flex items-center gap-2 text-sm font-bold text-blue-700"><Pin className="size-4" aria-hidden="true" /> Artigo em destaque</div>
+                        <div className="mb-5 flex items-center gap-2 text-sm font-bold text-blue-700"><BookOpen className="size-4" aria-hidden="true" /> Artigo em destaque</div>
                         <Link href={`/blog/${featured.slug}`} className="group grid overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-200 hover:shadow-xl lg:grid-cols-[1.05fr_0.95fr]">
                             <div className="min-h-72 bg-slate-100 lg:order-2">
                                 {featured.cover_image_url ? (
