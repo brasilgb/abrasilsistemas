@@ -4,17 +4,11 @@ import {
     ButtonLink,
     Container,
     CtaBand,
-    Eyebrow,
-    HeroBackdrop,
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
+import { HomeCarousel } from '@/components/site/home-carousel';
 import { SiteLayout } from '@/components/site/site-layout';
-import {
-    BrowserFrame,
-    ConnectedOperationBadge,
-} from '@/components/site/visuals';
-import { heroImages } from '@/data/hero-images';
 import {
     caseStudies,
     contactHref,
@@ -88,7 +82,6 @@ export default function Welcome({
     const whatsappUrl = useSiteWhatsappUrl(
         'Olá, quero conversar sobre um projeto com a ABrasil Sistemas.',
     );
-    const vetorOs = products[0];
     const softwareServices = services.filter((service) =>
         softwareSlugs.includes(service.slug),
     );
@@ -98,60 +91,10 @@ export default function Welcome({
 
     return (
         <SiteLayout>
-            {/* Hero */}
-            <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-16 text-white sm:pt-36 sm:pb-24">
-                <HeroBackdrop image={heroImages.home} />
-                <Container className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-                    <div>
-                        <Eyebrow inverse>
-                            Empresa de tecnologia e desenvolvimento de software
-                        </Eyebrow>
-                        <h1 className="mt-5 text-4xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.5rem]">
-                            Tecnologia que trabalha junto com a sua empresa.
-                        </h1>
-                        <p className="mt-6 max-w-xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
-                            Desenvolvemos sistemas, aplicativos, sites,
-                            automações e integrações que transformam processos
-                            manuais em operações digitais organizadas e
-                            conectadas. E mantemos produtos próprios, prontos
-                            para usar.
-                        </p>
-                        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                            <ButtonLink
-                                href="/servicos"
-                                variant="inverse"
-                                arrow
-                            >
-                                Conhecer soluções
-                            </ButtonLink>
-                            <ButtonLink
-                                href={contactHref()}
-                                variant="ghostInverse"
-                            >
-                                Falar sobre um projeto
-                            </ButtonLink>
-                        </div>
-                    </div>
-                    {vetorOs.screenshot && (
-                        <figure>
-                            <BrowserFrame
-                                {...vetorOs.screenshot}
-                                label="VetorOS · painel"
-                            />
-                            <figcaption className="mt-4 flex flex-col gap-3 text-xs text-slate-400">
-                                <span>
-                                    VetorOS, sistema próprio da ABrasil para
-                                    assistências técnicas.
-                                </span>
-                                <ConnectedOperationBadge />
-                            </figcaption>
-                        </figure>
-                    )}
-                </Container>
-            </section>
+            <HomeCarousel />
 
             {/* Quem somos */}
-            <section className="py-20 sm:py-28">
+            <section className="py-16 sm:py-20">
                 <Container className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
                     <SectionHeading
                         eyebrow="Quem somos"
@@ -183,7 +126,7 @@ export default function Welcome({
                         <SectionHeading
                             eyebrow="Sistemas prontos"
                             title="Produtos ABrasil em operação."
-                            description="Sistemas desenvolvidos e mantidos pela nossa equipe para segmentos específicos. Contratação online e teste gratuito."
+                            description="Sistemas desenvolvidos e mantidos pela nossa equipe para organizar a rotina de diferentes equipes."
                         />
                         <Link
                             href="/sistemas"
@@ -193,7 +136,7 @@ export default function Welcome({
                             <ArrowRight className="size-4" />
                         </Link>
                     </div>
-                    <div className="mt-12 grid gap-6 lg:grid-cols-2">
+                    <div className="mt-12 grid gap-6 lg:grid-cols-3">
                         {products.map((product) => (
                             <article
                                 key={product.slug}
@@ -235,7 +178,7 @@ export default function Welcome({
                                             </li>
                                         ))}
                                 </ul>
-                                <div className="mt-auto flex flex-col gap-3 pt-8 sm:flex-row">
+                                <div className="mt-auto flex flex-col gap-3 pt-8">
                                     <ButtonLink
                                         href={`/sistemas/${product.slug}`}
                                         variant="primary"

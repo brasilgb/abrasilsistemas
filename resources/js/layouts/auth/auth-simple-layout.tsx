@@ -5,6 +5,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { heroImages, heroImageSrcSet } from '@/data/hero-images';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
@@ -15,12 +16,33 @@ export default function AuthSimpleLayout({
     description,
 }: AuthLayoutProps) {
     return (
-        <div className="relative flex min-h-svh min-w-0 items-center justify-center overflow-hidden bg-[#020817] p-3 sm:p-6">
-            <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
-                style={{ backgroundImage: "url('/images/logo_ab.png')" }}
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(2,8,23,0.92),rgba(15,23,42,0.84),rgba(2,8,23,0.92))]" />
+        <div className="relative isolate flex min-h-svh min-w-0 items-center justify-center overflow-hidden bg-[#0b1220] p-3 sm:p-6">
+            <div className="absolute inset-0 -z-10">
+                <picture>
+                    <source
+                        type="image/avif"
+                        srcSet={heroImageSrcSet('home', 'avif')}
+                        sizes="100vw"
+                    />
+                    <source
+                        type="image/webp"
+                        srcSet={heroImageSrcSet('home', 'webp')}
+                        sizes="100vw"
+                    />
+                    <img
+                        src="/images/site/heroes/home-1280.webp"
+                        alt={heroImages.home.alt}
+                        width={1920}
+                        height={1080}
+                        loading="eager"
+                        fetchPriority="high"
+                        decoding="async"
+                        className="size-full object-cover"
+                        style={{ objectPosition: heroImages.home.position }}
+                    />
+                </picture>
+                <div className="absolute inset-0 bg-[#0b1220]/70" />
+            </div>
 
             <Card
                 className={cn(

@@ -2,11 +2,10 @@ import type { PropsWithChildren } from 'react';
 import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
 import { SiteHeader } from '@/components/site/site-header';
-import { WhatsAppFloat } from '@/components/whatsapp-float';
 import { useRememberSourcePage } from '@/lib/contact';
 
 /**
- * Estrutura do blog público: o mesmo cabeçalho, rodapé e botão de WhatsApp do site
+ * Estrutura do blog público: o mesmo cabeçalho e rodapé do site
  * institucional. O SEO continua nas próprias páginas do blog (Head), por isso não usa
  * o SiteLayout. O cabeçalho é fixo: `pt-16` reserva a altura dele.
  */
@@ -27,7 +26,6 @@ export default function BlogPublicLayout({ children }: PropsWithChildren) {
                 {children}
             </div>
             <PublicFooter />
-            <WhatsAppFloat />
             <CookieConsent />
         </div>
     );

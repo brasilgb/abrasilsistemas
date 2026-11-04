@@ -3,12 +3,11 @@ import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
 import { SeoHead } from '@/components/site/seo-head';
 import { SiteHeader } from '@/components/site/site-header';
-import { WhatsAppFloat } from '@/components/whatsapp-float';
 import { useRememberSourcePage } from '@/lib/contact';
 
 /**
- * Estrutura comum das páginas institucionais: SEO, cabeçalho, rodapé, botão de
- * WhatsApp e aviso de cookies. `ab-static-light` mantém o site claro mesmo com
+ * Estrutura comum das páginas institucionais: SEO, cabeçalho, rodapé e aviso
+ * de cookies. `ab-static-light` mantém o site claro mesmo com
  * o sistema operacional do visitante em modo escuro (ver app.css).
  */
 export function SiteLayout({ children }: { children: ReactNode }) {
@@ -27,7 +26,6 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 <SiteHeader />
                 <main id="conteudo">{children}</main>
                 <PublicFooter />
-                <WhatsAppFloat />
                 <CookieConsent />
             </div>
         </>
