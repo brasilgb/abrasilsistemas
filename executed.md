@@ -70,3 +70,7 @@ Verificação de duplicidade, simulada com a mesma lógica do comando: nenhuma p
 3. Revisar os rascunhos antes de publicar. Os textos foram escritos sem acesso aos artigos em rascunho no banco, então a equipe deve checar sobreposição com eles.
 
 **Reversão:** remover os arquivos `database/data/blog-service-drafts.php` e `database/data/blog-revisions.php`, e restaurar `BlogSeoDraftsCommand.php` com `git checkout`. Os rascunhos criados no banco podem ser excluídos pelo painel.
+
+## 8. Capas dos rascunhos (atualização posterior)
+
+Gravadas capas (`cover_image_url`) e metadados de compartilhamento (`og_image_url` e `og_image_alt` em `seo_meta`) nos posts 3 a 12, que estavam sem imagem. Só foram preenchidos campos vazios. As imagens são as que já existem no site: heroes de SEO, sites, sistemas sob medida e automação, além dos painéis do VetorSales e do VetorLeads. Os posts 3 a 11 já estavam publicados pelo painel; o post 12 continua rascunho e sua página ainda retorna 404 no site público.
