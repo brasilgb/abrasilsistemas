@@ -609,7 +609,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BMIcmi0K.css",
+    "file": "assets/app-CWOjW9eF.css",
     "name": "app",
     "names": [
       "app.css"
@@ -618,7 +618,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-B-rc4h2U.js",
+    "file": "assets/app-C1N2Rq9D.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1454,7 +1454,7 @@
     ]
   },
   "resources/js/pages/welcome.tsx": {
-    "file": "assets/welcome-RDfloiav.js",
+    "file": "assets/welcome-4QHKR2LY.js",
     "name": "welcome",
     "src": "resources/js/pages/welcome.tsx",
     "isDynamicEntry": true,

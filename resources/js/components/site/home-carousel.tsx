@@ -193,7 +193,7 @@ export function HomeCarousel() {
                         className="absolute top-0 right-0 h-full w-auto max-w-none"
                     />
                 </picture>
-                <div className="absolute inset-0 bg-[#0b1220]/85 lg:bg-transparent lg:bg-linear-to-r lg:from-[#0b1220] lg:from-30% lg:via-[#0b1220]/85 lg:to-[#0b1220]/50" />
+                <div className="absolute inset-0 bg-[#0b1220]/90 sm:bg-[#0b1220]/85 lg:bg-transparent lg:bg-[linear-gradient(to_right,#0b1220_0%,#0b1220_58%,rgba(11,18,32,0.7)_72%,rgba(11,18,32,0)_90%)]" />
                 <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#0b1220]/80 to-transparent" />
             </div>
             <Container className="relative">
