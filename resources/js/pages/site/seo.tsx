@@ -90,7 +90,7 @@ export default function SeoPage({ slug }: { slug: string }) {
                                     className="flex gap-3 text-[15px] leading-6 text-slate-700"
                                 >
                                     <span
-                                        className="mt-2 size-1.5 shrink-0 rounded-full bg-blue-700"
+                                        className="mt-2 size-1.5 shrink-0 rounded-full bg-brand-blue"
                                         aria-hidden="true"
                                     />
                                     {item}
@@ -116,7 +116,7 @@ export default function SeoPage({ slug }: { slug: string }) {
                                 className="border-t border-slate-300 py-6"
                             >
                                 <dt className="flex items-baseline gap-3 text-base font-semibold text-slate-900">
-                                    <span className="text-sm text-blue-700 tabular-nums">
+                                    <span className="text-sm text-brand-blue tabular-nums">
                                         {String(index + 1).padStart(2, '0')}
                                     </span>
                                     {offering.title}
@@ -133,7 +133,7 @@ export default function SeoPage({ slug }: { slug: string }) {
             {/* Modalidades */}
             <section
                 id="modalidades"
-                className="scroll-mt-20 bg-[#0b1220] py-20 text-white sm:py-24"
+                className="scroll-mt-20 bg-brand-navy py-20 text-white sm:py-24"
             >
                 <Container>
                     <SectionHeading
@@ -146,12 +146,12 @@ export default function SeoPage({ slug }: { slug: string }) {
                         {seoOffer.modalities.map((modality) => (
                             <article
                                 key={modality.name}
-                                className={`flex flex-col rounded-lg border p-6 sm:p-7 ${modality.highlight ? 'border-sky-400/50 bg-white/[0.06]' : 'border-white/10'}`}
+                                className={`flex flex-col rounded-lg border p-6 sm:p-7 ${modality.highlight ? 'border-brand-cyan/50 bg-white/[0.06]' : 'border-white/10'}`}
                             >
                                 <h3 className="text-xl font-semibold">
                                     {modality.name}
                                 </h3>
-                                <p className="mt-1 text-sm text-sky-300">
+                                <p className="mt-1 text-sm text-brand-cyan">
                                     {modality.audience}
                                 </p>
                                 <p className="mt-4 text-[15px] leading-7 text-slate-300">
@@ -173,7 +173,7 @@ export default function SeoPage({ slug }: { slug: string }) {
                                 </ul>
                                 <a
                                     href={contact}
-                                    className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-semibold text-white hover:text-sky-200"
+                                    className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-semibold text-white hover:text-brand-cyan"
                                 >
                                     {CTA_LABEL}
                                     <ArrowRight className="size-4" />
@@ -229,7 +229,7 @@ export default function SeoPage({ slug }: { slug: string }) {
                                         className="group flex items-start justify-between gap-4 py-4"
                                     >
                                         <span>
-                                            <span className="block font-semibold text-slate-900 group-hover:text-blue-800">
+                                            <span className="block font-semibold text-slate-900 group-hover:text-brand-blue-hover">
                                                 {item.label}
                                             </span>
                                             <span className="mt-1 block text-sm leading-6 text-slate-600">

@@ -16,7 +16,7 @@ export default function AuthSimpleLayout({
     description,
 }: AuthLayoutProps) {
     return (
-        <div className="relative isolate flex min-h-svh min-w-0 items-center justify-center overflow-hidden bg-[#0b1220] p-3 sm:p-6">
+        <div className="relative isolate flex min-h-svh min-w-0 items-center justify-center overflow-hidden bg-brand-navy p-3 sm:p-6">
             <div className="absolute inset-0 -z-10">
                 <picture>
                     <source
@@ -41,7 +41,7 @@ export default function AuthSimpleLayout({
                         style={{ objectPosition: heroImages.home.position }}
                     />
                 </picture>
-                <div className="absolute inset-0 bg-[#0b1220]/70" />
+                <div className="absolute inset-0 bg-brand-navy/70" />
             </div>
 
             <Card

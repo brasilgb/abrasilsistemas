@@ -130,7 +130,7 @@ export default function Welcome({
                         />
                         <Link
                             href="/sistemas"
-                            className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800"
+                            className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-brand-blue hover:text-brand-blue-hover"
                         >
                             Ver todos os sistemas{' '}
                             <ArrowRight className="size-4" />
@@ -220,7 +220,7 @@ export default function Welcome({
             </section>
 
             {/* Processo */}
-            <section className="bg-[#0b1220] py-20 text-white sm:py-28">
+            <section className="bg-brand-navy py-20 text-white sm:py-28">
                 <Container>
                     <SectionHeading
                         eyebrow="Como trabalhamos"
@@ -276,7 +276,7 @@ export default function Welcome({
                                         key={study.slug}
                                         className="rounded-lg border border-slate-200 bg-white p-6 sm:p-8"
                                     >
-                                        <p className="text-sm font-medium text-blue-700">
+                                        <p className="text-sm font-medium text-brand-blue">
                                             {study.segment}
                                         </p>
                                         <h3 className="mt-1 text-xl font-semibold text-slate-900">
@@ -335,7 +335,7 @@ export default function Welcome({
                                                     href={item.site_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-700"
+                                                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-blue"
                                                 >
                                                     Visitar site{' '}
                                                     <ArrowUpRight className="size-3.5" />
@@ -410,7 +410,7 @@ export default function Welcome({
                             />
                             <Link
                                 href="/blog"
-                                className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-blue-700"
+                                className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-brand-blue"
                             >
                                 Ver todos os artigos{' '}
                                 <ArrowRight className="size-4" />
@@ -423,10 +423,10 @@ export default function Welcome({
                                     href={`/blog/${post.slug}`}
                                     className="group rounded-lg border border-slate-200 p-6 transition hover:border-slate-300 hover:bg-slate-50"
                                 >
-                                    <p className="text-xs font-semibold tracking-wider text-blue-700 uppercase">
+                                    <p className="text-xs font-semibold tracking-wider text-brand-blue uppercase">
                                         {post.category?.name ?? 'Artigo'}
                                     </p>
-                                    <h3 className="mt-3 text-lg leading-snug font-semibold text-slate-900 group-hover:text-blue-800">
+                                    <h3 className="mt-3 text-lg leading-snug font-semibold text-slate-900 group-hover:text-brand-blue-hover">
                                         {post.title}
                                     </h3>
                                     {post.excerpt && (
@@ -474,14 +474,14 @@ function ServiceList({
                             className="group flex items-start justify-between gap-6 py-5"
                         >
                             <span>
-                                <span className="block text-lg font-semibold text-slate-900 group-hover:text-blue-800">
+                                <span className="block text-lg font-semibold text-slate-900 group-hover:text-brand-blue-hover">
                                     {service.label}
                                 </span>
                                 <span className="mt-1 block text-[15px] leading-7 text-slate-600">
                                     {service.summary}
                                 </span>
                             </span>
-                            <ArrowRight className="mt-1.5 size-5 shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700" />
+                            <ArrowRight className="mt-1.5 size-5 shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-brand-blue" />
                         </Link>
                     </li>
                 ))}

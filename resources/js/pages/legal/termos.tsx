@@ -15,7 +15,7 @@ export default function TermosDeUso() {
                 <SiteHeader />
 
                 <main className="mx-auto max-w-3xl px-4 pt-28 pb-24 sm:px-6 sm:pt-32">
-                    <p className="text-xs font-extrabold tracking-[0.18em] text-blue-700 uppercase">
+                    <p className="text-xs font-extrabold tracking-[0.18em] text-brand-blue uppercase">
                         Legal
                     </p>
                     <h1 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950">
@@ -124,7 +124,7 @@ export default function TermosDeUso() {
                                 para{' '}
                                 <a
                                     href={`mailto:${contact.email}`}
-                                    className="font-bold text-blue-700 underline underline-offset-2"
+                                    className="font-bold text-brand-blue underline underline-offset-2"
                                 >
                                     {contact.email}
                                 </a>

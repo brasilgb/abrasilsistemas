@@ -39,7 +39,7 @@ export function PublicFooter() {
     );
 
     return (
-        <footer className="border-t border-white/10 bg-[#070c17] text-white">
+        <footer className="border-t border-white/10 bg-brand-navy text-white">
             <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.2fr_1fr_0.8fr_0.7fr_1.4fr] lg:px-8">
                 <div>
                     <PublicBrand inverse />

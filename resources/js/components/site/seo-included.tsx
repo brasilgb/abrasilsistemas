@@ -17,7 +17,7 @@ export function SeoIncluded({ className = '' }: { className?: string }) {
                         title={includedSeo.title}
                         description={includedSeo.description}
                     />
-                    <p className="mt-6 border-l-2 border-blue-700 pl-4 text-[15px] leading-7 text-slate-600">
+                    <p className="mt-6 border-l-2 border-brand-blue pl-4 text-[15px] leading-7 text-slate-600">
                         {includedSeo.privacy}
                     </p>
                 </div>
@@ -29,7 +29,7 @@ export function SeoIncluded({ className = '' }: { className?: string }) {
                                 className="flex gap-3 border-t border-slate-200 py-3.5 text-[15px] text-slate-800"
                             >
                                 <Check
-                                    className="mt-0.5 size-4 shrink-0 text-blue-700"
+                                    className="mt-0.5 size-4 shrink-0 text-brand-blue"
                                     aria-hidden="true"
                                 />
                                 {item}
@@ -40,7 +40,7 @@ export function SeoIncluded({ className = '' }: { className?: string }) {
                         {includedSeo.notIncluded}{' '}
                         <Link
                             href="/seo-tecnico-e-otimizacao-de-sites"
-                            className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-800"
+                            className="inline-flex items-center gap-1 font-semibold text-brand-blue hover:text-brand-blue-hover"
                         >
                             Conhecer o SEO profissional
                             <ArrowRight className="size-3.5" />

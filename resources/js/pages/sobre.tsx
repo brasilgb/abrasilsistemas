@@ -81,7 +81,7 @@ export default function Sobre() {
                 </Container>
             </section>
 
-            <section className="bg-[#0b1220] py-20 text-white sm:py-24">
+            <section className="bg-brand-navy py-20 text-white sm:py-24">
                 <Container>
                     <SectionHeading
                         eyebrow="Método"

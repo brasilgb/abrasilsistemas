@@ -35,7 +35,7 @@ export function Eyebrow({
 }) {
     return (
         <p
-            className={`text-xs font-semibold tracking-[0.14em] uppercase ${inverse ? 'text-sky-300' : 'text-blue-700'}`}
+            className={`text-xs font-semibold tracking-[0.14em] uppercase ${inverse ? 'text-brand-cyan' : 'text-brand-blue'}`}
         >
             {children}
         </p>
@@ -81,7 +81,7 @@ export function SectionHeading({
 type ButtonVariant = 'primary' | 'secondary' | 'inverse' | 'ghostInverse';
 
 const buttonClasses: Record<ButtonVariant, string> = {
-    primary: 'bg-blue-700 text-white hover:bg-blue-800',
+    primary: 'bg-brand-blue text-white hover:bg-brand-blue-hover',
     secondary:
         'border border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50',
     inverse: 'bg-white text-slate-900 hover:bg-slate-200',
@@ -167,8 +167,8 @@ export function HeroBackdrop({ image }: { image: HeroImage }) {
                     style={{ objectPosition: image.position }}
                 />
             </picture>
-            <div className="absolute inset-0 bg-[#0b1220]/85 lg:bg-transparent lg:bg-linear-to-r lg:from-[#0b1220] lg:from-30% lg:via-[#0b1220]/85 lg:to-[#0b1220]/50" />
-            <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#0b1220]/80 to-transparent" />
+            <div className="absolute inset-0 bg-brand-navy/85 lg:bg-transparent lg:bg-linear-to-r lg:from-brand-navy lg:from-30% lg:via-brand-navy/85 lg:to-brand-navy/50" />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-brand-navy/80 to-transparent" />
         </div>
     );
 }
@@ -190,7 +190,7 @@ export function PageHero({
     image?: HeroImage;
 }) {
     return (
-        <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-16 text-white sm:pt-32 sm:pb-20 lg:pb-24">
+        <section className="relative isolate overflow-hidden bg-brand-navy pt-28 pb-16 text-white sm:pt-32 sm:pb-20 lg:pb-24">
             {image && <HeroBackdrop image={image} />}
             <Container
                 className={`grid items-center gap-12 ${visual ? 'lg:grid-cols-[1fr_1.05fr]' : ''}`}
@@ -236,7 +236,7 @@ export function ProcessSteps({
                     className={`border-t pt-5 ${inverse ? 'border-white/15' : 'border-slate-300'}`}
                 >
                     <span
-                        className={`text-sm font-semibold tabular-nums ${inverse ? 'text-sky-300' : 'text-blue-700'}`}
+                        className={`text-sm font-semibold tabular-nums ${inverse ? 'text-brand-cyan' : 'text-brand-blue'}`}
                     >
                         {String(index + 1).padStart(2, '0')}
                     </span>
@@ -280,7 +280,7 @@ export function FlowDiagram({
                         </span>
                         {index < steps.length - 1 && (
                             <ArrowRight
-                                className="size-4 shrink-0 rotate-90 text-blue-700 md:rotate-0"
+                                className="size-4 shrink-0 rotate-90 text-brand-blue md:rotate-0"
                                 aria-hidden="true"
                             />
                         )}
@@ -340,7 +340,7 @@ export function CtaBand({
     secondary?: { label: string; href: string };
 }) {
     return (
-        <section className="bg-[#0b1220] py-20 text-white sm:py-24">
+        <section className="bg-brand-navy py-20 text-white sm:py-24">
             <Container className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
                 <div className="max-w-2xl">
                     <h2 className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-4xl">

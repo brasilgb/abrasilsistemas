@@ -119,7 +119,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                         <div className="mx-auto max-w-4xl px-5 sm:px-8">
                             <Link
                                 href="/blog"
-                                className="inline-flex items-center gap-2 text-sm font-bold text-blue-700"
+                                className="inline-flex items-center gap-2 text-sm font-bold text-brand-blue"
                             >
                                 <ArrowLeft className="size-4" /> Voltar ao blog
                             </Link>
@@ -127,7 +127,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                                 {post.category && (
                                     <Link
                                         href={`/blog?category=${post.category.slug}`}
-                                        className="rounded-full bg-blue-100 px-3 py-1 font-bold text-blue-700"
+                                        className="rounded-full bg-blue-100 px-3 py-1 font-bold text-brand-blue-hover"
                                     >
                                         {post.category.name}
                                     </Link>
@@ -159,7 +159,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                                 </div>
                                 <a
                                     href="#comentarios"
-                                    className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-50"
                                 >
                                     <MessageCircle className="size-4" />{' '}
                                     Comentar
@@ -197,7 +197,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                 </article>
 
                 <section className="mx-auto max-w-4xl px-5 sm:px-8">
-                    <div className="mt-16 rounded-2xl bg-blue-700 p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9">
+                    <div className="mt-16 rounded-2xl bg-brand-blue p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9">
                         <div>
                             <h2 className="text-2xl font-bold">
                                 Quer aplicar tecnologia na sua empresa?
@@ -211,7 +211,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                             href={whatsappUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-5 inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-blue-800 sm:mt-0"
+                            className="mt-5 inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-brand-blue-hover sm:mt-0"
                         >
                             <MessageCircle className="size-4" /> Falar conosco
                         </a>
@@ -223,13 +223,13 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                     className="mx-auto mt-16 max-w-4xl scroll-mt-36 border-t border-slate-200 px-5 pt-10 sm:px-8"
                 >
                     <h2 className="flex items-center gap-2 text-2xl font-bold text-slate-950">
-                        <MessageCircle className="size-6 text-blue-700" />{' '}
+                        <MessageCircle className="size-6 text-brand-blue" />{' '}
                         Comentários ({post.comments.length})
                     </h2>
                     {auth.user ? (
                         <form onSubmit={comment} className="mt-6">
                             <div className="mb-4 flex items-center gap-3 rounded-xl bg-blue-50 px-4 py-3">
-                                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700">
+                                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue-100 text-brand-blue-hover">
                                     <UserRound className="size-4" />
                                 </span>
                                 <div className="min-w-0 text-sm">
@@ -255,7 +255,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                             />
                             <button
                                 disabled={sending}
-                                className="mt-3 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                                className="mt-3 rounded-lg bg-brand-blue px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                             >
                                 Enviar para moderação
                             </button>
@@ -264,7 +264,7 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                         <p className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
                             <Link
                                 href="/login"
-                                className="font-bold text-blue-700"
+                                className="font-bold text-brand-blue"
                             >
                                 Entre na sua conta
                             </Link>{' '}
@@ -305,13 +305,13 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                                     href={`/blog/${item.slug}`}
                                     className="group rounded-xl border border-slate-200 p-5 transition hover:border-blue-200 hover:shadow-md"
                                 >
-                                    <strong className="leading-6 text-slate-900 group-hover:text-blue-700">
+                                    <strong className="leading-6 text-slate-900 group-hover:text-brand-blue">
                                         {item.title}
                                     </strong>
                                     <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
                                         {item.excerpt}
                                     </p>
-                                    <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-blue-700">
+                                    <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-brand-blue">
                                         Ler artigo{' '}
                                         <ArrowRight className="size-3" />
                                     </span>

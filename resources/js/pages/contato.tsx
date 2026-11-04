@@ -27,7 +27,7 @@ export default function Contato({
 
     return (
         <SiteLayout>
-            <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-14 text-white sm:pt-32 sm:pb-16">
+            <section className="relative isolate overflow-hidden bg-brand-navy pt-28 pb-14 text-white sm:pt-32 sm:pb-16">
                 <HeroBackdrop image={heroImages.contato} />
                 <Container>
                     <Eyebrow inverse>Contato</Eyebrow>
@@ -216,7 +216,7 @@ export default function Contato({
                                     <button
                                         type="submit"
                                         disabled={processing}
-                                        className="inline-flex h-12 items-center justify-center rounded-md bg-blue-700 px-6 text-[15px] font-semibold text-white transition hover:bg-blue-800 disabled:opacity-60 sm:justify-self-start"
+                                        className="inline-flex h-12 items-center justify-center rounded-md bg-brand-blue px-6 text-[15px] font-semibold text-white transition hover:bg-brand-blue-hover disabled:opacity-60 sm:justify-self-start"
                                     >
                                         {processing
                                             ? 'Enviando…'
@@ -256,7 +256,7 @@ export default function Contato({
                                         href={`mailto:${contact.email}`}
                                         className="flex items-center gap-3 rounded-lg border border-slate-200 p-4 transition hover:border-slate-300 hover:bg-slate-50"
                                     >
-                                        <Mail className="size-5 text-blue-700" />
+                                        <Mail className="size-5 text-brand-blue" />
                                         <span className="min-w-0">
                                             <span className="block text-sm font-semibold text-slate-900">
                                                 E-mail

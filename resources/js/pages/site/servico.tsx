@@ -111,7 +111,7 @@ export default function ServicePage({ slug }: { slug: string }) {
                                     key={outcome}
                                     className="flex gap-3 text-base leading-7 text-slate-800"
                                 >
-                                    <Check className="mt-1 size-5 shrink-0 text-blue-700" />
+                                    <Check className="mt-1 size-5 shrink-0 text-brand-blue" />
                                     {outcome}
                                 </li>
                             ))}
@@ -141,7 +141,7 @@ export default function ServicePage({ slug }: { slug: string }) {
             {/* Processo */}
             <section
                 id="como-funciona"
-                className="scroll-mt-20 bg-[#0b1220] py-20 text-white sm:py-24"
+                className="scroll-mt-20 bg-brand-navy py-20 text-white sm:py-24"
             >
                 <Container>
                     <SectionHeading
@@ -182,7 +182,7 @@ export default function ServicePage({ slug }: { slug: string }) {
                                         className="group flex items-start justify-between gap-4 py-4"
                                     >
                                         <span>
-                                            <span className="block font-semibold text-slate-900 group-hover:text-blue-800">
+                                            <span className="block font-semibold text-slate-900 group-hover:text-brand-blue-hover">
                                                 {item.label}
                                             </span>
                                             <span className="mt-1 block text-sm leading-6 text-slate-600">

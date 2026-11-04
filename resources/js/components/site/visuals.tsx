@@ -89,7 +89,7 @@ export function BrowserFrame({
 function SystemVisual() {
     const rows = [
         ['OS 1042', 'Aguardando aprovação', 'bg-amber-400/15 text-amber-200'],
-        ['OS 1041', 'Em execução', 'bg-sky-400/15 text-sky-200'],
+        ['OS 1041', 'Em execução', 'bg-brand-cyan/15 text-brand-cyan'],
         [
             'OS 1039',
             'Pronto para entrega',
@@ -163,7 +163,7 @@ function SystemVisual() {
                     planilhas e cadernos
                 </span>
                 <span aria-hidden="true">→</span>
-                <span className="font-medium text-sky-300">
+                <span className="font-medium text-brand-cyan">
                     um processo, um sistema
                 </span>
             </div>
@@ -184,10 +184,10 @@ function AutomationVisual() {
             <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
                 Fluxo automático
             </p>
-            <div className="mt-4 flex items-center gap-3 rounded-md border border-sky-400/30 bg-sky-400/10 p-3">
-                <CircleDot className="size-4 text-sky-300" />
+            <div className="mt-4 flex items-center gap-3 rounded-md border border-brand-cyan/30 bg-brand-cyan/10 p-3">
+                <CircleDot className="size-4 text-brand-cyan" />
                 <div>
-                    <p className="text-[10px] text-sky-200/80 uppercase">
+                    <p className="text-[10px] text-brand-cyan/80 uppercase">
                         Quando
                     </p>
                     <p className="text-sm font-medium text-white">
@@ -249,12 +249,12 @@ function IntegrationVisual() {
                     {[0, 1, 2].map((i) => (
                         <span
                             key={i}
-                            className="h-6 w-px bg-gradient-to-b from-white/10 to-sky-400/60"
+                            className="h-6 w-px bg-gradient-to-b from-white/10 to-brand-cyan/60"
                         />
                     ))}
                 </div>
-                <div className="col-span-3 flex items-center justify-center gap-3 rounded-md border border-sky-400/40 bg-sky-400/10 px-4 py-4">
-                    <Plug className="size-5 text-sky-300" />
+                <div className="col-span-3 flex items-center justify-center gap-3 rounded-md border border-brand-cyan/40 bg-brand-cyan/10 px-4 py-4">
+                    <Plug className="size-5 text-brand-cyan" />
                     <div>
                         <p className="text-sm font-semibold text-white">
                             Camada de integração
@@ -271,7 +271,7 @@ function IntegrationVisual() {
                     {[0, 1, 2].map((i) => (
                         <span
                             key={i}
-                            className="h-6 w-px bg-gradient-to-b from-sky-400/60 to-white/10"
+                            className="h-6 w-px bg-gradient-to-b from-brand-cyan/60 to-white/10"
                         />
                     ))}
                 </div>
@@ -314,7 +314,7 @@ function AppVisual() {
                                 [
                                     'Agropecuária · Zona Sul',
                                     'Em visita',
-                                    'text-sky-300',
+                                    'text-brand-cyan',
                                 ],
                                 [
                                     'Atacadista · Distrito industrial',
@@ -409,7 +409,7 @@ function LandingVisual() {
                 <WindowBar label="lancamento.suaempresa.com.br" />
                 <div className="grid gap-6 p-5 sm:grid-cols-[1.1fr_0.9fr] sm:p-7">
                     <div>
-                        <span className="inline-block rounded bg-sky-400/15 px-2 py-0.5 text-[10px] text-sky-200">
+                        <span className="inline-block rounded bg-brand-cyan/15 px-2 py-0.5 text-[10px] text-brand-cyan">
                             Lançamento
                         </span>
                         <div className="mt-4 h-4 w-full rounded bg-white/70" />
@@ -434,7 +434,7 @@ function LandingVisual() {
                                 <p className="text-[10px] text-slate-400">
                                     {field}
                                 </p>
-                                <div className="mt-1 h-7 rounded border border-white/10 bg-[#0b1220]" />
+                                <div className="mt-1 h-7 rounded border border-white/10 bg-brand-navy" />
                             </div>
                         ))}
                         <div className="mt-4 h-8 rounded bg-blue-600" />
@@ -479,7 +479,7 @@ function SeoVisual() {
                         <p className="text-[11px] text-slate-400">
                             suaempresa.com.br › servicos
                         </p>
-                        <p className="mt-1 text-sm font-medium text-sky-300">
+                        <p className="mt-1 text-sm font-medium text-brand-cyan">
                             Título claro, escrito para quem pesquisa
                         </p>
                         <span className="mt-2 block h-2 w-full rounded bg-white/15" />
@@ -566,7 +566,7 @@ export function ConnectedOperationBadge() {
             ].map(({ icon: Icon, label }, index, all) => (
                 <span key={label} className="flex items-center gap-2">
                     <span className="flex items-center gap-1.5 rounded border border-white/10 bg-white/5 px-2 py-1">
-                        <Icon className="size-3.5 text-sky-300" />
+                        <Icon className="size-3.5 text-brand-cyan" />
                         {label}
                     </span>
                     {index < all.length - 1 && (

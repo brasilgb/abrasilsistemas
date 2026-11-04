@@ -59,77 +59,90 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Paleta da marca ABrasilSistemas (fonte única para o site público). */
+    --color-brand-navy: #0f172a;
+    --color-brand-blue: #2563eb;
+    --color-brand-blue-hover: #1d4ed8;
+    --color-brand-cyan: #38bdf8;
+    --color-brand-surface: #ffffff;
+    --color-brand-surface-muted: #f8fafc;
+    --color-brand-ink: #0f172a;
+    --color-brand-body: #475569;
+    --color-brand-on-dark: #f8fafc;
+    --color-brand-on-dark-muted: #cbd5e1;
+    --color-brand-line: #e2e8f0;
 }
 
 :root {
     --background: #f8fafc;
-    --foreground: #0b1220;
+    --foreground: #0f172a;
     --card: #ffffff;
-    --card-foreground: #0b1220;
+    --card-foreground: #0f172a;
     --popover: #ffffff;
-    --popover-foreground: #0b1220;
-    --primary: #0d47a1;
+    --popover-foreground: #0f172a;
+    --primary: #2563eb;
     --primary-foreground: #ffffff;
-    --secondary: #e6f7ff;
-    --secondary-foreground: #0d47a1;
-    --muted: #eef2f7;
-    --muted-foreground: #6b7280;
-    --accent: #e6f7ff;
-    --accent-foreground: #0d47a1;
+    --secondary: #eff6ff;
+    --secondary-foreground: #1d4ed8;
+    --muted: #f1f5f9;
+    --muted-foreground: #475569;
+    --accent: #eff6ff;
+    --accent-foreground: #1d4ed8;
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: #ffffff;
-    --border: #dbe3ef;
-    --input: #dbe3ef;
-    --ring: #00b4ff;
-    --chart-1: #00b4ff;
-    --chart-2: #00e59b;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #2563eb;
+    --chart-1: #2563eb;
+    --chart-2: #38bdf8;
     --chart-3: #7c3aed;
-    --chart-4: #0d47a1;
-    --chart-5: #6b7280;
+    --chart-4: #0f172a;
+    --chart-5: #475569;
     --radius: 0.625rem;
     --sidebar: #f1f5f9;
-    --sidebar-foreground: #0b1220;
-    --sidebar-primary: #0d47a1;
+    --sidebar-foreground: #0f172a;
+    --sidebar-primary: #2563eb;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e6f7ff;
-    --sidebar-accent-foreground: #0d47a1;
-    --sidebar-border: #dbe3ef;
-    --sidebar-ring: #00b4ff;
+    --sidebar-accent: #eff6ff;
+    --sidebar-accent-foreground: #1d4ed8;
+    --sidebar-border: #e2e8f0;
+    --sidebar-ring: #2563eb;
 }
 
 .dark {
-    --background: #0b1220;
-    --foreground: #f4f5f7;
-    --card: #101a2d;
-    --card-foreground: #f4f5f7;
-    --popover: #101a2d;
-    --popover-foreground: #f4f5f7;
-    --primary: #00b4ff;
-    --primary-foreground: #0b1220;
-    --secondary: #18243a;
-    --secondary-foreground: #f4f5f7;
-    --muted: #18243a;
-    --muted-foreground: #a8b3c7;
-    --accent: #0d47a1;
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --card: #111c30;
+    --card-foreground: #f8fafc;
+    --popover: #111c30;
+    --popover-foreground: #f8fafc;
+    --primary: #38bdf8;
+    --primary-foreground: #0f172a;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #cbd5e1;
+    --accent: #2563eb;
     --accent-foreground: #ffffff;
     --destructive: oklch(0.55 0.25 30);
     --destructive-foreground: #ffffff;
-    --border: rgb(244 245 247 / 12%);
-    --input: rgb(244 245 247 / 12%);
-    --ring: #00e59b;
-    --chart-1: #00b4ff;
-    --chart-2: #00e59b;
+    --border: rgb(248 250 252 / 12%);
+    --input: rgb(248 250 252 / 12%);
+    --ring: #38bdf8;
+    --chart-1: #2563eb;
+    --chart-2: #38bdf8;
     --chart-3: #7c3aed;
-    --chart-4: #0d47a1;
-    --chart-5: #6b7280;
-    --sidebar: #0b1220;
-    --sidebar-foreground: #f4f5f7;
-    --sidebar-primary: #00b4ff;
-    --sidebar-primary-foreground: #0b1220;
-    --sidebar-accent: #0d47a1;
+    --chart-4: #1d4ed8;
+    --chart-5: #cbd5e1;
+    --sidebar: #0f172a;
+    --sidebar-foreground: #f8fafc;
+    --sidebar-primary: #38bdf8;
+    --sidebar-primary-foreground: #0f172a;
+    --sidebar-accent: #2563eb;
     --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: rgb(244 245 247 / 10%);
-    --sidebar-ring: #00e59b;
+    --sidebar-border: rgb(248 250 252 / 10%);
+    --sidebar-ring: #38bdf8;
 }
 
 @layer base {
@@ -173,7 +186,7 @@
 
     .article-content li::before {
         content: '';
-        @apply absolute top-3 left-0 size-2 rounded-full bg-blue-600;
+        @apply absolute top-3 left-0 size-2 rounded-full bg-brand-blue;
     }
 
     .article-content figure {
@@ -208,7 +221,7 @@
    claros coloridos (âmbar, violeta, ciano) que essas regras não cobrem, e
    forçar o texto para claro nelas deixava o texto quase invisível. */
 .dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) {
-    background: #020617 !important;
+    background: var(--color-brand-navy) !important;
     color: #e2e8f0 !important;
 }
 
@@ -239,5 +252,5 @@
 
 .dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='from-blue-50'],
 .dark .ab-public-site:not(.ab-marketing-home):not(.ab-static-light) [class*='from-white'] {
-    background-image: linear-gradient(to bottom, #111c30, #020617) !important;
+    background-image: linear-gradient(to bottom, #111c30, var(--color-brand-navy)) !important;
 }

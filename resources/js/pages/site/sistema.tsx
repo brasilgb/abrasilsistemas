@@ -23,7 +23,7 @@ export default function SistemaPage({ slug }: { slug: string }) {
 
     return (
         <SiteLayout>
-            <section className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-16 text-white sm:pt-32 sm:pb-20">
+            <section className="relative isolate overflow-hidden bg-brand-navy pt-28 pb-16 text-white sm:pt-32 sm:pb-20">
                 <HeroBackdrop image={heroImages[product.heroImage]} />
                 <Container>
                     <Link
@@ -105,7 +105,7 @@ export default function SistemaPage({ slug }: { slug: string }) {
                             </ul>
                         </div>
                         <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-6 sm:p-8">
-                            <h3 className="text-sm font-semibold tracking-wider text-blue-800 uppercase">
+                            <h3 className="text-sm font-semibold tracking-wider text-brand-blue-hover uppercase">
                                 Com o {product.name}
                             </h3>
                             <ul className="mt-5 grid gap-3">
@@ -114,7 +114,7 @@ export default function SistemaPage({ slug }: { slug: string }) {
                                         key={outcome}
                                         className="flex gap-3 text-[15px] leading-7 text-slate-800"
                                     >
-                                        <Check className="mt-1 size-4 shrink-0 text-blue-700" />
+                                        <Check className="mt-1 size-4 shrink-0 text-brand-blue" />
                                         {outcome}
                                     </li>
                                 ))}

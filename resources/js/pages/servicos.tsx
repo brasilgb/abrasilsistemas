@@ -43,13 +43,13 @@ export default function Servicos() {
                                     href={`/${service.slug}`}
                                     className="group grid gap-3 py-7 md:grid-cols-[16rem_1fr_auto] md:items-center md:gap-10"
                                 >
-                                    <span className="text-xl font-semibold text-slate-900 group-hover:text-blue-800">
+                                    <span className="text-xl font-semibold text-slate-900 group-hover:text-brand-blue-hover">
                                         {service.label}
                                     </span>
                                     <span className="text-[15px] leading-7 text-slate-600">
                                         {service.summary}
                                     </span>
-                                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700">
+                                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue">
                                         Saiba mais{' '}
                                         <ArrowRight className="size-4 transition group-hover:translate-x-1" />
                                     </span>
@@ -61,7 +61,7 @@ export default function Servicos() {
                                 href="/sistemas"
                                 className="group grid gap-3 py-7 md:grid-cols-[16rem_1fr_auto] md:items-center md:gap-10"
                             >
-                                <span className="text-xl font-semibold text-slate-900 group-hover:text-blue-800">
+                                <span className="text-xl font-semibold text-slate-900 group-hover:text-brand-blue-hover">
                                     Sistemas prontos
                                 </span>
                                 <span className="text-[15px] leading-7 text-slate-600">
@@ -72,7 +72,7 @@ export default function Servicos() {
                                         .join(' e ')}
                                     .
                                 </span>
-                                <span className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700">
+                                <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue">
                                     Conhecer{' '}
                                     <ArrowRight className="size-4 transition group-hover:translate-x-1" />
                                 </span>
@@ -116,7 +116,7 @@ export default function Servicos() {
 
             <SeoIncluded />
 
-            <section className="bg-[#0b1220] py-20 text-white sm:py-24">
+            <section className="bg-brand-navy py-20 text-white sm:py-24">
                 <Container>
                     <SectionHeading
                         eyebrow="Como trabalhamos"

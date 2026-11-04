@@ -136,7 +136,7 @@ export function HomeCarousel() {
         <section
             aria-label="Destaques da ABrasil Sistemas"
             aria-roledescription="carrossel"
-            className="relative isolate overflow-hidden bg-[#0b1220] pt-28 pb-10 text-white sm:pt-32 sm:pb-14"
+            className="relative isolate overflow-hidden bg-brand-navy pt-28 pb-10 text-white sm:pt-32 sm:pb-14"
             onMouseEnter={() => setInteracting(true)}
             onMouseLeave={() => setInteracting(false)}
             onFocusCapture={() => setInteracting(true)}
@@ -193,8 +193,8 @@ export function HomeCarousel() {
                         className="absolute top-0 right-0 h-full w-auto max-w-none"
                     />
                 </picture>
-                <div className="absolute inset-0 bg-[#0b1220]/90 sm:bg-[#0b1220]/85 lg:bg-transparent lg:bg-[linear-gradient(to_right,#0b1220_0%,#0b1220_58%,rgba(11,18,32,0.7)_72%,rgba(11,18,32,0)_90%)]" />
-                <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-[#0b1220]/80 to-transparent" />
+                <div className="absolute inset-0 bg-brand-navy/90 sm:bg-brand-navy/85 lg:bg-transparent lg:bg-[linear-gradient(to_right,var(--color-brand-navy)_0%,var(--color-brand-navy)_58%,rgba(11,18,32,0.7)_72%,rgba(11,18,32,0)_90%)]" />
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-brand-navy/80 to-transparent" />
             </div>
             <Container className="relative">
                 <div>
@@ -205,7 +205,7 @@ export function HomeCarousel() {
                         className="grid min-h-[35rem] items-center gap-8 motion-safe:animate-in motion-safe:duration-500 motion-safe:fade-in lg:min-h-[31rem] lg:grid-cols-[0.95fr_1.05fr] lg:gap-14"
                     >
                         <div className="flex flex-col justify-center pt-2">
-                            <p className="text-xs font-bold tracking-[0.12em] text-sky-300 uppercase">
+                            <p className="text-xs font-bold tracking-[0.12em] text-brand-cyan uppercase">
                                 {slide.eyebrow}
                             </p>
                             <h1 className="mt-4 max-w-xl text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl">
@@ -249,20 +249,20 @@ export function HomeCarousel() {
                                 aria-current={
                                     active === index ? 'true' : undefined
                                 }
-                                className="grid size-9 place-items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+                                className="grid size-9 place-items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan"
                             >
                                 <span
-                                    className={`block h-1.5 rounded-full transition-all ${active === index ? 'w-6 bg-sky-300' : 'w-2 bg-white/40'}`}
+                                    className={`block h-1.5 rounded-full transition-all ${active === index ? 'w-6 bg-brand-cyan' : 'w-2 bg-white/40'}`}
                                 />
                             </button>
                         ))}
                     </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[#0b1220]/55 p-1">
+                    <div className="flex items-center gap-2 rounded-lg bg-brand-navy/55 p-1">
                         <button
                             type="button"
                             onClick={() => select(active - 1)}
                             aria-label="Destaque anterior"
-                            className="grid size-10 place-items-center rounded-md text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+                            className="grid size-10 place-items-center rounded-md text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan"
                         >
                             <ChevronLeft className="size-5" />
                         </button>
@@ -270,7 +270,7 @@ export function HomeCarousel() {
                             type="button"
                             onClick={() => select(active + 1)}
                             aria-label="Próximo destaque"
-                            className="grid size-10 place-items-center rounded-md text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+                            className="grid size-10 place-items-center rounded-md text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan"
                         >
                             <ChevronRight className="size-5" />
                         </button>
@@ -284,7 +284,7 @@ export function HomeCarousel() {
                             }
                             aria-pressed={paused}
                             disabled={reducedMotion}
-                            className="grid size-10 place-items-center rounded-md text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 disabled:opacity-40"
+                            className="grid size-10 place-items-center rounded-md text-slate-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-cyan disabled:opacity-40"
                         >
                             {paused ? (
                                 <Play className="size-5" />

@@ -22,7 +22,7 @@ export default function NotFound({ gone = false }: { gone?: boolean }) {
                 <meta name="robots" content="noindex, nofollow" />
             </Head>
 
-            <section className="bg-[#0b1220] pt-28 pb-16 text-white sm:pt-36 sm:pb-24">
+            <section className="bg-brand-navy pt-28 pb-16 text-white sm:pt-36 sm:pb-24">
                 <Container>
                     <Eyebrow inverse>{gone ? 'Erro 410' : 'Erro 404'}</Eyebrow>
                     <h1 className="mt-4 max-w-3xl text-4xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-5xl">
@@ -59,10 +59,10 @@ export default function NotFound({ gone = false }: { gone?: boolean }) {
                             >
                                 <Link
                                     href={`/${service.slug}`}
-                                    className="group flex items-center justify-between gap-4 py-4 font-semibold text-slate-900 hover:text-blue-800"
+                                    className="group flex items-center justify-between gap-4 py-4 font-semibold text-slate-900 hover:text-brand-blue-hover"
                                 >
                                     {service.label}
-                                    <ArrowRight className="size-4 shrink-0 text-slate-400 group-hover:text-blue-800" />
+                                    <ArrowRight className="size-4 shrink-0 text-slate-400 group-hover:text-brand-blue-hover" />
                                 </Link>
                             </li>
                         ))}

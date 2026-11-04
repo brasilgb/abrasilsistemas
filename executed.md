@@ -1,76 +1,77 @@
-# Execução de `correio.md`: blog ABrasil Sistemas, revisão do artigo existente e cinco rascunhos
+# Execução de `correio.md`: paleta de cores do site ABrasilSistemas
 
-Data: 2026-11-04. Base: `correio.md` alterado em relação à execução anterior (ABRASIL-PROD-CONFIG-01, 2026-10-22). A versão atual trata do blog e não tem relação com a configuração de produção.
+Data: 2026-11-04. Base: `correio.md` alterado em relação à execução anterior (blog, rascunhos de serviços). O conteúdo atual trata somente de cores e não cria, altera nem publica nada no banco.
 
-**Status: executado. Foram criados 10 rascunhos no banco de produção (5 de SEO e 5 novos sobre serviços), sem publicação.** Falta apenas aplicar a revisão no artigo publicado, que depende do painel.
+**Status: executado localmente, sem commit e sem publicação.** Alterações apenas na árvore de trabalho. Verificação visual no navegador (desktop, celular e capturas) **não foi feita**, pelo motivo descrito na seção 4.
 
-## 1. Escopo levantado
+## 1. Tokens centralizados
 
-- Artigo publicado encontrado: **1** (id 2, "Sistema personalizado ou software pronto: qual é a melhor opção para sua empresa?", categoria Desenvolvimento de Sistemas). Não havia outro artigo publicado para selecionar até três.
-- Rascunhos já existentes no banco não puderam ser consultados daqui (o `.env` aponta para o MySQL de produção, que não resolve fora do Docker). O comando `blog:seo-drafts` verifica título parecido e palavra-chave repetida antes de criar cada rascunho.
+Em `resources/css/app.css`, bloco `@theme`, foram criados os tokens da marca:
 
-## 2. Revisão do artigo existente (não aplicada ao vivo)
+| Token | Valor | Uso |
+|---|---|---|
+| `--color-brand-navy` | `#0f172a` | cabeçalho, rodapé, fundo escuro do hero |
+| `--color-brand-blue` | `#2563eb` | botões principais, links, destaques |
+| `--color-brand-blue-hover` | `#1d4ed8` | hover dos botões principais |
+| `--color-brand-cyan` | `#38bdf8` | detalhes tecnológicos e indicadores ativos |
+| `--color-brand-surface` | `#ffffff` | fundo principal |
+| `--color-brand-surface-muted` | `#f8fafc` | fundo de seções alternadas |
+| `--color-brand-ink` | `#0f172a` | títulos sobre fundo claro |
+| `--color-brand-body` | `#475569` | texto sobre fundo claro |
+| `--color-brand-on-dark` | `#f8fafc` | texto sobre fundo escuro |
+| `--color-brand-on-dark-muted` | `#cbd5e1` | texto secundário sobre fundo escuro |
+| `--color-brand-line` | `#e2e8f0` | bordas e divisórias claras |
 
-Gerada em `database/data/blog-revisions.php`, com corpo HTML e metadados de SEO sugeridos.
+Também foram reapontados os tokens do tema claro e escuro (`:root` e `.dark`): `--primary`, `--ring`, `--secondary`, `--accent`, `--chart-*`, `--sidebar-*` e os fundos do modo escuro. Antes, o primário era `#0d47a1` e o ciano era `#00b4ff`.
 
-Ajustes feitos no texto:
-- Listas que estavam como texto com asteriscos (`* item; * item`) convertidas em listas HTML (6 listas).
-- H2 repetido com o título removido (o H1 vem do template).
-- Texto alternativo descritivo nas 2 imagens.
-- Links internos para `/desenvolvimento-de-sistemas`, `/integracao-de-sistemas-e-apis`, `/automacao-de-processos`, `/sistemas/vetorsales`, `/sistemas/vetorleads` e `/contato`.
-- Parágrafo sobre VetorSales e VetorLeads como softwares prontos, com funcionalidades conferidas em `resources/js/data/site.ts`.
-- Chamada final com links.
+Os cinzas usados no site (`slate-50`, `slate-200`, `slate-600`, `slate-900`, `slate-300`) já coincidem exatamente com os valores da paleta, então foram mantidos como estão.
 
-Metadados sugeridos: título SEO "Software pronto ou sistema sob medida: como escolher" (52 caracteres) e descrição de 157 caracteres. O título e a descrição atuais têm respectivamente cerca de 90 e 300 caracteres.
+## 2. Aplicação
 
-Preservados: slug, URL, autoria e data de publicação. Não houve redirecionamento. Não houve remoção de repetições além dos ajustes acima. Um ajuste de texto mais profundo não foi feito.
+Foram alterados `app.css` e mais 21 arquivos de página e componentes públicos (`components/site/*`, `components/public-footer.tsx`, `blog-public-layout`, páginas de início, sobre, serviços, contato, blog, legais, 404, serviços/sistemas/SEO e layouts de autenticação):
 
-## 3. Cinco rascunhos novos
+- `#0b1220` e `#070c17` (fundos escuros, inclusive o gradiente do carrossel) → `brand-navy`.
+- `bg-blue-700` / `hover:bg-blue-800` → `brand-blue` / `brand-blue-hover` nos botões principais.
+- `text-blue-700` (links e destaques) → `brand-blue`; `text-blue-800` e `group-hover` → `brand-blue-hover`.
+- `sky-200/300` e `sky-400/x` (detalhes em fundo escuro) → `brand-cyan`.
+- `to-cyan-500` no placeholder do artigo em destaque → `brand-cyan`.
+- Texto azul sobre pílulas `bg-blue-100` foi escurecido para `brand-blue-hover`, para atingir AA (2563eb sobre dbeafe dava 4,24:1).
 
-Arquivo: `database/data/blog-service-drafts.php`. Todos com `status = draft`, sem data de publicação.
+Preservados: cores dos logotipos, identidades de VetorOS, VetorSales e VetorLeads, cores semânticas (verde de sucesso e âmbar de alerta), `#1a0dab` / `#8ab4f8` da prévia do Google (intencional), e os tons de mockup internos de `visuals.tsx` (`#111a2e`, `#0e1626` etc.), que representam telas de produto. Os valores azuis desses mockups passaram a usar o token azul.
 
-| # | Título | Categoria | Palavras | Serviço/produto relacionado |
-|---|---|---|---|---|
-| 1 | Site profissional: o que sua empresa precisa para transformar visitas em contatos | Sites e presença digital | 771 | Sites empresariais, landing pages |
-| 2 | Quando uma planilha deixa de ser suficiente para sua empresa? | Desenvolvimento de Sistemas | 763 | Desenvolvimento de sistemas |
-| 3 | Automação de processos: tarefas repetitivas que sua empresa pode simplificar | Sistemas e automação | 711 | Automação, integração de sistemas e APIs |
-| 4 | Como organizar clientes, pedidos e equipes de vendas em uma única operação | Gestão e produtividade | 710 | VetorSales |
-| 5 | Da prospecção ao acompanhamento: como evitar que oportunidades comerciais sejam esquecidas | Gestão e produtividade | 721 | VetorLeads |
+Não alterado: `text-sky-700` em `resources/js/data/site.ts` (tom escuro de céu, fora da paleta; decisão a confirmar).
 
-Cada rascunho tem título SEO, descrição (excerpt) de 146 a 158 caracteres, slug, palavra-chave principal, palavras-chave secundárias, intenção de busca e páginas relacionadas. Os recursos citados foram conferidos no projeto. Nenhum número, cliente, depoimento ou promessa de resultado foi inventado.
+## 3. Contraste (WCAG)
 
-**Ajuste de tamanho:** na primeira versão os textos tinham entre 609 e 673 palavras. Foram completados com seções de conteúdo específico (sem números inventados) e agora têm entre 710 e 771 palavras, dentro da faixa de 700 a 1.000 pedida. Contagem feita sobre o texto sem tags HTML.
+Calculado com a fórmula de luminância relativa:
 
-Verificação de duplicidade, simulada com a mesma lógica do comando: nenhuma palavra-chave principal coincide com as dos rascunhos de SEO existentes. A maior semelhança de título é 53,7%, abaixo do limite de 70% usado pelo comando.
+| Par | Razão | Resultado |
+|---|---|---|
+| branco / `#2563eb` (botão) | 5,17:1 | AA |
+| branco / `#1d4ed8` (hover) | 6,70:1 | AA |
+| `#2563eb` / branco (link) | 5,17:1 | AA |
+| `#2563eb` / `#f8fafc` | 4,94:1 | AA |
+| `#475569` / branco | 7,58:1 | AA |
+| `#475569` / `#f8fafc` | 7,24:1 | AA |
+| `#0f172a` / branco | 17,85:1 | AA |
+| `#38bdf8` / `#0f172a` | 8,33:1 | AA |
+| `#cbd5e1` / `#0f172a` | 12,02:1 | AA |
+| `#f8fafc` / `#0f172a` | 17,06:1 | AA |
+| `#2563eb` / `#dbeafe` (pílula) | 4,24:1 | abaixo de AA, corrigido com `#1d4ed8` (5,49:1) |
+| `#38bdf8` / branco | 2,14:1 | **não usado em texto sobre branco**; o ciano aparece só em fundos escuros |
 
-## 4. Alteração no código
+O foco de teclado sobre fundo claro usa `#2563eb` (5,17:1). Sobre o carrossel escuro, o contorno de foco é ciano.
 
-`app/Console/Commands/BlogSeoDraftsCommand.php`: o comando agora lê também `blog-service-drafts.php` e aceita, por rascunho, opcionalmente, `category`, `search_intent` e `related_pages`. Sem esses campos, o comportamento anterior é mantido (categoria SEO, intenção `seo`, página de SEO técnico).
+## 4. Verificação e limitações
 
-## 5. Verificações
+- **Compilação do CSS:** `resources/css/app.css` compila com `@tailwindcss/node`, e os utilitários `bg-brand-*`, `text-brand-*`, `hover:bg-brand-blue-hover`, `from/via/to-brand-*` e `outline-brand-cyan` são gerados.
+- **Build completo do Vite não concluiu.** Falha por `@/routes/*` ausente, arquivos gerados pelo Wayfinder (`php artisan wayfinder:generate`). O projeto não tem `vendor/` e não há Composer neste ambiente, então não foi possível gerar as rotas. Este erro existe independentemente das alterações de cor.
+- **Prettier:** `app.css`, `blog/index.tsx` e `site/sistema.tsx` já estavam fora do formato no HEAD. Não foram reformatados, para manter o diff restrito à paleta.
+- **Navegador e capturas:** não executados. Não há Chromium nem Playwright instalados, e a aplicação não sobe sem PHP com dependências. Por isso não há capturas desktop/celular nem conferência de todos os slides do carrossel. **Recomendado:** rodar `composer install`, `php artisan wayfinder:generate --with-form`, `npm run build` e revisar as páginas no navegador.
+- Docker não foi usado, conforme o pedido. Nenhum container foi tocado.
 
-- `php -l` nos três arquivos PHP alterados ou criados: sem erros de sintaxe.
-- Os arquivos de dados retornam os arrays esperados. Os 10 slugs (5 de SEO e 5 novos) são únicos.
-- **Dry-run executado no container de produção** (`infra-abrasil-abrasilsistema-1`), depois de copiar `BlogSeoDraftsCommand.php` e `blog-service-drafts.php` para dentro dele com `docker cp`. Resultado: "Simulação concluída. Nada foi gravado." Os 10 rascunhos seriam criados (5 de SEO e 5 novos), sem pulas por duplicidade e sem aviso de categoria ausente.
-- Os arquivos copiados existem só dentro do container até ele ser recriado. Para o código ficar permanente, é preciso refazer a imagem ou montar o repositório.
-- **Rascunhos criados no banco de produção** com `php artisan blog:seo-drafts` (sem `--dry-run`), a pedido do usuário. Resultado: 10 rascunhos criados (IDs 3 a 12), todos com `status = draft` e `published_at = null`. O artigo publicado (id 2) não foi alterado. Avaliação editorial: 80 a 95 (SEO) e 80 a 85 (novos).
-- Não houve teste das páginas no site.
-- **Não verificado no navegador nem no HTML renderizado:** a revisão do artigo não foi aplicada, e os rascunhos não existem no site.
+## 5. Estado
 
-## 6. Publicação e banco
-
-- Nenhum artigo foi publicado. Nenhum registro do banco de produção foi alterado.
-- Nada foi commitado.
-- O `dateModified` do artigo publicado aparece como 2026-11-04 18:14:56 no JSON-LD. Não fui eu que alterei o artigo; a origem dessa data não foi verificada.
-
-## 7. Pendências
-
-1. Revisar e publicar os rascunhos pelo painel (Blog > Artigos). Nada foi publicado.
-2. Aplicar a revisão do artigo id 2 pelo painel (Blog > Artigos) e os metadados sugeridos em SEO > Páginas. Depois, conferir o HTML renderizado e o JSON-LD.
-3. Revisar os rascunhos antes de publicar. Os textos foram escritos sem acesso aos artigos em rascunho no banco, então a equipe deve checar sobreposição com eles.
-
-**Reversão:** remover os arquivos `database/data/blog-service-drafts.php` e `database/data/blog-revisions.php`, e restaurar `BlogSeoDraftsCommand.php` com `git checkout`. Os rascunhos criados no banco podem ser excluídos pelo painel.
-
-## 8. Capas dos rascunhos (atualização posterior)
-
-Gravadas capas (`cover_image_url`) e metadados de compartilhamento (`og_image_url` e `og_image_alt` em `seo_meta`) nos posts 3 a 12, que estavam sem imagem. Só foram preenchidos campos vazios. As imagens são as que já existem no site: heroes de SEO, sites, sistemas sob medida e automação, além dos painéis do VetorSales e do VetorLeads. Os posts 3 a 11 já estavam publicados pelo painel; o post 12 continua rascunho e sua página ainda retorna 404 no site público.
+- Alterações locais em `resources/css/app.css` e nos 21 arquivos listados. Nenhum commit foi feito.
+- Nada foi publicado nem implantado. Produção não foi alterada.
+- `correio.md` continua com alterações não commitadas, como estava no início.

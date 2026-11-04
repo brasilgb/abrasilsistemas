@@ -29,7 +29,7 @@ export function SiteHeader() {
         user?.role === 'admin' ? '/atendimento' : '/settings/profile';
 
     return (
-        <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#0b1220]/95 text-white backdrop-blur">
+        <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-brand-navy/95 text-white backdrop-blur">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
                 <PublicBrand inverse />
 
@@ -130,7 +130,7 @@ export function SiteHeader() {
             {open && (
                 <nav
                     id="menu-movel"
-                    className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-[#0b1220] px-4 pt-2 pb-6 sm:px-6 lg:hidden"
+                    className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-brand-navy px-4 pt-2 pb-6 sm:px-6 lg:hidden"
                     aria-label="Navegação móvel"
                 >
                     <p className="pt-4 pb-2 text-xs font-semibold tracking-wider text-slate-500 uppercase">
