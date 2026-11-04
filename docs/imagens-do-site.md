@@ -25,7 +25,8 @@ A atribuição abaixo é um registro interno. A licença não obriga a exibir cr
 | `sites` | Sites empresariais | The Connected Narrative | [aEv8ednzJ2E](https://unsplash.com/photos/a-person-working-on-a-laptop-aEv8ednzJ2E) | 6016×4016 |
 | `landing-pages` | Landing pages | Carlos Muza | [hpjSkU2UYSU](https://unsplash.com/photos/laptop-computer-on-glass-top-table-hpjSkU2UYSU) | 2426×1728 |
 | `vetoros` | VetorOS | uBreakifix North - Las Vegas | [_AIT3BLFIag](https://unsplash.com/photos/man-in-black-t-shirt-using-computer-_AIT3BLFIag) | 5041×3780 |
-| `vetorpet` | VetorPet | Ayla Verschueren | [jnq52JjkLAg](https://unsplash.com/photos/a-brown-and-white-dog-sitting-next-to-a-bowl-of-food-jnq52JjkLAg) | 4608×3072 |
+| `vetorsales` | VetorSales | Material oficial do VetorSales | `vetorsales/public/images/vetorsales-commercial-hero.webp` (o mesmo hero do site vetorsales.com.br) | 1672×941 |
+| `vetorleads` | VetorLeads | Material oficial do projeto `vetorleads` | `vetorleads/public/images/vetorleads-hero-green-1280.webp` (recorte 16:9 de 1280×720; variante de 1920 px ampliada) | 1280×853 |
 | `sobre` | Sobre | Vitaly Gariev | [tp_SwN8pC0A](https://unsplash.com/photos/two-colleagues-collaborating-on-a-laptop-at-a-desk-tp_SwN8pC0A) | 3840×2160 |
 | `contato` | Contato | Vitaly Gariev | [L0rCfOSyUlQ](https://unsplash.com/photos/man-talking-on-phone-in-workspace-L0rCfOSyUlQ) | 3840×2160 |
 | `seo` | SEO técnico e otimização de sites | Luke Chesser | [JKUTrJ4vK00](https://unsplash.com/photos/graphs-of-performance-analytics-on-a-laptop-screen-JKUTrJ4vK00) | 4810×3207 |
@@ -35,6 +36,12 @@ tamanhos e qualidades das demais).
 
 Capturas reais de produto: `public/images/dashboard-vetoros.webp` (painel do VetorOS, já usado
 desde a ABRASIL-WEB-01) continua na home, em Sistemas prontos e na página do VetorOS.
+`public/images/dashboard-vetorsales.webp` (painel do VetorSales) e `public/images/logo_vetorsales.png` vêm
+dos materiais atuais do projeto `vetorsales` (`public/images/demonstracao/dashboard-desktop.webp` e
+`logo_vetorsales-128.png`). O hero `vetorsales` foi gerado por PHP GD a partir de uma foto de 1672 px:
+a variante de 1920 px é ampliada.
+
+`public/images/dashboard-vetorleads.webp` (painel do VetorLeads) e `public/images/logo_vetorleads.webp` vêm do projeto `vetorleads` (`public/images/landing/dashboard.webp` e `public/images/vetorleads-logo.webp`).
 
 ## Arquivos
 
@@ -61,10 +68,6 @@ Texto alternativo: `App\Support\PublicPages::HERO_IMAGES` (servidor, `og:image:a
   rejeição), com números de demonstração do fotógrafo e sem marca legível. Esses números não são
   resultados da ABrasil e, sob o véu navy, ficam pouco legíveis. Se incomodarem, troque a foto seguindo
   "Como trocar uma foto".
-- **VetorPet sem captura real de tela.** Não há print do sistema no repositório (nem no projeto
-  `vetorpet`). A página do produto usa só a foto do segmento; nenhuma tela foi inventada. Quando
-  houver um print real, ele entra como `screenshot` do produto em `resources/js/data/site.ts`,
-  igual ao VetorOS.
 - Marcas pequenas e ilegíveis sob o véu navy: uma lata sobre a mesa (`home`) e um logotipo branco
   na manga da camiseta (`vetoros`). Não aparecem de forma reconhecível no site; se incomodarem, a
   troca é só seguir "Como trocar uma foto".

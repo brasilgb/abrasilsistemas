@@ -78,11 +78,18 @@ class PublicPages
             'os' => 'Web',
             'category' => 'BusinessApplication',
         ],
-        'vetorpet' => [
-            'name' => 'VetorPet',
-            'title' => 'VetorPet — gestão comercial para o mercado pet | ABrasil Sistemas',
-            'description' => 'Carteira de clientes, catálogo, pedidos em campo, visitas e comissões para distribuidores e representantes do mercado pet.',
+        'vetorsales' => [
+            'name' => 'VetorSales',
+            'title' => 'VetorSales — sistema comercial para equipes de vendas | ABrasil Sistemas',
+            'description' => 'Sistema comercial para representantes e equipes de vendas, com gestão de clientes, produtos, pedidos, condições comerciais, comissões e indicadores de desempenho.',
             'os' => 'Web, Android',
+            'category' => 'BusinessApplication',
+        ],
+        'vetorleads' => [
+            'name' => 'VetorLeads',
+            'title' => 'VetorLeads — prospecção e funil de vendas | ABrasil Sistemas',
+            'description' => 'Plataforma para organizar a prospecção e acompanhar oportunidades comerciais, reunindo gestão de leads, funil de vendas, atendimento por WebChat e WhatsApp e recursos de inteligência artificial para apoio comercial.',
+            'os' => 'Web',
             'category' => 'BusinessApplication',
         ],
     ];
@@ -104,7 +111,8 @@ class PublicPages
         'sites' => 'Pessoas trabalhando juntas no site de uma empresa aberto em um notebook',
         'landing-pages' => 'Notebook exibindo um painel de métricas de acesso e conversão',
         'vetoros' => 'Técnicos consertando equipamentos eletrônicos na bancada de uma assistência técnica',
-        'vetorpet' => 'Cão deitado ao lado de um pote de ração em um ambiente doméstico',
+        'vetorsales' => 'Equipe comercial reunida em torno de um notebook e um tablet, analisando relatórios de vendas sobre a mesa',
+        'vetorleads' => 'Profissional sorridente trabalhando em um notebook em um escritório iluminado, com plantas ao fundo',
         'sobre' => 'Dois colegas analisando juntos um projeto no notebook, com diagramas no quadro ao fundo',
         'contato' => 'Profissional conversando ao telefone com um cliente em frente ao notebook',
         'seo' => 'Notebook exibindo gráficos de desempenho de um site, com tempo de carregamento e taxa de rejeição',
@@ -144,13 +152,13 @@ class PublicPages
         'home' => [
             'path' => '/', 'label' => 'Página inicial', 'group' => 'Institucional', 'hero' => 'home',
             'title' => 'ABrasil Sistemas — Software, sistemas e integração para empresas',
-            'description' => 'Empresa de tecnologia que desenvolve sistemas sob medida, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS e VetorPet.',
+            'description' => 'Empresa de tecnologia que desenvolve sistemas sob medida, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS, VetorSales e VetorLeads.',
             'changefreq' => 'weekly', 'priority' => '1.0',
         ],
         'sistemas' => [
             'path' => '/sistemas', 'label' => 'Sistemas (produtos)', 'group' => 'Produtos', 'hero' => 'sistemas',
-            'title' => 'Sistemas prontos para empresas — VetorOS e VetorPet | ABrasil Sistemas',
-            'description' => 'Produtos de software da ABrasil Sistemas em operação: VetorOS para assistências técnicas e VetorPet para a gestão comercial no mercado pet.',
+            'title' => 'Sistemas prontos para empresas — VetorOS, VetorSales e VetorLeads | ABrasil Sistemas',
+            'description' => 'Produtos de software da ABrasil Sistemas em operação: VetorOS para assistências técnicas, VetorSales para representantes e equipes de vendas e VetorLeads para prospecção e funil comercial.',
             'changefreq' => 'monthly', 'priority' => '0.9',
         ],
         'servicos' => [

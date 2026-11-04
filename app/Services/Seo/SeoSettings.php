@@ -40,7 +40,7 @@ class SeoSettings
             'base_url' => '',
             'default_title' => 'ABrasil Sistemas — Software, sistemas e integração para empresas',
             'title_template' => '%title% | %site%',
-            'default_description' => 'Empresa de tecnologia que desenvolve sistemas, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS e VetorPet.',
+            'default_description' => 'Empresa de tecnologia que desenvolve sistemas, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS, VetorSales e VetorLeads.',
             'logo_url' => '/images/logo_ab-512.png',
             'social_image_url' => '/images/site/heroes/home-og.jpg',
             'social_image_alt' => PublicPages::HERO_IMAGES['home'],

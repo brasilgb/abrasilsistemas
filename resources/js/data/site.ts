@@ -68,6 +68,10 @@ export type Product = {
     /** Foto do segmento no hero (ver data/hero-images.ts). */
     heroImage: HeroImageKey;
     externalUrl: string;
+    /** Página de cadastro do teste gratuito, quando diferente da página do produto. */
+    signupUrl?: string;
+    /** Rótulo do botão secundário (padrão: "Criar conta e testar grátis"), quando o produto não tem teste gratuito. */
+    secondaryCtaLabel?: string;
     contactType: string;
     faq: { question: string; answer: string }[];
 };
@@ -491,7 +495,7 @@ export const services: Service[] = [
             },
             {
                 question: 'Vocês já têm aplicativos em uso?',
-                answer: 'Sim. O VetorPet, nosso produto para o mercado pet, tem aplicativo Android usado pelos vendedores em campo.',
+                answer: 'Sim. O VetorSales, nosso sistema comercial para equipes de vendas, tem aplicativo Android usado pelos vendedores em campo.',
             },
         ],
         related: [
@@ -1004,66 +1008,80 @@ export const products: Product[] = [
         ],
     },
     {
-        slug: 'vetorpet',
-        heroImage: 'vetorpet',
-        name: 'VetorPet',
-        segment: 'Distribuidores e representantes do mercado pet',
+        slug: 'vetorsales',
+        heroImage: 'vetorsales',
+        name: 'VetorSales',
+        segment: 'Representantes e equipes de vendas',
         tagline: 'Da visita ao pedido, com a equipe comercial sob controle.',
-        logo: '/images/logo_pet.png',
+        logo: '/images/logo_vetorsales.png',
         logoClass: 'rounded-xl bg-white object-contain p-1',
-        accent: 'text-violet-700',
+        accent: 'text-emerald-700',
         problem:
-            'Quem vende para o mercado pet costuma anotar pedidos no papel, digitar depois e calcular comissão à mão — enquanto o gestor fica sem enxergar o que a equipe faz em campo.',
+            'Sistema comercial para representantes e equipes de vendas, com gestão de clientes, produtos, pedidos, condições comerciais, comissões e indicadores de desempenho. Atende distribuidores, atacadistas e indústrias de diferentes segmentos — inclusive o mercado pet.',
         pains: [
             'Pedido anotado no papel e digitado depois, com erro',
             'Vendedor sem histórico do cliente na visita',
+            'Desconto e preço negociados sem regra',
             'Comissões calculadas manualmente',
             'Gestor sem visibilidade da equipe de campo',
         ],
         features: [
             {
-                title: 'Carteira de clientes e regiões',
+                title: 'Carteira de clientes',
                 description:
-                    'Clientes organizados por vendedor e região, com histórico de compras.',
+                    'Clientes, contatos e dados comerciais organizados por vendedor e região.',
             },
             {
-                title: 'Catálogo e pedidos em campo',
+                title: 'Catálogo de produtos',
                 description:
-                    'Pedido lançado no aplicativo durante a visita, com o catálogo atualizado.',
+                    'Produtos com marca, categoria, preço e estoque de referência.',
             },
             {
-                title: 'Visitas',
+                title: 'Pedidos em campo',
                 description:
-                    'Registro e acompanhamento das visitas da equipe comercial.',
+                    'Pedido montado no painel ou no aplicativo, com itens, descontos e totais calculados pelo sistema.',
+            },
+            {
+                title: 'Tabelas e condições comerciais',
+                description:
+                    'Preços, limites e regras comerciais aplicados no momento da emissão do pedido.',
             },
             {
                 title: 'Comissões',
                 description:
-                    'Comissões calculadas automaticamente a partir dos pedidos.',
+                    'Comissões registradas a partir dos pedidos, sem planilha.',
             },
             {
-                title: 'Painel de resultados',
-                description: 'Indicadores por equipe, região e período.',
-            },
-            {
-                title: 'Painel web e aplicativo Android',
+                title: 'Indicadores de desempenho',
                 description:
-                    'Gestão no computador e operação de campo no celular.',
+                    'Painel do gestor com clientes, visitas, pedidos e resultados da equipe.',
             },
         ],
         outcomes: [
             'Pedido registrado ainda na visita',
             'Carteira e histórico na mão do vendedor',
+            'Condições comerciais aplicadas pelo sistema',
             'Comissões sem planilha',
-            'Visão clara da equipe em campo',
+            'Visão clara do desempenho da equipe',
         ],
         platforms: ['Painel web', 'Aplicativo Android'],
+        screenshot: {
+            src: '/images/dashboard-vetorsales.webp',
+            alt: 'Painel do VetorSales com valor e quantidade de pedidos, ticket médio, evolução mensal, comissões e ranking de representantes',
+            width: 1440,
+            height: 900,
+        },
         deployment:
             'SaaS na nuvem: cadastro online, sem instalação, com 14 dias de teste gratuito sem cartão de crédito.',
         integrations: ['Aplicativo Android sincronizado com o painel web'],
-        externalUrl: 'https://vetorpet.com.br',
-        contactType: 'vetorpet',
+        externalUrl: 'https://vetorsales.com.br',
+        signupUrl: 'https://vetorsales.com.br/register',
+        contactType: 'vetorsales',
         faq: [
+            {
+                question: 'O VetorSales atende apenas o mercado pet?',
+                answer: 'Não. Ele foi pensado para equipes de vendas de diferentes segmentos — distribuidores, atacadistas e indústrias com representantes. O mercado pet continua atendido como um desses segmentos.',
+            },
             {
                 question: 'O aplicativo funciona em qualquer celular?',
                 answer: 'O aplicativo de campo é para Android; a gestão é feita no painel web.',
@@ -1075,6 +1093,99 @@ export const products: Product[] = [
             {
                 question: 'Posso pedir uma demonstração?',
                 answer: 'Sim. Fale com a equipe e mostramos o sistema com base na rotina da sua equipe comercial.',
+            },
+        ],
+    },
+    {
+        slug: 'vetorleads',
+        heroImage: 'vetorleads',
+        name: 'VetorLeads',
+        segment: 'Prospecção e funil de vendas',
+        tagline: 'Da empresa captada à oportunidade ganha, com o funil comercial organizado.',
+        logo: '/images/logo_vetorleads.webp',
+        logoClass: 'rounded-xl bg-white object-contain p-1',
+        accent: 'text-emerald-700',
+        problem:
+            'Plataforma para organizar a prospecção e acompanhar oportunidades comerciais, reunindo gestão de leads, funil de vendas, atendimento por WebChat e WhatsApp e recursos de inteligência artificial para apoio comercial.',
+        pains: [
+            'Empresas prospectadas em planilhas espalhadas',
+            'Contatos repetidos e leads duplicados',
+            'Negociações sem etapa, responsável ou próximo contato',
+            'Conversas de site e WhatsApp sem organização',
+            'Pipeline sem números para a equipe comercial',
+        ],
+        features: [
+            {
+                title: 'Captura de empresas',
+                description:
+                    'Empresas encontradas no Google Maps e enviadas pela extensão AB Prospect em lotes, sem duplicar as que já estão cadastradas.',
+            },
+            {
+                title: 'Qualificação dos prospects',
+                description:
+                    'Score de aderência ao produto, com os motivos de cada nota, para priorizar quem tem mais chance de compra.',
+            },
+            {
+                title: 'Funil Kanban configurável',
+                description:
+                    'Oportunidades em etapas, de Novo a Ganho ou Perdido, com responsáveis, valores estimados e motivo de perda.',
+            },
+            {
+                title: 'Follow-ups e atividades',
+                description:
+                    'Registro de contatos, agenda do próximo passo e lista dos follow-ups vencidos.',
+            },
+            {
+                title: 'Central de atendimento',
+                description:
+                    'Conversas de WebChat e WhatsApp reunidas em um só lugar, nos canais liberados para a empresa.',
+            },
+            {
+                title: 'Inteligência artificial',
+                description:
+                    'Recursos de IA para apoio comercial, como o atendimento com IA, conforme a franquia contratada.',
+            },
+        ],
+        outcomes: [
+            'Prospecção organizada em um só lugar',
+            'Prioridades claras para a equipe comercial',
+            'Negociações com etapa, responsável e próximo contato',
+            'Atendimento do site e do WhatsApp sem perda de contato',
+            'Indicadores de captação, atendimento e vendas',
+        ],
+        platforms: ['Painel web', 'Extensão para navegador'],
+        screenshot: {
+            src: '/images/dashboard-vetorleads.webp',
+            alt: 'Painel do VetorLeads com empresas encontradas, leads adicionados ao CRM, conversas de atendimento, oportunidades abertas e negócios ganhos',
+            width: 1440,
+            height: 900,
+        },
+        deployment:
+            'SaaS na nuvem: cadastro online e acesso pelo navegador, sem instalação.',
+        integrations: [
+            'Extensão AB Prospect (Google Maps)',
+            'WebChat do site',
+            'WhatsApp, sob liberação por empresa',
+        ],
+        externalUrl: 'https://vetorleads.com.br',
+        secondaryCtaLabel: 'Conhecer o sistema',
+        contactType: 'vetorleads',
+        faq: [
+            {
+                question: 'Qual a diferença entre o VetorLeads e o VetorSales?',
+                answer: 'O VetorLeads cuida da prospecção e do funil de oportunidades. O VetorSales cuida da carteira de clientes, dos pedidos e das comissões da equipe de vendas. Cada um tem foco próprio.',
+            },
+            {
+                question: 'O WhatsApp está incluído em todos os planos?',
+                answer: 'Não. O atendimento por WhatsApp depende de liberação específica para cada empresa e não faz parte do acesso padrão.',
+            },
+            {
+                question: 'Como funciona o funil comercial?',
+                answer: 'As oportunidades ficam em etapas no Kanban, de Novo a Ganho ou Perdido. Proprietários e administradores podem renomear as etapas e mudar a ordem das etapas abertas.',
+            },
+            {
+                question: 'Posso pedir uma demonstração?',
+                answer: 'Sim. Fale com a equipe e mostramos o sistema com base na rotina da sua área comercial.',
             },
         ],
     },

@@ -36,6 +36,8 @@ use Inertia\Inertia;
 
 Route::get('/', [SiteController::class, 'home'])->name('home');
 Route::get('sistemas', [SiteController::class, 'systems'])->name('sistemas');
+// O VetorPet passou a se chamar VetorSales.
+Route::redirect('sistemas/vetorpet', '/sistemas/vetorsales', 301);
 Route::get('sistemas/{product}', [SiteController::class, 'system'])
     ->whereIn('product', array_keys(PublicPages::PRODUCTS))
     ->name('sistemas.show');

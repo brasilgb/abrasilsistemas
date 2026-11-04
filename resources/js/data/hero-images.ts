@@ -17,7 +17,8 @@ export type HeroImageKey =
     | 'sites'
     | 'landing-pages'
     | 'vetoros'
-    | 'vetorpet'
+    | 'vetorsales'
+    | 'vetorleads'
     | 'sobre'
     | 'contato'
     | 'seo';
@@ -77,10 +78,15 @@ export const heroImages: Record<HeroImageKey, HeroImage> = {
         alt: 'Técnicos consertando equipamentos eletrônicos na bancada de uma assistência técnica',
         position: '45% 35%',
     },
-    vetorpet: {
-        key: 'vetorpet',
-        alt: 'Cão deitado ao lado de um pote de ração em um ambiente doméstico',
-        position: '60% center',
+    vetorsales: {
+        key: 'vetorsales',
+        alt: 'Equipe comercial reunida em torno de um notebook e um tablet, analisando relatórios de vendas sobre a mesa',
+        position: '62% center',
+    },
+    vetorleads: {
+        key: 'vetorleads',
+        alt: 'Profissional sorridente trabalhando em um notebook em um escritório iluminado, com plantas ao fundo',
+        position: '70% center',
     },
     sobre: {
         key: 'sobre',
