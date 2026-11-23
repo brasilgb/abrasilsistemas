@@ -27,6 +27,7 @@ A atribuição abaixo é um registro interno. A licença não obriga a exibir cr
 | `vetoros` | VetorOS | uBreakifix North - Las Vegas | [_AIT3BLFIag](https://unsplash.com/photos/man-in-black-t-shirt-using-computer-_AIT3BLFIag) | 5041×3780 |
 | `vetorsales` | VetorSales | Material oficial do VetorSales | `vetorsales/public/images/vetorsales-commercial-hero.webp` (o mesmo hero do site vetorsales.com.br) | 1672×941 |
 | `vetorleads` | VetorLeads | Material oficial do projeto `vetorleads` | `vetorleads/public/images/vetorleads-hero-green-1280.webp` (recorte 16:9 de 1280×720; variante de 1920 px ampliada) | 1280×853 |
+| `vetorsmart` | VetorSmart | Material próprio | Símbolo oficial (`vetorsmart/public/images/vetor-smart-logo-transparent.png`) sobre fundo gerado por PHP GD; sem foto de terceiros | 512×369 (símbolo) |
 | `sobre` | Sobre | Vitaly Gariev | [tp_SwN8pC0A](https://unsplash.com/photos/two-colleagues-collaborating-on-a-laptop-at-a-desk-tp_SwN8pC0A) | 3840×2160 |
 | `contato` | Contato | Vitaly Gariev | [L0rCfOSyUlQ](https://unsplash.com/photos/man-talking-on-phone-in-workspace-L0rCfOSyUlQ) | 3840×2160 |
 | `seo` | SEO técnico e otimização de sites | Luke Chesser | [JKUTrJ4vK00](https://unsplash.com/photos/graphs-of-performance-analytics-on-a-laptop-screen-JKUTrJ4vK00) | 4810×3207 |

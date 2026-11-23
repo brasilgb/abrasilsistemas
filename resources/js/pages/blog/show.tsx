@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     ArrowRight,
@@ -6,10 +6,12 @@ import {
     MessageCircle,
     UserRound,
 } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import {  useState } from 'react';
+import type {FormEvent} from 'react';
 import BlogPublicLayout from '@/components/blog-public-layout';
+import { SeoHead } from '@/components/site/seo-head';
+import { blogCategoryServices, contactHref, findService } from '@/data/site';
 import { bodyToHtml } from '@/lib/article-body';
-import { buildWhatsappUrl, useContact } from '@/lib/contact';
 import type { User } from '@/types';
 
 type Comment = {
@@ -58,11 +60,6 @@ function ArticleBody({ content }: { content: string }) {
 
 export default function BlogShow({ post, relatedPosts }: Props) {
     const { auth } = usePage<{ auth: { user: User | null } }>().props;
-    const contact = useContact();
-    const whatsappUrl = buildWhatsappUrl(
-        contact.whatsapp,
-        'Olá, li um artigo no blog e gostaria de conversar.',
-    );
     const [body, setBody] = useState('');
     const [sending, setSending] = useState(false);
 
@@ -79,39 +76,13 @@ export default function BlogShow({ post, relatedPosts }: Props) {
         );
     };
 
-    const articleStructuredData = {
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: post.title,
-        description: post.excerpt,
-        datePublished: post.published_at,
-        author: { '@type': 'Person', name: post.author.name },
-        publisher: {
-            '@type': 'Organization',
-            name: 'ABrasil Sistemas',
-            logo: { '@type': 'ImageObject', url: '/images/logo_ab.png' },
-        },
-        image: post.cover_image_url,
-    };
+    const service = findService(
+        blogCategoryServices[post.category?.slug ?? ''] ?? '',
+    );
 
     return (
         <BlogPublicLayout>
-            <Head title={post.title}>
-                <meta name="description" content={post.excerpt} />
-                <meta
-                    name="robots"
-                    content="index, follow, max-image-preview:large"
-                />
-                <meta property="og:type" content="article" />
-                <meta property="og:title" content={post.title} />
-                <meta property="og:description" content={post.excerpt} />
-                {post.cover_image_url && (
-                    <meta property="og:image" content={post.cover_image_url} />
-                )}
-                <script type="application/ld+json">
-                    {JSON.stringify(articleStructuredData)}
-                </script>
-            </Head>
+            <SeoHead />
 
             <main>
                 <article>
@@ -200,21 +171,35 @@ export default function BlogShow({ post, relatedPosts }: Props) {
                     <div className="mt-16 rounded-2xl bg-brand-blue p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9">
                         <div>
                             <h2 className="text-2xl font-bold">
-                                Quer aplicar tecnologia na sua empresa?
+                                {service
+                                    ? `Precisa de ajuda com ${service.label.toLowerCase()}?`
+                                    : 'Quer aplicar tecnologia na sua empresa?'}
                             </h2>
                             <p className="mt-2 text-sm leading-6 text-blue-100">
-                                Converse com a ABrasil Sistemas e descubra o
-                                melhor caminho.
+                                {service
+                                    ? service.summary
+                                    : 'Conheça os serviços da ABrasil Sistemas e descubra o melhor caminho.'}
                             </p>
                         </div>
-                        <a
-                            href={whatsappUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-5 inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-brand-blue-hover sm:mt-0"
-                        >
-                            <MessageCircle className="size-4" /> Falar conosco
-                        </a>
+                        <div className="mt-5 flex shrink-0 flex-col gap-2 sm:mt-0">
+                            <Link
+                                href={
+                                    service ? `/${service.slug}` : '/servicos'
+                                }
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-brand-blue-hover"
+                            >
+                                {service
+                                    ? 'Conhecer o serviço'
+                                    : 'Ver serviços'}{' '}
+                                <ArrowRight className="size-4" />
+                            </Link>
+                            <Link
+                                href={contactHref(service?.contactType)}
+                                className="inline-flex items-center justify-center rounded-lg border border-white/40 px-5 py-3 text-sm font-bold text-white hover:bg-white/10"
+                            >
+                                Solicitar orçamento
+                            </Link>
+                        </div>
                     </div>
                 </section>
 

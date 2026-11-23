@@ -21,11 +21,15 @@ type Settings = {
     social_image_url: string;
     social_image_alt: string;
     organization_legal_name: string;
+    organization_cnpj: string;
     organization_email: string;
     organization_phone: string;
     organization_city: string;
     organization_region: string;
     organization_country: string;
+    organization_show_location: boolean;
+    organization_service_area: string[];
+    organization_business_hours: string;
     social_profiles: string[];
     block_indexing: boolean;
     robots_disallow: string[];
@@ -38,6 +42,7 @@ type Settings = {
 type Props = {
     settings: Settings;
     appUrl: string;
+    states: string[];
     privatePaths: string[];
     auditSchedules: Record<string, string>;
     blockedByEnvironment: boolean;
@@ -70,12 +75,14 @@ function Section({
 export default function SeoSettingsPage({
     settings,
     appUrl,
+    states,
     privatePaths,
     auditSchedules,
     blockedByEnvironment,
 }: Props) {
     const form = useForm<Settings>({
         ...settings,
+        organization_service_area: settings.organization_service_area ?? [],
         social_profiles: settings.social_profiles ?? [],
         robots_disallow: settings.robots_disallow ?? [],
     });
@@ -118,7 +125,7 @@ export default function SeoSettingsPage({
             <form onSubmit={submit} className="grid max-w-4xl gap-6">
                 <Section title="Empresa e endereço">
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {text('company_name', 'Nome da empresa (nome do site)')}
+                        {text('company_name', 'Nome comercial (nome do site)')}
                         {text(
                             'base_url',
                             'URL base e domínio canônico',
@@ -211,24 +218,103 @@ export default function SeoSettingsPage({
                 </Section>
 
                 <Section
-                    title="Dados institucionais (Schema.org)"
-                    description="Entram no JSON-LD Organization. Preencha só dados reais e públicos; campos vazios são omitidos."
+                    title="Dados institucionais e regionais"
+                    description="Aparecem no rodapé, no contato, nos termos de uso e no JSON-LD. Preencha só dados reais e públicos; campos vazios são omitidos."
                 >
                     <div className="grid gap-4 sm:grid-cols-2">
                         {text('organization_legal_name', 'Razão social')}
-                        {text('organization_email', 'E-mail público')}
+                        {text(
+                            'organization_cnpj',
+                            'CNPJ',
+                            'Com ou sem pontuação, quando aplicável.',
+                        )}
+                        {text('organization_email', 'E-mail de contato')}
                         {text(
                             'organization_phone',
-                            'Telefone público',
+                            'Telefone comercial',
                             'Ex.: +55 51 99893-1325',
                         )}
-                        {text('organization_city', 'Cidade')}
-                        {text('organization_region', 'Estado (UF)')}
+                        {text(
+                            'organization_business_hours',
+                            'Horário de atendimento',
+                            'Opcional. Ex.: segunda a sexta, das 9h às 18h.',
+                        )}
+                    </div>
+                    <fieldset className="grid gap-4 rounded-md border p-4 sm:grid-cols-3">
+                        <legend className="px-1 text-sm font-medium">
+                            Localização da empresa
+                        </legend>
+                        {text('organization_city', 'Município')}
+                        <label className="text-sm font-medium">
+                            UF
+                            <select
+                                className={fieldClass}
+                                value={form.data.organization_region}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'organization_region',
+                                        e.target.value,
+                                    )
+                                }
+                            >
+                                <option value="">—</option>
+                                {states.map((state) => (
+                                    <option key={state} value={state}>
+                                        {state}
+                                    </option>
+                                ))}
+                            </select>
+                            <FieldError text={errors.organization_region} />
+                        </label>
                         {text(
                             'organization_country',
                             'País',
                             'Código de 2 letras (BR).',
                         )}
+                        <label className="flex items-start gap-2 text-sm sm:col-span-3">
+                            <input
+                                type="checkbox"
+                                className="mt-0.5"
+                                checked={form.data.organization_show_location}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'organization_show_location',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            <span>
+                                <span className="font-medium">
+                                    Exibir o município no site e no JSON-LD
+                                </span>
+                                <span className="block text-muted-foreground">
+                                    Só município e UF são publicados. Não há
+                                    campo de rua ou número: endereço residencial
+                                    ou privado não deve aparecer no site.
+                                </span>
+                            </span>
+                        </label>
+                    </fieldset>
+                    <div>
+                        <TagInput
+                            label="Região atendida"
+                            values={form.data.organization_service_area}
+                            onChange={(values) =>
+                                form.setData(
+                                    'organization_service_area',
+                                    values,
+                                )
+                            }
+                            max={20}
+                        />
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                            Onde a empresa presta serviço, mesmo à distância
+                            (Brasil, Rio Grande do Sul, Porto Alegre e região).
+                            Não é o endereço.
+                        </span>
+                        <FieldError
+                            text={arrayError('organization_service_area')}
+                        />
                     </div>
                     <div>
                         <TagInput

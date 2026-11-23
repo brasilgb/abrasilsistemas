@@ -46,7 +46,7 @@ type ActiveConversation = {
     first_contact_at: string | null;
     lead: {
         id: number;
-        company_name: string;
+        company_name: string | null;
         contact_name: string | null;
         request_status: string | null;
     } | null;
@@ -512,7 +512,8 @@ function ContactPanel({ conversation }: { conversation: ActiveConversation }) {
                         Solicitação pelo site
                     </p>
                     <p className="mt-1 font-medium">
-                        {conversation.lead.company_name}
+                        {conversation.lead.company_name ??
+                            'Empresa não informada'}
                     </p>
                     {conversation.lead.contact_name && (
                         <p className="text-muted-foreground">

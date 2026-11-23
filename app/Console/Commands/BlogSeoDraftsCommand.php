@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
 /**
- * Cria as pautas de SEO do blog (database/data/blog-seo-drafts.php) como RASCUNHO.
+ * Cria as pautas do blog (database/data/blog-seo-drafts.php, blog-service-drafts.php e blog-commercial-drafts.php) como RASCUNHO.
  * Nunca publica. Pula a pauta quando já existe artigo com o mesmo slug, título parecido
  * ou a mesma palavra-chave principal, para não duplicar nem canibalizar conteúdo.
  */
@@ -23,7 +23,7 @@ class BlogSeoDraftsCommand extends Command
 
     protected $signature = 'blog:seo-drafts {--dry-run : Só mostra o que seria criado}';
 
-    protected $description = 'Cria as pautas de SEO do blog como rascunho, sem duplicar artigos existentes';
+    protected $description = 'Cria as pautas de SEO e comerciais do blog como rascunho, sem duplicar artigos existentes';
 
     public function handle(SeoMetaStore $store, ContentAnalyzer $analyzer): int
     {
@@ -31,6 +31,7 @@ class BlogSeoDraftsCommand extends Command
         $drafts = [
             ...require database_path('data/blog-seo-drafts.php'),
             ...require database_path('data/blog-service-drafts.php'),
+            ...require database_path('data/blog-commercial-drafts.php'),
         ];
         $author = User::query()->where('role', 'admin')->orderBy('id')->first();
 

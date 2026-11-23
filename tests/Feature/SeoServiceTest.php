@@ -116,7 +116,7 @@ test('a categoria SEO existe e as pautas viram rascunho sem duplicar', function 
 
     // Rodar de novo não cria nada.
     $this->artisan('blog:seo-drafts')->assertSuccessful();
-    expect(BlogPost::query()->count())->toBe(5);
+    expect(BlogPost::query()->count())->toBe(15);
 });
 
 test('as páginas de projetos web anunciam o SEO técnico incluído', function () {

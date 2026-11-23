@@ -28,6 +28,8 @@ class LeadActivity extends Model
         'call' => 'Ligação',
         'email' => 'E-mail',
         'meeting' => 'Reunião',
+        'contact' => 'Contato pelo site',
+        'status' => 'Situação',
     ];
 
     /**

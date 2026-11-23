@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { Mail, MessageCircle } from 'lucide-react';
 import { products, services } from '@/data/site';
-import { useContact, useSiteWhatsappUrl } from '@/lib/contact';
+import { useCompany, useContact, useSiteWhatsappUrl } from '@/lib/contact';
 import { PublicBrand } from './public-brand';
 
 function FooterColumn({
@@ -34,6 +34,7 @@ function FooterColumn({
 
 export function PublicFooter() {
     const contact = useContact();
+    const company = useCompany();
     const whatsappUrl = useSiteWhatsappUrl(
         'Olá, quero falar com a ABrasil Sistemas.',
     );
@@ -44,9 +45,8 @@ export function PublicFooter() {
                 <div>
                     <PublicBrand inverse />
                     <p className="mt-5 max-w-xs text-sm leading-6 text-slate-400">
-                        Tecnologia aplicada para transformar processos,
-                        operações e negócios. Produtos próprios e
-                        desenvolvimento sob medida.
+                        Tecnologia que transforma ideias em resultados. Produtos
+                        próprios, sites e sistemas sob medida.
                     </p>
                 </div>
                 <FooterColumn
@@ -113,15 +113,18 @@ export function PublicFooter() {
                         href="/contato#formulario"
                         className="mt-5 inline-flex h-10 items-center rounded-md border border-white/20 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
                     >
-                        Falar sobre um projeto
+                        Solicitar orçamento
                     </Link>
                 </div>
             </div>
             <div className="border-t border-white/10">
-                <p className="mx-auto max-w-7xl px-4 py-5 text-xs text-slate-500 sm:px-6 lg:px-8">
-                    © {new Date().getFullYear()} ABrasil Sistemas.
-                    Desenvolvimento de software no Brasil.
-                </p>
+                <div className="mx-auto grid max-w-7xl gap-1.5 px-4 py-5 text-xs leading-5 text-slate-400 sm:px-6 lg:px-8">
+                    {company?.summary && <p>{company.summary}</p>}
+                    <p>
+                        © {new Date().getFullYear()} ABrasil Sistemas.
+                        Desenvolvimento de software no Brasil.
+                    </p>
+                </div>
             </div>
         </footer>
     );

@@ -120,7 +120,9 @@ export function SeoHead() {
                 name="twitter:title"
                 content={seo.twitterTitle ?? seo.ogTitle ?? seo.title}
             />
-            {(seo.twitterDescription ?? seo.ogDescription ?? seo.description) && (
+            {(seo.twitterDescription ??
+                seo.ogDescription ??
+                seo.description) && (
                 <meta
                     head-key="twitter:description"
                     name="twitter:description"

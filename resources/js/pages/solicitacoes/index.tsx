@@ -16,8 +16,10 @@ import { index, show } from '@/routes/solicitacoes';
 type SiteRequest = {
     id: number;
     received_at: string | null;
+    last_contact_at: string | null;
+    origin: string;
     contact_name: string | null;
-    company_name: string;
+    company_name: string | null;
     whatsapp: string | null;
     phone: string | null;
     email: string | null;
@@ -32,8 +34,17 @@ type Filter = 'abertas' | 'todas' | RequestStatus;
 
 type Props = {
     requests: PaginationData & { data: SiteRequest[] };
-    filters: { situacao: Filter; busca: string };
+    filters: {
+        situacao: Filter;
+        busca: string;
+        servico: string;
+        origem: string;
+        de: string;
+        ate: string;
+    };
     statuses: Record<RequestStatus, string>;
+    services: Record<string, string>;
+    origins: Record<string, string>;
     counts: Record<Filter, number>;
 };
 
@@ -41,6 +52,8 @@ export default function SolicitacoesIndex({
     requests,
     filters,
     statuses,
+    services,
+    origins,
     counts,
 }: Props) {
     const [search, setSearch] = useState(filters.busca);
@@ -53,11 +66,29 @@ export default function SolicitacoesIndex({
     ];
 
     function visit(next: Partial<Props['filters']>) {
+        const query = { ...filters, ...next };
+
+        // Só os filtros preenchidos entram na URL.
         router.get(
             index().url,
-            { ...filters, ...next },
+            Object.fromEntries(
+                Object.entries(query).filter(([, value]) => value !== ''),
+            ),
             { preserveState: true, preserveScroll: true, replace: true },
         );
+    }
+
+    const hasFilters = [
+        filters.busca,
+        filters.servico,
+        filters.origem,
+        filters.de,
+        filters.ate,
+    ].some((value) => value !== '');
+
+    function clearFilters() {
+        setSearch('');
+        visit({ busca: '', servico: '', origem: '', de: '', ate: '' });
     }
 
     function submitSearch(event: FormEvent) {
@@ -72,10 +103,10 @@ export default function SolicitacoesIndex({
             <div className="space-y-6 p-4">
                 <Heading
                     title="Solicitações"
-                    description="Contatos recebidos pelo formulário do site. Acompanhe a situação de cada pedido; a conversa acontece em Atendimento."
+                    description="Contatos recebidos pelo formulário do site. Acompanhe cada pedido do primeiro contato ao ganho ou perda; a conversa acontece em Atendimento."
                 />
 
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
                     <nav
                         className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1"
                         aria-label="Filtrar por situação"
@@ -107,7 +138,7 @@ export default function SolicitacoesIndex({
 
                     <form
                         onSubmit={submitSearch}
-                        className="flex w-full gap-2 lg:w-80"
+                        className="flex w-full max-w-md gap-2 2xl:w-80"
                         role="search"
                     >
                         <Input
@@ -123,11 +154,58 @@ export default function SolicitacoesIndex({
                     </form>
                 </div>
 
+                <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1.2fr_1fr_1fr_auto] lg:items-end">
+                    <FilterSelect
+                        label="Serviço"
+                        value={filters.servico}
+                        options={services}
+                        onChange={(servico) => visit({ servico })}
+                    />
+                    <FilterSelect
+                        label="Origem"
+                        value={filters.origem}
+                        options={origins}
+                        onChange={(origem) => visit({ origem })}
+                    />
+                    <label className="text-xs font-medium text-muted-foreground">
+                        Recebidas de
+                        <Input
+                            type="date"
+                            className="mt-1"
+                            value={filters.de}
+                            max={filters.ate || undefined}
+                            onChange={(event) =>
+                                visit({ de: event.target.value })
+                            }
+                        />
+                    </label>
+                    <label className="text-xs font-medium text-muted-foreground">
+                        Até
+                        <Input
+                            type="date"
+                            className="mt-1"
+                            value={filters.ate}
+                            min={filters.de || undefined}
+                            onChange={(event) =>
+                                visit({ ate: event.target.value })
+                            }
+                        />
+                    </label>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={!hasFilters}
+                        onClick={clearFilters}
+                    >
+                        Limpar filtros
+                    </Button>
+                </div>
+
                 <div className="overflow-hidden rounded-md border">
                     <div className="hidden grid-cols-[8rem_1.2fr_1fr_1.6fr_9rem] gap-4 border-b bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground lg:grid">
                         <span>Recebida</span>
                         <span>Contato</span>
-                        <span>Tipo de projeto</span>
+                        <span>Serviço e origem</span>
                         <span>Mensagem</span>
                         <span>Situação</span>
                     </div>
@@ -135,8 +213,8 @@ export default function SolicitacoesIndex({
                     {requests.data.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 px-4 py-14 text-center text-sm text-muted-foreground">
                             <Inbox className="size-6" />
-                            {filters.busca
-                                ? 'Nenhuma solicitação encontrada para essa busca.'
+                            {hasFilters
+                                ? 'Nenhuma solicitação encontrada com esses filtros.'
                                 : 'Nenhuma solicitação nesta situação.'}
                         </div>
                     ) : (
@@ -151,6 +229,14 @@ export default function SolicitacoesIndex({
                                             {formatRequestDate(
                                                 request.received_at,
                                             )}
+                                            {request.last_contact_at && (
+                                                <span className="mt-1 block font-medium text-foreground">
+                                                    Novo contato em{' '}
+                                                    {formatRequestDate(
+                                                        request.last_contact_at,
+                                                    )}
+                                                </span>
+                                            )}
                                         </span>
                                         <span className="min-w-0">
                                             <span className="block truncate text-sm font-medium">
@@ -158,7 +244,8 @@ export default function SolicitacoesIndex({
                                                     'Sem nome'}
                                             </span>
                                             <span className="block truncate text-xs text-muted-foreground">
-                                                {request.company_name}
+                                                {request.company_name ??
+                                                    'Empresa não informada'}
                                             </span>
                                             <span className="mt-1 block truncate text-xs text-muted-foreground">
                                                 {request.whatsapp
@@ -170,6 +257,9 @@ export default function SolicitacoesIndex({
                                         </span>
                                         <span className="text-sm">
                                             {request.project_type ?? '—'}
+                                            <span className="block truncate text-xs text-muted-foreground">
+                                                {request.origin}
+                                            </span>
                                             {request.source_page && (
                                                 <span className="block truncate font-mono text-xs text-muted-foreground">
                                                     {request.source_page}
@@ -218,6 +308,36 @@ export default function SolicitacoesIndex({
                 <AppPagination data={requests} />
             </div>
         </>
+    );
+}
+
+function FilterSelect({
+    label,
+    value,
+    options,
+    onChange,
+}: {
+    label: string;
+    value: string;
+    options: Record<string, string>;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <label className="text-xs font-medium text-muted-foreground">
+            {label}
+            <select
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground"
+            >
+                <option value="">Todos</option>
+                {Object.entries(options).map(([key, text]) => (
+                    <option key={key} value={key}>
+                        {text}
+                    </option>
+                ))}
+            </select>
+        </label>
     );
 }
 

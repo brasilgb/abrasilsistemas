@@ -11,7 +11,7 @@ import { heroImages } from '@/data/hero-images';
 import {
     contactHref,
     processSteps,
-    products,
+    productNames,
     technologyGroups,
 } from '@/data/site';
 
@@ -23,7 +23,7 @@ const principles = [
     },
     {
         title: 'Produto e projeto',
-        description: `Mantemos produtos próprios em operação — ${products.map((product) => product.name).join(' e ')} — e aplicamos a mesma engenharia em projetos sob medida para outras empresas.`,
+        description: `Mantemos produtos próprios (${productNames()}) e aplicamos a mesma engenharia em projetos sob medida para outras empresas.`,
     },
     {
         title: 'Proximidade com o cliente',
@@ -123,7 +123,7 @@ export default function Sobre() {
                 title="Tem um processo que precisa funcionar melhor?"
                 description="Atendemos empresas de todo o Brasil. Conte o que você precisa e conversamos sobre o caminho."
                 primary={{
-                    label: 'Falar sobre meu projeto',
+                    label: 'Solicitar orçamento',
                     href: contactHref(),
                 }}
                 secondary={{ label: 'Ver sistemas prontos', href: '/sistemas' }}

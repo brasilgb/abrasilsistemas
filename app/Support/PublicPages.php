@@ -66,7 +66,8 @@ class PublicPages
 
     /**
      * Produtos próprios com página em /sistemas/{slug}. Só entram aqui sistemas
-     * que existem e estão em operação.
+     * que existem e estão no ar; o estágio de cada um (disponível, em demonstração) fica em
+     * resources/js/data/site.ts.
      *
      * @var array<string, array{name: string, title: string, description: string, os: string, category: string}>
      */
@@ -88,7 +89,14 @@ class PublicPages
         'vetorleads' => [
             'name' => 'VetorLeads',
             'title' => 'VetorLeads — prospecção e funil de vendas | ABrasil Sistemas',
-            'description' => 'Plataforma para organizar a prospecção e acompanhar oportunidades comerciais, reunindo gestão de leads, funil de vendas, atendimento por WebChat e WhatsApp e recursos de inteligência artificial para apoio comercial.',
+            'description' => 'Plataforma para organizar a prospecção e as oportunidades comerciais, com gestão de leads, funil de vendas, atendimento e recursos de IA para apoio comercial.',
+            'os' => 'Web',
+            'category' => 'BusinessApplication',
+        ],
+        'vetorsmart' => [
+            'name' => 'VetorSmart',
+            'title' => 'VetorSmart — plataforma para prestadores de serviços | ABrasil Sistemas',
+            'description' => 'Site da empresa, atendimento no site, agenda, clientes e solicitações de serviço em uma plataforma. Em demonstração pela ABrasil Sistemas.',
             'os' => 'Web',
             'category' => 'BusinessApplication',
         ],
@@ -113,6 +121,7 @@ class PublicPages
         'vetoros' => 'Técnicos consertando equipamentos eletrônicos na bancada de uma assistência técnica',
         'vetorsales' => 'Equipe comercial reunida em torno de um notebook e um tablet, analisando relatórios de vendas sobre a mesa',
         'vetorleads' => 'Profissional sorridente trabalhando em um notebook em um escritório iluminado, com plantas ao fundo',
+        'vetorsmart' => 'Símbolo do VetorSmart, uma letra V azul com pontos conectados, sobre fundo azul-escuro',
         'sobre' => 'Dois colegas analisando juntos um projeto no notebook, com diagramas no quadro ao fundo',
         'contato' => 'Profissional conversando ao telefone com um cliente em frente ao notebook',
         'seo' => 'Notebook exibindo gráficos de desempenho de um site, com tempo de carregamento e taxa de rejeição',
@@ -143,6 +152,32 @@ class PublicPages
     }
 
     /**
+     * Foto do hero da página (para o preload da imagem principal), ou null.
+     */
+    public static function heroForPath(string $path): ?string
+    {
+        $path = trim($path, '/');
+
+        if (isset(self::SERVICE_HERO_IMAGES[$path])) {
+            return self::SERVICE_HERO_IMAGES[$path];
+        }
+
+        if (str_starts_with($path, 'sistemas/')) {
+            $slug = substr($path, 9);
+
+            return isset(self::PRODUCTS[$slug]) ? $slug : null;
+        }
+
+        foreach (self::PAGES as $page) {
+            if (trim($page['path'], '/') === $path) {
+                return $page['hero'] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Demais páginas públicas fixas, com o SEO padrão de cada uma. A chave é a mesma
      * usada pelo SEO por página (seo_metas.subject_id) e pelo PageRegistry.
      *
@@ -151,14 +186,14 @@ class PublicPages
     public const PAGES = [
         'home' => [
             'path' => '/', 'label' => 'Página inicial', 'group' => 'Institucional', 'hero' => 'home',
-            'title' => 'ABrasil Sistemas — Software, sistemas e integração para empresas',
-            'description' => 'Empresa de tecnologia que desenvolve sistemas sob medida, aplicativos, sites, automações e integrações para empresas, além dos produtos VetorOS, VetorSales e VetorLeads.',
+            'title' => 'ABrasil Sistemas — Sites, sistemas sob medida e automação para empresas',
+            'description' => 'Sites profissionais, sistemas sob medida, aplicativos, automação e integrações para empresas organizarem processos e conquistarem oportunidades. Peça um orçamento.',
             'changefreq' => 'weekly', 'priority' => '1.0',
         ],
         'sistemas' => [
             'path' => '/sistemas', 'label' => 'Sistemas (produtos)', 'group' => 'Produtos', 'hero' => 'sistemas',
-            'title' => 'Sistemas prontos para empresas — VetorOS, VetorSales e VetorLeads | ABrasil Sistemas',
-            'description' => 'Produtos de software da ABrasil Sistemas em operação: VetorOS para assistências técnicas, VetorSales para representantes e equipes de vendas e VetorLeads para prospecção e funil comercial.',
+            'title' => 'Sistemas para empresas: VetorOS, VetorSales, VetorLeads e VetorSmart | ABrasil',
+            'description' => 'VetorOS para assistências técnicas, VetorSales para equipes de vendas, VetorLeads para prospecção e VetorSmart, em demonstração, para prestadores de serviços.',
             'changefreq' => 'monthly', 'priority' => '0.9',
         ],
         'servicos' => [
@@ -176,7 +211,7 @@ class PublicPages
         'contato' => [
             'path' => '/contato', 'label' => 'Contato', 'group' => 'Institucional', 'hero' => 'contato',
             'title' => 'Fale sobre o seu projeto | ABrasil Sistemas',
-            'description' => 'Conte o que sua empresa precisa: sistema pronto ou sob medida, site, landing page, aplicativo, automação ou integração. Resposta direta da equipe.',
+            'description' => 'Solicite um orçamento: sistema pronto ou sob medida, site, landing page, aplicativo, automação ou integração. Resposta direta da equipe.',
             'changefreq' => 'monthly', 'priority' => '0.6',
         ],
         'blog' => [
@@ -233,7 +268,7 @@ class PublicPages
                     'serviceType' => $service['serviceType'],
                     'description' => $service['description'],
                     'url' => StructuredData::url('/'.$slug),
-                    'areaServed' => 'BR',
+                    'areaServed' => app(StructuredData::class)->areaServed(),
                     'provider' => ['@id' => StructuredData::organizationId()],
                     ...isset($service['catalog']) ? ['hasOfferCatalog' => [
                         '@type' => 'OfferCatalog',

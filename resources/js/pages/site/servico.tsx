@@ -3,21 +3,27 @@ import { ArrowRight, Check } from 'lucide-react';
 import {
     ButtonLink,
     Container,
-    CtaBand,
     FaqList,
     FlowDiagram,
     PageHero,
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
+import { ContactSection } from '@/components/site/contact-form';
 import { SeoIncluded } from '@/components/site/seo-included';
 import { SiteLayout } from '@/components/site/site-layout';
 import { ServiceVisual } from '@/components/site/visuals';
 import { heroImages } from '@/data/hero-images';
-import { contactHref, findService, processSteps } from '@/data/site';
+import { findService, processSteps } from '@/data/site';
 import type { Service } from '@/data/site';
 
-export default function ServicePage({ slug }: { slug: string }) {
+export default function ServicePage({
+    slug,
+    projectTypes,
+}: {
+    slug: string;
+    projectTypes: Record<string, string>;
+}) {
     const service = findService(slug);
 
     if (!service) {
@@ -38,12 +44,8 @@ export default function ServicePage({ slug }: { slug: string }) {
                 image={heroImages[service.heroImage]}
                 actions={
                     <>
-                        <ButtonLink
-                            href={contactHref(service.contactType)}
-                            variant="inverse"
-                            arrow
-                        >
-                            Falar sobre meu projeto
+                        <ButtonLink href="#orcamento" variant="inverse" arrow>
+                            Solicitar orçamento
                         </ButtonLink>
                         <ButtonLink
                             href="#como-funciona"
@@ -198,14 +200,13 @@ export default function ServicePage({ slug }: { slug: string }) {
                 </Container>
             </section>
 
-            <CtaBand
-                title="Vamos entender o seu processo?"
-                description="Conte o que precisa ser resolvido. Respondemos com um diagnóstico inicial e os próximos passos, sem compromisso."
-                primary={{
-                    label: 'Falar sobre meu projeto',
-                    href: contactHref(service.contactType),
-                }}
-                secondary={{ label: 'Ver sistemas prontos', href: '/sistemas' }}
+            <ContactSection
+                key={service.slug}
+                title={`Solicite um orçamento: ${service.label.toLowerCase()}.`}
+                description="Conte o que precisa ser resolvido. Respondemos com perguntas objetivas e os próximos passos, sem compromisso."
+                projectTypes={projectTypes}
+                selectedType={service.contactType}
+                placeholder={service.formPlaceholder}
             />
         </SiteLayout>
     );

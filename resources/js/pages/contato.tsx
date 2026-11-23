@@ -1,17 +1,10 @@
-import { Form } from '@inertiajs/react';
 import { Mail, MessageCircle } from 'lucide-react';
-import ContactController from '@/actions/App/Http/Controllers/ContactController';
-import InputError from '@/components/input-error';
 import { Container, Eyebrow, HeroBackdrop } from '@/components/site/blocks';
+import { ContactForm, NextSteps } from '@/components/site/contact-form';
 import { SiteLayout } from '@/components/site/site-layout';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { heroImages } from '@/data/hero-images';
-import { trackEvent } from '@/lib/analytics';
-import { readSourcePage, useContact, useSiteWhatsappUrl } from '@/lib/contact';
-
-const fieldClass =
-    'border-input flex w-full rounded-md border bg-white px-3 text-[15px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+import { services } from '@/data/site';
+import { useCompany, useContact, useSiteWhatsappUrl } from '@/lib/contact';
 
 export default function Contato({
     projectTypes,
@@ -21,6 +14,13 @@ export default function Contato({
     selectedType: string | null;
 }) {
     const contact = useContact();
+    const company = useCompany();
+    const details = [
+        ['Telefone', company?.phone],
+        ['Horário de atendimento', company?.businessHours],
+        ['Região atendida', company?.serviceArea.join(', ')],
+        ['Localização', company?.location],
+    ].filter((detail): detail is [string, string] => Boolean(detail[1]));
     const whatsappUrl = useSiteWhatsappUrl(
         'Olá, conheci a ABrasil Sistemas pelo site e quero conversar sobre um projeto.',
     );
@@ -44,187 +44,26 @@ export default function Contato({
 
             <section id="formulario" className="scroll-mt-20 py-16 sm:py-20">
                 <Container className="grid gap-12 lg:grid-cols-[1.35fr_0.65fr] lg:gap-16">
-                    <div className="rounded-lg border border-slate-200 p-6 sm:p-8">
+                    <div className="relative rounded-lg border border-slate-200 p-6 sm:p-8">
                         <h2 className="text-xl font-semibold text-slate-900">
-                            Fale sobre o seu projeto
+                            Solicite um orçamento
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            Informe ao menos um e-mail ou WhatsApp para retorno.
+                            Informe ao menos um e-mail ou telefone para retorno.
                         </p>
-                        <Form
-                            {...ContactController.store.form()}
-                            resetOnSuccess
-                            onSuccess={() => {
-                                trackEvent('generate_lead', {
-                                    form: 'contato',
-                                });
-                                trackEvent('form_submit', { form: 'contato' });
-                            }}
-                            // Página de origem lida no envio (sessionStorage), só no navegador.
-                            transform={(data) => ({
-                                ...data,
-                                source_page: readSourcePage() ?? '',
-                            })}
-                            className="mt-6 grid gap-5"
-                        >
-                            {({ processing, errors }) => (
-                                <>
-                                    <div className="grid gap-5 sm:grid-cols-2">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="contact_name">
-                                                Nome
-                                            </Label>
-                                            <Input
-                                                id="contact_name"
-                                                name="contact_name"
-                                                required
-                                                autoComplete="name"
-                                                className="h-11 bg-white"
-                                            />
-                                            <InputError
-                                                message={errors.contact_name}
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="company_name">
-                                                Empresa
-                                            </Label>
-                                            <Input
-                                                id="company_name"
-                                                name="company_name"
-                                                required
-                                                autoComplete="organization"
-                                                className="h-11 bg-white"
-                                            />
-                                            <InputError
-                                                message={errors.company_name}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-5 sm:grid-cols-2">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="email">
-                                                E-mail
-                                            </Label>
-                                            <Input
-                                                id="email"
-                                                name="email"
-                                                type="email"
-                                                autoComplete="email"
-                                                className="h-11 bg-white"
-                                            />
-                                            <InputError
-                                                message={errors.email}
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="whatsapp">
-                                                WhatsApp
-                                            </Label>
-                                            <Input
-                                                id="whatsapp"
-                                                name="whatsapp"
-                                                type="tel"
-                                                inputMode="tel"
-                                                autoComplete="tel"
-                                                placeholder="(51) 99999-9999"
-                                                className="h-11 bg-white"
-                                            />
-                                            <InputError
-                                                message={errors.whatsapp}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="product">
-                                            Tipo de projeto
-                                        </Label>
-                                        <select
-                                            id="product"
-                                            name="product"
-                                            required
-                                            defaultValue={selectedType ?? ''}
-                                            className={`${fieldClass} h-11`}
-                                        >
-                                            <option value="" disabled>
-                                                Selecione uma opção
-                                            </option>
-                                            {Object.entries(projectTypes).map(
-                                                ([value, label]) => (
-                                                    <option
-                                                        key={value}
-                                                        value={value}
-                                                    >
-                                                        {label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                        <InputError message={errors.product} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="notes">
-                                            Descrição da necessidade
-                                        </Label>
-                                        <textarea
-                                            id="notes"
-                                            name="notes"
-                                            required
-                                            rows={5}
-                                            placeholder={
-                                                selectedType === 'seo'
-                                                    ? 'Endereço do site, o que você espera da busca orgânica e, se houver, quem cuida do site hoje.'
-                                                    : 'Como o processo funciona hoje, o que precisa mudar e, se houver, prazos ou sistemas envolvidos.'
-                                            }
-                                            className={`${fieldClass} py-2.5 placeholder:text-muted-foreground`}
-                                        />
-                                        <InputError message={errors.notes} />
-                                    </div>
-
-                                    {/* Honeypot: invisível para visitantes; robôs que preenchem tudo são barrados. */}
-                                    <div
-                                        className="absolute -left-[9999px] opacity-0"
-                                        aria-hidden="true"
-                                    >
-                                        <label htmlFor="website_hp">
-                                            Deixe este campo em branco
-                                        </label>
-                                        <input
-                                            id="website_hp"
-                                            name="website_hp"
-                                            type="text"
-                                            tabIndex={-1}
-                                            autoComplete="off"
-                                        />
-                                    </div>
-
-                                    <p className="text-xs leading-5 text-slate-500">
-                                        Usamos seus dados apenas para responder
-                                        a este contato, conforme a{' '}
-                                        <a
-                                            href="/politica-de-privacidade"
-                                            className="underline underline-offset-2"
-                                        >
-                                            Política de Privacidade
-                                        </a>
-                                        .
-                                    </p>
-
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="inline-flex h-12 items-center justify-center rounded-md bg-brand-blue px-6 text-[15px] font-semibold text-white transition hover:bg-brand-blue-hover disabled:opacity-60 sm:justify-self-start"
-                                    >
-                                        {processing
-                                            ? 'Enviando…'
-                                            : 'Falar sobre meu projeto'}
-                                    </button>
-                                </>
-                            )}
-                        </Form>
+                        <div className="mt-6">
+                            <ContactForm
+                                projectTypes={projectTypes}
+                                selectedType={selectedType}
+                                placeholder={
+                                    services.find(
+                                        (service) =>
+                                            service.contactType ===
+                                            selectedType,
+                                    )?.formPlaceholder
+                                }
+                            />
+                        </div>
                     </div>
 
                     <aside className="grid content-start gap-8">
@@ -269,33 +108,27 @@ export default function Contato({
                                 </li>
                             </ul>
                         </div>
+                        {details.length > 0 && (
+                            <dl className="grid gap-3 text-sm">
+                                {details.map(([label, value]) => (
+                                    <div key={label}>
+                                        <dt className="font-semibold text-slate-900">
+                                            {label}
+                                        </dt>
+                                        <dd className="mt-0.5 leading-6 text-slate-600">
+                                            {value}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        )}
                         <div>
                             <h2 className="text-base font-semibold text-slate-900">
                                 O que acontece depois
                             </h2>
-                            <ol className="mt-4 grid gap-4 text-sm leading-6 text-slate-600">
-                                <li>
-                                    <span className="font-semibold text-slate-900">
-                                        1. Retorno da equipe
-                                    </span>{' '}
-                                    — confirmamos o recebimento e tiramos
-                                    dúvidas iniciais.
-                                </li>
-                                <li>
-                                    <span className="font-semibold text-slate-900">
-                                        2. Conversa de diagnóstico
-                                    </span>{' '}
-                                    — entendemos o processo e o resultado
-                                    esperado.
-                                </li>
-                                <li>
-                                    <span className="font-semibold text-slate-900">
-                                        3. Proposta
-                                    </span>{' '}
-                                    — escopo, etapas e prazos definidos por
-                                    escrito.
-                                </li>
-                            </ol>
+                            <div className="mt-4">
+                                <NextSteps />
+                            </div>
                         </div>
                     </aside>
                 </Container>

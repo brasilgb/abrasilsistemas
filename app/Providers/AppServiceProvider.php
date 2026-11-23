@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Services\Seo\SeoSettings;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -26,6 +29,20 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureRateLimits();
+    }
+
+    /**
+     * Formulário comercial: o visitante recebe a mensagem no próprio formulário, não uma página de erro 429.
+     */
+    protected function configureRateLimits(): void
+    {
+        $tooMany = fn () => back()->withErrors(['form' => 'Muitos envios em sequência. Aguarde alguns minutos e tente novamente.']);
+
+        RateLimiter::for('site-contact', fn (Request $request) => [
+            Limit::perMinute(5)->by('site-contact:m:'.$request->ip())->response($tooMany),
+            Limit::perHour(20)->by('site-contact:h:'.$request->ip())->response($tooMany),
+        ]);
     }
 
     /**

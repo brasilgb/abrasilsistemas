@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\VisitOrigin;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,14 @@ use Illuminate\Support\Facades\Schema;
     'instagram',
     'source',
     'source_page',
+    'entry_page',
+    'referrer_host',
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_term',
+    'utm_content',
+    'marketing_consent_at',
     'status',
     'request_status',
     'lost_reason',
@@ -51,24 +60,27 @@ class Lead extends Model
     public const SOURCE_SITE = 'site';
 
     /**
-     * Situação de uma solicitação recebida pelo site (`request_status`). Não é funil comercial:
-     * o status comercial antigo (`status`) continua no banco só como histórico.
+     * Situação comercial de uma solicitação recebida pelo site (`request_status`). O status comercial
+     * antigo (`status`, do tempo do CRM) continua no banco só como histórico.
      */
     public const REQUEST_STATUSES = [
-        'new' => 'Nova',
+        'new' => 'Novo contato',
         'in_progress' => 'Em atendimento',
-        'answered' => 'Respondida',
-        'done' => 'Concluída',
+        'proposal' => 'Proposta enviada',
+        'negotiation' => 'Negociação',
+        'won' => 'Ganho',
+        'lost' => 'Perdido',
         'archived' => 'Arquivada',
     ];
 
-    /** Situações que ainda pedem ação da equipe. */
-    public const OPEN_REQUEST_STATUSES = ['new', 'in_progress', 'answered'];
+    /** Situações em andamento: um novo contato da mesma pessoa entra nelas; as demais estão encerradas. */
+    public const OPEN_REQUEST_STATUSES = ['new', 'in_progress', 'proposal', 'negotiation'];
 
     public const PRODUCTS = [
         'vetoros' => 'VetorOS',
         'vetorsales' => 'VetorSales',
         'vetorleads' => 'VetorLeads',
+        'vetorsmart' => 'VetorSmart',
         // Nome anterior do VetorSales: mantido para os leads já gravados e para as importações que ainda o enviam.
         'vetorpet' => 'VetorPet (atual VetorSales)',
         'site' => 'Site institucional',
@@ -89,6 +101,7 @@ class Lead extends Model
         'vetoros' => 'Sistema pronto — VetorOS',
         'vetorsales' => 'Sistema pronto — VetorSales',
         'vetorleads' => 'Sistema pronto — VetorLeads',
+        'vetorsmart' => 'Demonstração — VetorSmart',
         'sistema_sob_medida' => 'Sistema sob medida',
         'site' => 'Site',
         'landing_page' => 'Landing Page',
@@ -109,6 +122,7 @@ class Lead extends Model
             'captured_at' => 'datetime',
             'next_follow_up_at' => 'date',
             'last_contacted_at' => 'datetime',
+            'marketing_consent_at' => 'datetime',
         ];
     }
 
@@ -143,6 +157,12 @@ class Lead extends Model
         return $this->source === self::SOURCE_SITE;
     }
 
+    /** Origem comercial da solicitação, para a equipe (campanha, busca, indicação ou não identificada). */
+    public function commercialOrigin(): string
+    {
+        return VisitOrigin::label($this->only(VisitOrigin::FIELDS));
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -159,33 +179,52 @@ class Lead extends Model
     }
 
     /**
-     * Solicitação anterior da mesma pessoa (mesmo e-mail ou WhatsApp), para o formulário do site
-     * não duplicar contatos. Só procura entre solicitações do site: um prospect importado com o
-     * mesmo e-mail não pode "engolir" o contato, senão ele não apareceria em Solicitações.
+     * Solicitações do site com o mesmo e-mail ou telefone, menos esta.
+     *
+     * @return Builder<self>
+     */
+    public function relatedSiteRequests(): Builder
+    {
+        return self::query()->siteRequests()->whereKeyNot($this->getKey())->where(function (Builder $query) {
+            $query->whereRaw('1 = 0');
+
+            if (filled($this->email)) {
+                $query->orWhereRaw('LOWER(email) = ?', [strtolower($this->email)]);
+            }
+
+            if (filled($this->whatsapp)) {
+                $query->orWhere('whatsapp', $this->whatsapp);
+            }
+        });
+    }
+
+    /**
+     * Solicitação em aberto que o novo envio pode atualizar. Quem envia o formulário não prova quem é,
+     * então só vale quando TUDO o que foi informado (e-mail e telefone) já está na solicitação. Com um
+     * dado diferente ou a mais, o envio vira outra solicitação, e o painel mostra as duas como
+     * relacionadas: um terceiro não altera nem completa os dados de ninguém.
+     *
+     * Só procura entre solicitações do site: um prospect importado com o mesmo e-mail não pode
+     * "engolir" o contato, senão ele não apareceria em Solicitações.
      *
      * @param  array<string, mixed>  $data
      */
-    public static function findSiteRequestDuplicate(array $data): ?self
+    public static function findOpenSiteRequest(array $data): ?self
     {
-        $email = filled($data['email'] ?? null) ? strtolower(trim((string) $data['email'])) : null;
-        $whatsapp = filled($data['whatsapp'] ?? null) ? preg_replace('/\D+/', '', (string) $data['whatsapp']) : null;
+        $email = $data['email'] ?? null;
+        $whatsapp = $data['whatsapp'] ?? null;
 
-        if (! $email && ! $whatsapp) {
+        if (blank($email) && blank($whatsapp)) {
             return null;
         }
 
         return self::query()
             ->siteRequests()
-            ->where(function ($query) use ($email, $whatsapp) {
-                if ($email) {
-                    $query->orWhereRaw('LOWER(email) = ?', [$email]);
-                }
-
-                if ($whatsapp) {
-                    $query->orWhere('whatsapp', $whatsapp);
-                }
-            })
-            ->oldest('id')
+            ->whereIn('request_status', self::OPEN_REQUEST_STATUSES)
+            ->when(filled($email), fn (Builder $query) => $query->whereRaw('LOWER(email) = ?', [strtolower((string) $email)]))
+            ->when(filled($whatsapp), fn (Builder $query) => $query->where('whatsapp', $whatsapp))
+            ->latest('id')
+            ->lockForUpdate()
             ->first();
     }
 }

@@ -22,9 +22,7 @@ export default function PoliticaDePrivacidade() {
                         Política de Privacidade
                     </h1>
                     <p className="mt-3 text-sm text-slate-500">
-                        [Razão social e CNPJ da ABrasil Sistemas a confirmar] —
-                        última atualização:{' '}
-                        {new Date().toLocaleDateString('pt-BR')}.
+                        ABrasil Sistemas — última atualização: 23/11/2026.
                     </p>
 
                     <div className="prose prose-slate mt-10 max-w-none space-y-6 text-sm leading-7 text-slate-700 sm:text-base">
@@ -39,7 +37,11 @@ export default function PoliticaDePrivacidade() {
                                 interesse e mensagem). Também podemos registrar
                                 dados técnicos básicos de navegação (como
                                 endereço IP e páginas visitadas) para segurança
-                                e funcionamento do site.
+                                e funcionamento do site. Ao enviar o formulário,
+                                registramos também a origem da visita: a página
+                                de entrada, o site que indicou o acesso e os
+                                parâmetros de campanha (UTM) presentes no link,
+                                quando houver.
                             </p>
                         </section>
 
@@ -53,6 +55,10 @@ export default function PoliticaDePrivacidade() {
                                 relacionamento com clientes, exclusivamente para
                                 que a equipe da ABrasil possa entrar em contato
                                 sobre o serviço ou produto de interesse.
+                                Conteúdos e novidades só são enviados a quem
+                                marca essa opção no formulário; o consentimento
+                                é registrado com data e pode ser retirado a
+                                qualquer momento.
                             </p>
                         </section>
 

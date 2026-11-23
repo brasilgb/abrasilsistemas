@@ -24,7 +24,7 @@ test('users without admin permission cannot open the panel areas', function () {
     $this->actingAs($reader)->get(route('atendimento.index'))->assertForbidden();
     $this->actingAs($reader)->get(route('solicitacoes.index'))->assertForbidden();
     $this->actingAs($reader)->get(route('solicitacoes.show', $request))->assertForbidden();
-    $this->actingAs($reader)->patch(route('solicitacoes.status', $request), ['request_status' => 'done'])->assertForbidden();
+    $this->actingAs($reader)->patch(route('solicitacoes.status', $request), ['request_status' => 'won'])->assertForbidden();
     $this->actingAs($reader)->get(route('whatsapp-settings.edit'))->assertForbidden();
 
     expect($request->fresh()->request_status)->toBe('new');

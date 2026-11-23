@@ -1,17 +1,22 @@
 import {
     ButtonLink,
     Container,
-    CtaBand,
     PageHero,
     SectionHeading,
 } from '@/components/site/blocks';
+import { ContactSection } from '@/components/site/contact-form';
+import { ProductStatusBadge } from '@/components/site/product-status';
 import { SiteLayout } from '@/components/site/site-layout';
 import { BrowserFrame } from '@/components/site/visuals';
 import { heroImages } from '@/data/hero-images';
 import { contactHref, products } from '@/data/site';
 import type { Product } from '@/data/site';
 
-export default function Sistemas() {
+export default function Sistemas({
+    projectTypes,
+}: {
+    projectTypes: Record<string, string>;
+}) {
     const vetorOs = products[0];
 
     return (
@@ -19,7 +24,7 @@ export default function Sistemas() {
             <PageHero
                 eyebrow="Sistemas prontos"
                 title="Produtos de software criados e mantidos pela ABrasil."
-                lead="Sistemas completos para segmentos específicos, que nasceram de operações reais e seguem em evolução constante. Contratação online, sem instalação e com teste gratuito."
+                lead="Sistemas para segmentos específicos, usados pelo navegador e em evolução constante. Cada um mostra o estágio em que está: disponível, em demonstração ou em desenvolvimento."
                 image={heroImages.sistemas}
                 visual={
                     vetorOs.screenshot ? (
@@ -34,10 +39,7 @@ export default function Sistemas() {
                         <ButtonLink href="#vetoros" variant="inverse" arrow>
                             Ver os sistemas
                         </ButtonLink>
-                        <ButtonLink
-                            href={contactHref('vetoros')}
-                            variant="ghostInverse"
-                        >
+                        <ButtonLink href="#orcamento" variant="ghostInverse">
                             Solicitar demonstração
                         </ButtonLink>
                     </>
@@ -74,13 +76,12 @@ export default function Sistemas() {
                 </Container>
             </section>
 
-            <CtaBand
-                title="Quer ver um sistema funcionando na rotina da sua empresa?"
-                description="Agende uma demonstração. Mostramos o sistema a partir do seu processo, não de um roteiro genérico."
-                primary={{
-                    label: 'Solicitar demonstração',
-                    href: contactHref(),
-                }}
+            <ContactSection
+                title="Quer ver um sistema na rotina da sua empresa?"
+                description="Peça uma demonstração e diga qual sistema interessa. A apresentação parte do seu processo."
+                projectTypes={projectTypes}
+                placeholder="Conte como a sua equipe trabalha hoje e o que você quer ver na demonstração."
+                submitLabel="Solicitar demonstração"
             />
         </SiteLayout>
     );
@@ -118,6 +119,9 @@ function ProductSection({
                             >
                                 {product.segment}
                             </p>
+                            <div className="mt-2">
+                                <ProductStatusBadge status={product.status} />
+                            </div>
                         </div>
                     </div>
                     <p className="mt-6 text-lg leading-8 text-slate-900">
@@ -126,6 +130,14 @@ function ProductSection({
                     <p className="mt-3 text-[15px] leading-7 text-slate-600">
                         {product.problem}
                     </p>
+                    {product.inDevelopment && (
+                        <p className="mt-4 text-sm leading-6 text-slate-600">
+                            <strong className="font-semibold text-slate-900">
+                                Em desenvolvimento:
+                            </strong>{' '}
+                            {product.inDevelopment.join(' · ')}.
+                        </p>
+                    )}
                     <dl className="mt-8 grid gap-5 text-sm sm:grid-cols-2">
                         <div>
                             <dt className="font-semibold text-slate-900">

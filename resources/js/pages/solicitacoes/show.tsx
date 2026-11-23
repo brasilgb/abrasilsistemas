@@ -1,14 +1,22 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, MessagesSquare } from 'lucide-react';
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { formatWhatsapp } from '@/components/company-whatsapp-connection';
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { formatRequestDate, requestStatusClasses } from '@/lib/site-requests';
 import type { RequestStatus } from '@/lib/site-requests';
 import { cn } from '@/lib/utils';
 import { index as atendimentoIndex } from '@/routes/atendimento';
-import { index, status as statusRoute } from '@/routes/solicitacoes';
+import {
+    index,
+    notes,
+    show,
+    status as statusRoute,
+} from '@/routes/solicitacoes';
 
 type Props = {
     request: {
@@ -16,14 +24,19 @@ type Props = {
         received_at: string | null;
         last_contact_at: string | null;
         contact_name: string | null;
-        company_name: string;
+        company_name: string | null;
         whatsapp: string | null;
         phone: string | null;
         email: string | null;
         project_type: string | null;
         message: string | null;
         source_page: string | null;
+        entry_page: string | null;
+        origin: string;
+        utm: Record<string, string> | [];
+        marketing_consent_at: string | null;
         request_status: RequestStatus | null;
+        lost_reason: string | null;
     };
     conversations: {
         id: number;
@@ -35,7 +48,15 @@ type Props = {
         id: number;
         type: string;
         description: string | null;
+        author: string | null;
         created_at: string | null;
+    }[];
+    related: {
+        id: number;
+        contact_name: string | null;
+        project_type: string;
+        received_at: string | null;
+        request_status: RequestStatus | null;
     }[];
     statuses: Record<RequestStatus, string>;
 };
@@ -44,9 +65,20 @@ export default function SolicitacaoShow({
     request,
     conversations,
     history,
+    related,
     statuses,
 }: Props) {
     const [saving, setSaving] = useState<RequestStatus | null>(null);
+    const [comment, setComment] = useState('');
+    const note = useForm({ description: '' });
+
+    function submitNote(event: FormEvent) {
+        event.preventDefault();
+        note.post(notes(request.id).url, {
+            preserveScroll: true,
+            onSuccess: () => note.reset(),
+        });
+    }
 
     function changeStatus(next: RequestStatus) {
         if (next === request.request_status) {
@@ -55,10 +87,11 @@ export default function SolicitacaoShow({
 
         router.patch(
             statusRoute(request.id).url,
-            { request_status: next },
+            { request_status: next, note: comment.trim() || null },
             {
                 preserveScroll: true,
                 onStart: () => setSaving(next),
+                onSuccess: () => setComment(''),
                 onFinish: () => setSaving(null),
             },
         );
@@ -81,12 +114,27 @@ export default function SolicitacaoShow({
         { label: 'E-mail', value: request.email },
         { label: 'Tipo de projeto', value: request.project_type },
         { label: 'Página de origem', value: request.source_page },
+        { label: 'Motivo da perda', value: request.lost_reason },
+        { label: 'Origem comercial', value: request.origin },
+        { label: 'Página de entrada no site', value: request.entry_page },
+        {
+            label: 'Parâmetros UTM',
+            value: Object.entries(request.utm)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(' · '),
+        },
+        {
+            label: 'Consentimento para novidades',
+            value: request.marketing_consent_at
+                ? `Sim, em ${formatRequestDate(request.marketing_consent_at)}`
+                : 'Não',
+        },
     ];
 
     return (
         <>
             <Head
-                title={`Solicitação de ${request.contact_name ?? request.company_name}`}
+                title={`Solicitação de ${request.contact_name ?? request.company_name ?? 'contato do site'}`}
             />
 
             <div className="space-y-6 p-4">
@@ -100,7 +148,9 @@ export default function SolicitacaoShow({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <Heading
                         title={request.contact_name ?? 'Sem nome'}
-                        description={request.company_name}
+                        description={
+                            request.company_name ?? 'Empresa não informada'
+                        }
                     />
                     {request.request_status && (
                         <span
@@ -126,10 +176,21 @@ export default function SolicitacaoShow({
                         <section className="rounded-md border p-4">
                             <h2 className="text-sm font-medium">Situação</h2>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Só para organizar a equipe. Um novo contato da
-                                mesma pessoa pelo site reabre a solicitação como
-                                nova.
+                                Cada mudança fica no histórico. Um novo contato
+                                da mesma pessoa entra nesta solicitação enquanto
+                                ela estiver em aberto; depois de ganha, perdida
+                                ou arquivada, abre outra.
                             </p>
+                            <Input
+                                value={comment}
+                                onChange={(event) =>
+                                    setComment(event.target.value)
+                                }
+                                maxLength={255}
+                                className="mt-3"
+                                placeholder="Comentário da mudança (opcional; em Perdido, é o motivo)"
+                                aria-label="Comentário da mudança de situação"
+                            />
                             <div className="mt-3 flex flex-wrap gap-2">
                                 {(
                                     Object.entries(statuses) as [
@@ -162,6 +223,38 @@ export default function SolicitacaoShow({
                             </div>
                         </section>
 
+                        <section className="rounded-md border p-4">
+                            <h2 className="text-sm font-medium">
+                                Observações da equipe
+                            </h2>
+                            <form onSubmit={submitNote} className="mt-3">
+                                <textarea
+                                    value={note.data.description}
+                                    onChange={(event) =>
+                                        note.setData(
+                                            'description',
+                                            event.target.value,
+                                        )
+                                    }
+                                    rows={3}
+                                    maxLength={5000}
+                                    required
+                                    aria-label="Nova observação"
+                                    placeholder="Ex.: retorno combinado, valor da proposta, próximos passos."
+                                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                                />
+                                <InputError message={note.errors.description} />
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    className="mt-2"
+                                    disabled={note.processing}
+                                >
+                                    Registrar observação
+                                </Button>
+                            </form>
+                        </section>
+
                         {history.length > 0 && (
                             <section className="rounded-md border p-4">
                                 <h2 className="text-sm font-medium">
@@ -178,6 +271,8 @@ export default function SolicitacaoShow({
                                                     item.created_at,
                                                 )}{' '}
                                                 · {item.type}
+                                                {item.author &&
+                                                    ` · ${item.author}`}
                                             </p>
                                             <p className="mt-0.5 whitespace-pre-line">
                                                 {item.description ?? '—'}
@@ -205,6 +300,42 @@ export default function SolicitacaoShow({
                                 ))}
                             </dl>
                         </section>
+
+                        {related.length > 0 && (
+                            <section className="rounded-md border p-4">
+                                <h2 className="text-sm font-medium">
+                                    Solicitações relacionadas
+                                </h2>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Mesmo e-mail ou telefone. Confirme se é a
+                                    mesma pessoa antes de tratar como um só
+                                    contato.
+                                </p>
+                                <ul className="mt-3 space-y-2">
+                                    {related.map((item) => (
+                                        <li key={item.id}>
+                                            <Link
+                                                href={show(item.id)}
+                                                className="block rounded-md border p-3 text-sm transition hover:bg-muted/50"
+                                            >
+                                                <span className="block font-medium">
+                                                    {item.contact_name ??
+                                                        'Sem nome'}{' '}
+                                                    · {item.project_type}
+                                                </span>
+                                                <span className="mt-1 block text-xs text-muted-foreground">
+                                                    {formatRequestDate(
+                                                        item.received_at,
+                                                    )}
+                                                    {item.request_status &&
+                                                        ` · ${statuses[item.request_status]}`}
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        )}
 
                         <section className="rounded-md border p-4">
                             <h2 className="flex items-center gap-2 text-sm font-medium">

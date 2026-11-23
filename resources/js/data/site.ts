@@ -44,12 +44,41 @@ export type Service = {
     steps?: { title: string; description: string }[];
     faq: { question: string; answer: string }[];
     related: string[];
+    /** Orientação do campo de mensagem no formulário da página. */
+    formPlaceholder: string;
     /** Projeto web público: a página mostra o bloco "SEO técnico incluído". */
     seoIncluded?: boolean;
 };
 
+/** Estágio real do produto (conferido em 2026-11 nos projetos e nos sites publicados). */
+export type ProductStatus = 'available' | 'demo' | 'development';
+
+export const productStatuses: Record<
+    ProductStatus,
+    { label: string; description: string }
+> = {
+    available: {
+        label: 'Disponível',
+        description: 'Em operação, com cadastro online aberto.',
+    },
+    demo: {
+        label: 'Em demonstração',
+        description:
+            'No ar e apresentado pela equipe; a contratação comercial ainda não foi aberta.',
+    },
+    development: {
+        label: 'Em desenvolvimento',
+        description: 'Ainda não disponível para uso.',
+    },
+};
+
 export type Product = {
     slug: string;
+    status: ProductStatus;
+    /** Recursos ainda não disponíveis, mostrados à parte para não serem confundidos com os atuais. */
+    inDevelopment?: string[];
+    /** Só quando o teste gratuito está publicado no site do produto. */
+    freeTrial?: boolean;
     name: string;
     segment: string;
     tagline: string;
@@ -96,6 +125,8 @@ export const services: Service[] = [
         summary:
             'Software construído em cima do processo real da empresa, quando uma ferramenta pronta não atende.',
         contactType: 'sistema_sob_medida',
+        formPlaceholder:
+            'Que processo o sistema precisa organizar, como ele funciona hoje e quem vai usar.',
         visual: 'system',
         heroImage: 'sistemas-sob-medida',
         hero: {
@@ -220,6 +251,8 @@ export const services: Service[] = [
         summary:
             'Rotinas repetitivas executadas sozinhas: notificações, cobranças, follow-ups, documentos e movimentação de dados.',
         contactType: 'automacao',
+        formPlaceholder:
+            'Qual rotina é repetitiva hoje, com que frequência acontece e quais sistemas participam.',
         visual: 'automation',
         heroImage: 'automacao',
         hero: {
@@ -272,7 +305,7 @@ export const services: Service[] = [
         ],
         outcomes: [
             'Menos trabalho repetitivo e menos erros',
-            'Prazos e retornos cumpridos sem depender de memória',
+            'Prazos e retornos avisados pelo sistema, sem depender de memória',
             'Departamentos integrados pelo mesmo fluxo de informação',
             'Equipe dedicada a atender, vender e decidir',
         ],
@@ -328,6 +361,8 @@ export const services: Service[] = [
         summary:
             'Sistemas, plataformas e aplicativos trocando dados entre si, sem redigitação e sem planilha no meio.',
         contactType: 'integracao',
+        formPlaceholder:
+            'Quais sistemas precisam trocar dados, que informação deve circular e em que direção.',
         visual: 'integration',
         heroImage: 'integracoes',
         hero: {
@@ -380,7 +415,7 @@ export const services: Service[] = [
         ],
         outcomes: [
             'Informação registrada uma única vez',
-            'Fim da redigitação entre sistemas',
+            'Menos redigitação entre sistemas',
             'Dados consistentes em todas as áreas',
             'Base pronta para novos canais e aplicativos',
         ],
@@ -426,6 +461,8 @@ export const services: Service[] = [
         summary:
             'Aplicativos Android e iOS para clientes, equipes de campo e operações internas, integrados aos seus sistemas.',
         contactType: 'aplicativo',
+        formPlaceholder:
+            'Quem vai usar o aplicativo, o que precisa fazer nele e com qual sistema ele deve conversar.',
         visual: 'app',
         heroImage: 'aplicativos',
         hero: {
@@ -510,6 +547,8 @@ export const services: Service[] = [
         summary:
             'Sites institucionais rápidos, encontráveis no Google e preparados para gerar contatos comerciais.',
         contactType: 'site',
+        formPlaceholder:
+            'O que a empresa faz, se já existe um site (informe o endereço) e o que ele precisa gerar.',
         visual: 'site',
         heroImage: 'sites',
         hero: {
@@ -609,6 +648,8 @@ export const services: Service[] = [
         summary:
             'Páginas focadas em um objetivo — campanha, lançamento ou captação — com contato direto no CRM.',
         contactType: 'landing_page',
+        formPlaceholder:
+            'Qual oferta ou campanha, para quem e até quando a página precisa estar no ar.',
         visual: 'landing',
         heroImage: 'landing-pages',
         hero: {
@@ -660,7 +701,7 @@ export const services: Service[] = [
             },
         ],
         outcomes: [
-            'Campanhas no ar rapidamente',
+            'Página da campanha independente do site principal',
             'Leads organizados e com origem identificada',
             'Custo por contato mensurável',
             'Decisões de investimento baseadas em dados',
@@ -704,6 +745,8 @@ export const services: Service[] = [
         summary:
             'Auditoria, correções técnicas e acompanhamento para sites e aplicações que já estão no ar serem encontrados nas buscas.',
         contactType: 'seo',
+        formPlaceholder:
+            'Endereço do site, o que você espera da busca orgânica e, se houver, quem cuida do site hoje.',
         visual: 'seo',
         heroImage: 'seo',
         hero: {
@@ -921,6 +964,8 @@ export const seoOffer = {
 export const products: Product[] = [
     {
         slug: 'vetoros',
+        status: 'available',
+        freeTrial: true,
         heroImage: 'vetoros',
         name: 'VetorOS',
         segment: 'Assistências técnicas',
@@ -1009,6 +1054,8 @@ export const products: Product[] = [
     },
     {
         slug: 'vetorsales',
+        status: 'available',
+        freeTrial: true,
         heroImage: 'vetorsales',
         name: 'VetorSales',
         segment: 'Representantes e equipes de vendas',
@@ -1098,10 +1145,12 @@ export const products: Product[] = [
     },
     {
         slug: 'vetorleads',
+        status: 'available',
         heroImage: 'vetorleads',
         name: 'VetorLeads',
         segment: 'Prospecção e funil de vendas',
-        tagline: 'Da empresa captada à oportunidade ganha, com o funil comercial organizado.',
+        tagline:
+            'Da empresa captada à oportunidade ganha, com o funil comercial organizado.',
         logo: '/images/logo_vetorleads.webp',
         logoClass: 'rounded-xl bg-white object-contain p-1',
         accent: 'text-emerald-700',
@@ -1150,7 +1199,7 @@ export const products: Product[] = [
             'Prospecção organizada em um só lugar',
             'Prioridades claras para a equipe comercial',
             'Negociações com etapa, responsável e próximo contato',
-            'Atendimento do site e do WhatsApp sem perda de contato',
+            'Conversas do site e do WhatsApp reunidas, com histórico',
             'Indicadores de captação, atendimento e vendas',
         ],
         platforms: ['Painel web', 'Extensão para navegador'],
@@ -1188,6 +1237,162 @@ export const products: Product[] = [
                 answer: 'Sim. Fale com a equipe e mostramos o sistema com base na rotina da sua área comercial.',
             },
         ],
+    },
+    {
+        slug: 'vetorsmart',
+        status: 'demo',
+        heroImage: 'vetorsmart',
+        name: 'VetorSmart',
+        segment: 'Empresas prestadoras de serviços',
+        tagline: 'Do site ao serviço concluído, com a operação em um só lugar.',
+        logo: '/images/logo_vetorsmart.webp',
+        logoClass: 'rounded-xl bg-white object-contain p-1',
+        accent: 'text-blue-700',
+        problem:
+            'Quem presta serviços costuma ter o site em um lugar, a agenda em outro e os pedidos espalhados no celular. O VetorSmart reúne site da empresa, atendimento no site, agenda, clientes e solicitações de serviço na mesma plataforma.',
+        pains: [
+            'Pedidos de serviço perdidos entre conversas',
+            'Agenda dos profissionais sem visão única',
+            'Site que não conversa com a operação',
+            'Falta de histórico de clientes e serviços',
+        ],
+        features: [
+            {
+                title: 'Site da empresa',
+                description:
+                    'Site profissional gerenciado no painel, com opção de domínio próprio, metadados e sitemap.',
+            },
+            {
+                title: 'Atendimento virtual no site',
+                description:
+                    'Recepção do visitante e agendamento pelo chat, com passagem para a equipe na mesma conversa.',
+            },
+            {
+                title: 'Agenda',
+                description:
+                    'Disponibilidade dos profissionais, reserva de horário, reagendamento e bloqueios.',
+            },
+            {
+                title: 'Solicitações de serviço',
+                description:
+                    'Acompanhamento de cada pedido, da triagem à conclusão.',
+            },
+            {
+                title: 'Clientes, serviços e profissionais',
+                description: 'Cadastros e histórico reunidos na plataforma.',
+            },
+            {
+                title: 'Indicadores operacionais',
+                description: 'Números da operação no painel da empresa.',
+            },
+        ],
+        outcomes: [
+            'Pedidos do site chegando organizados à equipe',
+            'Agenda dos profissionais em uma visão única',
+            'Histórico de clientes e serviços preservado',
+        ],
+        inDevelopment: [
+            'Interpretação de mensagens por modelo de IA',
+            'Painel Meu Crescimento',
+            'Pedido de avaliação no Google',
+            'Atendimento por WhatsApp',
+            'Aplicativo',
+        ],
+        platforms: ['Web (computador, tablet e celular)'],
+        deployment:
+            'Em demonstração: apresentação conduzida pela equipe. As condições comerciais ainda estão em definição.',
+        integrations: ['Domínio próprio para o site da empresa'],
+        externalUrl: 'https://vetorsmart.com.br',
+        secondaryCtaLabel: 'Visitar o site do VetorSmart',
+        contactType: 'vetorsmart',
+        faq: [
+            {
+                question: 'O VetorSmart já pode ser contratado?',
+                answer: 'A plataforma está no ar em fase de demonstração. Apresentamos o sistema e avaliamos o uso na sua empresa; as condições comerciais ainda estão em definição.',
+            },
+            {
+                question: 'Para quem ele foi feito?',
+                answer: 'Para empresas e profissionais que prestam serviços, como climatização, elétrica, manutenção, beleza e assistência técnica.',
+            },
+            {
+                question: 'Qual a diferença para o VetorOS?',
+                answer: 'O VetorOS é voltado à assistência técnica, com ordens de serviço, peças e financeiro. O VetorSmart parte da presença digital e da agenda de quem presta serviços em geral.',
+            },
+            {
+                question: 'O que ainda está em desenvolvimento?',
+                answer: 'A interpretação de mensagens por modelo de IA, o painel Meu Crescimento, o pedido de avaliação no Google, o atendimento por WhatsApp e o aplicativo.',
+            },
+        ],
+    },
+];
+
+/** Nomes dos produtos em texto corrido ("VetorOS, VetorSales, VetorLeads e VetorSmart"). */
+export function productNames(list: Product[] = products): string {
+    const names = list.map((product) => product.name);
+
+    return names.length > 1
+        ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}`
+        : names.join('');
+}
+
+/** Diferenciais da empresa: só o que é prática de trabalho verificável. */
+export const differentials = [
+    {
+        title: 'Processo antes da tecnologia',
+        description:
+            'Começamos por como a operação funciona e onde ela perde tempo. A ferramenta vem depois.',
+    },
+    {
+        title: 'Contato com quem desenvolve',
+        description:
+            'Você conversa direto com a equipe técnica, do diagnóstico à manutenção.',
+    },
+    {
+        title: 'Escopo por escrito',
+        description:
+            'Etapas, entregas e prazos definidos na proposta, antes de começar.',
+    },
+    {
+        title: 'Experiência com produto próprio',
+        description:
+            'Criamos, publicamos e mantemos os nossos sistemas. A mesma engenharia vale para o seu projeto.',
+    },
+    {
+        title: 'Tudo conectado',
+        description:
+            'Site, sistema, aplicativo e atendimento trocando dados, sem redigitação.',
+    },
+    {
+        title: 'Evolução depois da entrega',
+        description:
+            'Acompanhamos o uso, corrigimos e evoluímos conforme a empresa muda.',
+    },
+] as const;
+
+export const homeFaq = [
+    {
+        question: 'Quanto custa um projeto?',
+        answer: 'Depende do escopo, das integrações e do prazo. Depois de uma conversa de diagnóstico, enviamos uma proposta com etapas, entregas e valores definidos por escrito.',
+    },
+    {
+        question: 'Preciso de um sistema pronto ou sob medida?',
+        answer: 'Se um dos nossos produtos atende à sua rotina, ele é o caminho mais rápido. Quando o processo é específico ou precisa integrar ferramentas que você já usa, o sob medida costuma fazer mais sentido. Indicamos o caminho no diagnóstico.',
+    },
+    {
+        question: 'Vocês atendem empresas de qualquer região?',
+        answer: 'Sim. O atendimento é remoto para empresas de todo o Brasil, com reuniões por vídeo, telefone ou mensagem.',
+    },
+    {
+        question: 'Já tenho um site ou sistema. Dá para aproveitar?',
+        answer: 'Muitas vezes, sim. Avaliamos o que existe e indicamos se vale corrigir, integrar, modernizar aos poucos ou substituir.',
+    },
+    {
+        question: 'O que acontece depois que o projeto entra no ar?',
+        answer: 'Seguimos com suporte, correções e evolução. As condições de manutenção, hospedagem e propriedade ficam definidas em contrato.',
+    },
+    {
+        question: 'Como meus dados são usados?',
+        answer: 'Os dados do formulário servem para responder ao seu contato. Novidades só são enviadas a quem marca a opção, e você pode pedir a exclusão a qualquer momento.',
     },
 ];
 
@@ -1265,3 +1470,13 @@ export function findProduct(slug: string): Product | undefined {
 export function contactHref(type?: string): string {
     return type ? `/contato?tipo=${type}#formulario` : '/contato#formulario';
 }
+
+/** Serviço indicado ao fim do artigo, conforme a categoria do blog (docs/estrategia-editorial.md). */
+export const blogCategoryServices: Record<string, string> = {
+    'desenvolvimento-de-sistemas': 'desenvolvimento-de-sistemas',
+    'sistemas-e-automacao': 'automacao-de-processos',
+    'gestao-e-produtividade': 'automacao-de-processos',
+    'tecnologia-e-inovacao': 'desenvolvimento-de-sistemas',
+    'sites-e-presenca-digital': 'desenvolvimento-de-sites-para-empresas',
+    'seo-e-performance': 'seo-tecnico-e-otimizacao-de-sites',
+};

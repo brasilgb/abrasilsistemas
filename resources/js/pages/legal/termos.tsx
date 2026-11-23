@@ -2,10 +2,18 @@ import { CookieConsent } from '@/components/cookie-consent';
 import { PublicFooter } from '@/components/public-footer';
 import { SeoHead } from '@/components/site/seo-head';
 import { SiteHeader } from '@/components/site/site-header';
-import { useContact } from '@/lib/contact';
+import { useCompany, useContact } from '@/lib/contact';
 
 export default function TermosDeUso() {
     const contact = useContact();
+    const company = useCompany();
+    const identification = [
+        company?.legalName,
+        company?.cnpj && `CNPJ ${company.cnpj}`,
+        company?.location,
+    ]
+        .filter(Boolean)
+        .join(', ');
 
     return (
         <>
@@ -22,9 +30,7 @@ export default function TermosDeUso() {
                         Termos de Uso
                     </h1>
                     <p className="mt-3 text-sm text-slate-500">
-                        [Razão social e CNPJ da ABrasil Sistemas a confirmar] —
-                        última atualização:{' '}
-                        {new Date().toLocaleDateString('pt-BR')}.
+                        ABrasil Sistemas — última atualização: 23/11/2026.
                     </p>
 
                     <div className="prose prose-slate mt-10 max-w-none space-y-6 text-sm leading-7 text-slate-700 sm:text-base">
@@ -36,8 +42,8 @@ export default function TermosDeUso() {
                                 Este site apresenta a ABrasil Sistemas, seus
                                 serviços de desenvolvimento de software, sites e
                                 aplicativos, e seus produtos próprios (VetorOS,
-                                VetorSales e VetorLeads), além de servir como
-                                canal de contato comercial.
+                                VetorSales, VetorLeads e VetorSmart), além de
+                                servir como canal de contato comercial.
                             </p>
                         </section>
 
@@ -59,8 +65,10 @@ export default function TermosDeUso() {
                                 3. Informações institucionais
                             </h2>
                             <p>
-                                ABrasil Sistemas — [razão social e CNPJ a
-                                confirmar].
+                                Site mantido pela ABrasil Sistemas
+                                {identification && ` (${identification})`}. Os
+                                dados cadastrais completos podem ser solicitados
+                                pelo e-mail {contact.email}.
                             </p>
                         </section>
 
@@ -72,7 +80,8 @@ export default function TermosDeUso() {
                                 Este site pode conter links para outros sites,
                                 como o VetorOS (vetoros.com.br) e o VetorSales
                                 (vetorsales.com.br), o VetorLeads
-                                (vetorleads.com.br), ou perfis em redes sociais.
+                                (vetorleads.com.br), o VetorSmart
+                                (vetorsmart.com.br), ou perfis em redes sociais.
                                 Não nos responsabilizamos pelo conteúdo ou pelas
                                 políticas de privacidade desses sites de
                                 terceiros.

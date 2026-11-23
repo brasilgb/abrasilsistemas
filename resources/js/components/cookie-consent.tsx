@@ -29,8 +29,9 @@ function getConsentSnapshot(): string | null {
     }
 }
 
-function getServerConsentSnapshot(): null {
-    return null;
+/** Na pré-renderização o aviso não aparece: quem já escolheu não o vê piscar. */
+function getServerConsentSnapshot(): string {
+    return 'necessary';
 }
 
 export function CookieConsent() {

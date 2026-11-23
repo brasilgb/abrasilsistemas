@@ -3,18 +3,25 @@ import { ArrowLeft, Check, X } from 'lucide-react';
 import {
     ButtonLink,
     Container,
-    CtaBand,
     Eyebrow,
     FaqList,
     HeroBackdrop,
     SectionHeading,
 } from '@/components/site/blocks';
+import { ContactSection } from '@/components/site/contact-form';
+import { ProductStatusBadge } from '@/components/site/product-status';
 import { SiteLayout } from '@/components/site/site-layout';
 import { BrowserFrame } from '@/components/site/visuals';
 import { heroImages } from '@/data/hero-images';
-import { contactHref, findProduct } from '@/data/site';
+import { findProduct, productStatuses } from '@/data/site';
 
-export default function SistemaPage({ slug }: { slug: string }) {
+export default function SistemaPage({
+    slug,
+    projectTypes,
+}: {
+    slug: string;
+    projectTypes: Record<string, string>;
+}) {
     const product = findProduct(slug);
 
     if (!product) {
@@ -44,7 +51,12 @@ export default function SistemaPage({ slug }: { slug: string }) {
                                     height={56}
                                     className={`size-14 shrink-0 ${product.logoClass}`}
                                 />
-                                <Eyebrow inverse>{product.segment}</Eyebrow>
+                                <div className="grid gap-2">
+                                    <Eyebrow inverse>{product.segment}</Eyebrow>
+                                    <ProductStatusBadge
+                                        status={product.status}
+                                    />
+                                </div>
                             </div>
                             <h1 className="mt-6 text-4xl leading-[1.1] font-semibold tracking-tight text-balance sm:text-5xl">
                                 {product.name}:{' '}
@@ -56,14 +68,16 @@ export default function SistemaPage({ slug }: { slug: string }) {
                             </p>
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                                 <ButtonLink
-                                    href={contactHref(product.contactType)}
+                                    href="#orcamento"
                                     variant="inverse"
                                     arrow
                                 >
                                     Solicitar demonstração
                                 </ButtonLink>
                                 <ButtonLink
-                                    href={product.signupUrl ?? product.externalUrl}
+                                    href={
+                                        product.signupUrl ?? product.externalUrl
+                                    }
                                     variant="ghostInverse"
                                 >
                                     {product.secondaryCtaLabel ??
@@ -142,7 +156,23 @@ export default function SistemaPage({ slug }: { slug: string }) {
                             </div>
                         ))}
                     </div>
-                    <dl className="mt-10 grid gap-8 text-sm md:grid-cols-3">
+                    {product.inDevelopment && (
+                        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-6">
+                            <h3 className="text-sm font-semibold text-amber-900">
+                                Em desenvolvimento, ainda não disponível
+                            </h3>
+                            <p className="mt-2 text-sm leading-6 text-amber-900">
+                                {product.inDevelopment.join(' · ')}
+                            </p>
+                        </div>
+                    )}
+                    <p className="mt-10 text-sm leading-6 text-slate-600">
+                        <strong className="font-semibold text-slate-900">
+                            Situação: {productStatuses[product.status].label}.
+                        </strong>{' '}
+                        {productStatuses[product.status].description}
+                    </p>
+                    <dl className="mt-6 grid gap-8 text-sm md:grid-cols-3">
                         <div>
                             <dt className="font-semibold text-slate-900">
                                 Plataformas
@@ -181,21 +211,40 @@ export default function SistemaPage({ slug }: { slug: string }) {
                         <div className="mt-8">
                             <FaqList items={product.faq} />
                         </div>
+                        <p className="mt-8 text-[15px] leading-7 text-slate-600">
+                            Precisa de algo além do {product.name}? Também
+                            fazemos{' '}
+                            <Link
+                                href="/desenvolvimento-de-sistemas"
+                                className="font-semibold text-brand-blue underline underline-offset-4"
+                            >
+                                sistemas sob medida
+                            </Link>{' '}
+                            e{' '}
+                            <Link
+                                href="/integracao-de-sistemas-e-apis"
+                                className="font-semibold text-brand-blue underline underline-offset-4"
+                            >
+                                integrações com o que você já usa
+                            </Link>
+                            .
+                        </p>
                     </div>
                 </Container>
             </section>
 
-            <CtaBand
+            <ContactSection
+                key={product.slug}
                 title={`Veja o ${product.name} na rotina da sua empresa.`}
-                description="Agende uma demonstração com a equipe ou crie sua conta e teste por conta própria."
-                primary={{
-                    label: 'Solicitar demonstração',
-                    href: contactHref(product.contactType),
-                }}
-                secondary={{
-                    label: product.secondaryCtaLabel ?? 'Testar grátis',
-                    href: product.signupUrl ?? product.externalUrl,
-                }}
+                description={
+                    product.freeTrial
+                        ? 'Peça uma demonstração com a equipe ou crie sua conta no site do produto e teste por conta própria.'
+                        : 'Peça uma demonstração: a equipe apresenta o sistema a partir da sua rotina.'
+                }
+                projectTypes={projectTypes}
+                selectedType={product.contactType}
+                placeholder="Conte como a sua equipe trabalha hoje e o que você quer ver na demonstração."
+                submitLabel="Solicitar demonstração"
             />
         </SiteLayout>
     );

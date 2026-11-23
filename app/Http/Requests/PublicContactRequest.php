@@ -29,12 +29,14 @@ class PublicContactRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'contact_name' => ['required', 'string', 'max:255'],
-            'company_name' => ['required', 'string', 'max:255'],
-            'whatsapp' => ['nullable', 'string', 'max:40'],
+            'contact_name' => ['required', 'string', 'max:255', 'not_regex:#https?://|www\.#i'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            // Só dígitos (prepareForValidation): DDD + número, com ou sem o código do país.
+            'whatsapp' => ['nullable', 'string', 'regex:/^\d{10,15}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'product' => ['required', 'string', Rule::in(array_keys(Lead::CONTACT_PROJECT_TYPES))],
-            'notes' => ['required', 'string', 'max:5000'],
+            'notes' => ['required', 'string', 'max:5000', $this->rejectLinkSpam(...)],
+            'marketing_consent' => ['nullable', 'boolean'],
             // Página do site de onde a pessoa veio (caminho relativo, enviado pelo formulário).
             'source_page' => ['nullable', 'string', 'max:255'],
             // Honeypot: real visitors never fill this hidden field.
@@ -46,17 +48,28 @@ class PublicContactRequest extends FormRequest
     {
         return [
             'contact_name.required' => 'Informe seu nome.',
-            'company_name.required' => 'Informe o nome da empresa.',
-            'product.required' => 'Selecione o tipo de projeto.',
+            'contact_name.not_regex' => 'Informe apenas o seu nome.',
+            'whatsapp.regex' => 'Informe o telefone com DDD, só números.',
+            'email.email' => 'Informe um e-mail válido.',
+            'product.required' => 'Selecione o serviço de interesse.',
+            'product.in' => 'Selecione um serviço da lista.',
             'notes.required' => 'Descreva a necessidade da sua empresa.',
         ];
+    }
+
+    /** Mensagens de robôs costumam ser listas de links; um pedido real raramente passa de três. */
+    private function rejectLinkSpam(string $attribute, mixed $value, \Closure $fail): void
+    {
+        if (is_string($value) && preg_match_all('#https?://|www\.#i', $value) > 3) {
+            $fail('A mensagem tem links demais. Descreva a necessidade e envie no máximo três links.');
+        }
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
             if (! $this->filled('whatsapp') && ! $this->filled('email')) {
-                $validator->errors()->add('email', 'Informe um e-mail ou WhatsApp para contato.');
+                $validator->errors()->add('email', 'Informe um e-mail ou telefone para contato.');
             }
         });
     }

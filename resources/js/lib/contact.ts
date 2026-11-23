@@ -28,6 +28,22 @@ export function useContact(): ContactInfo {
     );
 }
 
+/** Dados institucionais do painel (App\Services\CompanyProfile). Campo vazio não é exibido. */
+export type CompanyInfo = {
+    name: string;
+    legalName: string | null;
+    cnpj: string | null;
+    location: string | null;
+    serviceArea: string[];
+    businessHours: string | null;
+    phone: string | null;
+    summary: string;
+};
+
+export function useCompany(): CompanyInfo | null {
+    return usePage<{ company?: CompanyInfo }>().props.company ?? null;
+}
+
 /**
  * Builds a wa.me link from the shared WhatsApp number and a page-specific
  * pre-filled message.

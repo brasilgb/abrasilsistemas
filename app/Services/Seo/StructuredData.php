@@ -3,6 +3,7 @@
 namespace App\Services\Seo;
 
 use App\Models\BlogPost;
+use App\Services\CompanyProfile;
 use App\Support\PublicPages;
 use Illuminate\Support\Str;
 
@@ -48,6 +49,7 @@ class StructuredData
     public function organization(): array
     {
         $s = $this->settings;
+        $company = app(CompanyProfile::class);
         $node = [
             '@type' => 'Organization',
             '@id' => self::organizationId(),
@@ -57,12 +59,14 @@ class StructuredData
             'logo' => $s->absolute($s->get('logo_url')),
             'email' => $s->get('organization_email') ?: null,
             'telephone' => $s->get('organization_phone') ?: null,
-            'areaServed' => 'BR',
+            'taxID' => $company->cnpj(),
+            'areaServed' => $this->areaServed(),
             'description' => $s->get('company_description') ?: null,
             'sameAs' => array_values(array_filter((array) $s->get('social_profiles'))) ?: null,
         ];
 
-        if (filled($s->get('organization_city'))) {
+        // Localização e área de atendimento são distintas: o município só entra se a empresa o publica.
+        if ($company->location() !== null && filled($s->get('organization_city'))) {
             $node['address'] = array_filter([
                 '@type' => 'PostalAddress',
                 'addressLocality' => $s->get('organization_city'),
@@ -72,6 +76,22 @@ class StructuredData
         }
 
         return array_filter($node, fn ($value) => $value !== null);
+    }
+
+    /**
+     * Área de atendimento informada no painel ("Brasil" por padrão). Não é endereço.
+     *
+     * @return string|list<string>
+     */
+    public function areaServed(): string|array
+    {
+        $area = array_map(fn (string $name) => $name === 'Brasil' ? 'BR' : $name, app(CompanyProfile::class)->serviceArea());
+
+        return match (count($area)) {
+            0 => 'BR',
+            1 => $area[0],
+            default => $area,
+        };
     }
 
     /**

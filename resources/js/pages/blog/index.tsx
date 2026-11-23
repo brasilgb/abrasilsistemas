@@ -1,9 +1,11 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Link, router, usePage } from '@inertiajs/react';
 import { ArrowRight, BookOpen, Eye, Search, UserPlus } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import BlogPublicLayout from '@/components/blog-public-layout';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { SeoHead } from '@/components/site/seo-head';
 import type { User } from '@/types';
 
 type Post = {
@@ -50,12 +52,7 @@ export default function BlogIndex({ posts, categories, tags, popularPosts, filte
 
     return (
         <BlogPublicLayout>
-            <Head title="Blog sobre tecnologia e gestão">
-                <meta name="description" content="Artigos da ABrasil Sistemas sobre tecnologia, gestão, produtividade, desenvolvimento de sites, sistemas e transformação digital para empresas." />
-                <meta name="robots" content="index, follow, max-image-preview:large" />
-                <meta property="og:title" content="Blog | ABrasil Sistemas" />
-                <meta property="og:description" content="Informação prática para usar a tecnologia a favor da sua empresa." />
-            </Head>
+            <SeoHead />
 
             <section className="border-b border-slate-200 bg-gradient-to-b from-blue-50 to-white py-16 sm:py-24">
                 <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">

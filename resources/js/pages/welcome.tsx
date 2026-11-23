@@ -3,21 +3,28 @@ import { ArrowRight, ArrowUpRight, Quote } from 'lucide-react';
 import {
     ButtonLink,
     Container,
-    CtaBand,
+    FaqList,
+    HeroBackdrop,
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
-import { HomeCarousel } from '@/components/site/home-carousel';
+import { ContactSection } from '@/components/site/contact-form';
+import { ProductStatusBadge } from '@/components/site/product-status';
+import { serviceIcons } from '@/components/site/service-icons';
 import { SiteLayout } from '@/components/site/site-layout';
+import { SolutionsSlider } from '@/components/site/solutions-slider';
+import { heroImages } from '@/data/hero-images';
 import {
     caseStudies,
     contactHref,
+    differentials,
+    homeFaq,
     processSteps,
     products,
     services,
     technologyGroups,
 } from '@/data/site';
-import { useContact, useSiteWhatsappUrl } from '@/lib/contact';
+import { useContact } from '@/lib/contact';
 
 type BlogPostSummary = {
     id: number;
@@ -44,89 +51,167 @@ type PortfolioItemSummary = {
     site_url: string | null;
 };
 
-const pillars = [
-    {
-        title: 'Produtos próprios',
-        description:
-            'Desenvolvemos e mantemos sistemas prontos para segmentos específicos, em operação na nuvem.',
-    },
-    {
-        title: 'Desenvolvimento sob medida',
-        description:
-            'Quando nenhuma ferramenta pronta atende, construímos o software a partir do processo da empresa.',
-    },
-    {
-        title: 'Integração de ponta a ponta',
-        description:
-            'Sistemas, aplicativos, site, WhatsApp e financeiro conversando entre si, sem redigitação.',
-    },
-] as const;
-
-const softwareSlugs = [
-    'desenvolvimento-de-sistemas',
-    'automacao-de-processos',
-    'integracao-de-sistemas-e-apis',
-    'desenvolvimento-de-aplicativos',
-];
-
 export default function Welcome({
     blogPosts,
     testimonials,
     portfolioItems,
+    projectTypes,
 }: {
     blogPosts: BlogPostSummary[];
     testimonials: TestimonialSummary[];
     portfolioItems: PortfolioItemSummary[];
+    projectTypes: Record<string, string>;
 }) {
     const contact = useContact();
-    const whatsappUrl = useSiteWhatsappUrl(
-        'Olá, quero conversar sobre um projeto com a ABrasil Sistemas.',
-    );
-    const softwareServices = services.filter((service) =>
-        softwareSlugs.includes(service.slug),
-    );
-    const presenceServices = services.filter(
-        (service) => !softwareSlugs.includes(service.slug),
-    );
 
     return (
         <SiteLayout>
-            <HomeCarousel />
-
-            {/* Quem somos */}
-            <section className="py-16 sm:py-20">
-                <Container className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-                    <SectionHeading
-                        eyebrow="Quem somos"
-                        title="Engenharia de software a serviço da operação."
-                        description="A ABrasil Sistemas desenvolve soluções digitais para empresas. Primeiro entendemos como a operação funciona e onde ela perde tempo e dinheiro; depois escolhemos a tecnologia certa para resolver."
-                    />
-                    <div className="grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200">
-                        {pillars.map((pillar) => (
-                            <div
-                                key={pillar.title}
-                                className="bg-white p-6 sm:p-7"
+            {/* Hero */}
+            <section className="relative isolate overflow-hidden bg-brand-navy pt-28 pb-16 text-white sm:pt-36 sm:pb-24 lg:pb-28">
+                <HeroBackdrop image={heroImages.home} />
+                <Container>
+                    <div className="max-w-2xl">
+                        <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-6xl">
+                            Tecnologia que transforma ideias em resultados.
+                        </h1>
+                        <p className="mt-6 text-base leading-7 text-slate-200 sm:text-lg sm:leading-8">
+                            Desenvolvemos sites profissionais, sistemas sob
+                            medida e soluções digitais que ajudam empresas a
+                            organizar processos, ganhar produtividade e
+                            conquistar novas oportunidades.
+                        </p>
+                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                            <ButtonLink
+                                href="#orcamento"
+                                variant="inverse"
+                                arrow
                             >
-                                <h3 className="text-lg font-semibold text-slate-900">
-                                    {pillar.title}
+                                Solicitar orçamento
+                            </ButtonLink>
+                            <ButtonLink href="#servicos" variant="ghostInverse">
+                                Conhecer nossos serviços
+                            </ButtonLink>
+                        </div>
+                    </div>
+                </Container>
+            </section>
+
+            {/* Serviços */}
+            <section id="servicos" className="scroll-mt-16 py-20 sm:py-24">
+                <Container>
+                    <SectionHeading
+                        eyebrow="Serviços"
+                        title="O que podemos fazer pela sua empresa."
+                        description="Escolha pelo problema que precisa resolver. Se a solução envolver mais de uma frente, cuidamos do conjunto."
+                    />
+                    <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {services.map((service) => {
+                            const Icon = serviceIcons[service.visual];
+
+                            return (
+                                <li key={service.slug}>
+                                    <Link
+                                        href={`/${service.slug}`}
+                                        className="group flex h-full flex-col rounded-lg border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+                                    >
+                                        <span className="grid size-11 place-items-center rounded-md bg-blue-50 text-brand-blue">
+                                            <Icon
+                                                className="size-5"
+                                                aria-hidden="true"
+                                            />
+                                        </span>
+                                        <h3 className="mt-5 text-lg font-semibold text-slate-900 group-hover:text-brand-blue-hover">
+                                            {service.label}
+                                        </h3>
+                                        <p className="mt-2 text-[15px] leading-6 text-slate-600">
+                                            {service.summary}
+                                        </p>
+                                        <span className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold text-brand-blue">
+                                            Saiba mais
+                                            <ArrowRight
+                                                className="size-4"
+                                                aria-hidden="true"
+                                            />
+                                        </span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                        <li>
+                            <a
+                                href="#orcamento"
+                                className="flex h-full flex-col rounded-lg bg-brand-navy p-6 text-white transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+                            >
+                                <h3 className="text-lg font-semibold">
+                                    Não sabe por onde começar?
                                 </h3>
-                                <p className="mt-2 text-[15px] leading-7 text-slate-600">
-                                    {pillar.description}
+                                <p className="mt-2 text-[15px] leading-6 text-slate-300">
+                                    Descreva a situação da empresa e indicamos o
+                                    caminho mais direto.
                                 </p>
+                                <span className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold">
+                                    Solicitar orçamento
+                                    <ArrowRight
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </Container>
+            </section>
+
+            <SolutionsSlider />
+
+            {/* Diferenciais */}
+            <section className="py-20 sm:py-24">
+                <Container>
+                    <SectionHeading
+                        eyebrow="Diferenciais"
+                        title="Engenharia de software a serviço da operação."
+                        description="Primeiro entendemos como a empresa funciona; depois escolhemos a tecnologia certa para resolver."
+                    />
+                    <dl className="mt-12 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                        {differentials.map((item) => (
+                            <div
+                                key={item.title}
+                                className="border-t border-slate-200 pt-5"
+                            >
+                                <dt className="text-lg font-semibold text-slate-900">
+                                    {item.title}
+                                </dt>
+                                <dd className="mt-2 text-[15px] leading-7 text-slate-600">
+                                    {item.description}
+                                </dd>
                             </div>
                         ))}
+                    </dl>
+                </Container>
+            </section>
+            {/* Processo */}
+            <section className="bg-brand-navy py-20 text-white sm:py-28">
+                <Container>
+                    <SectionHeading
+                        eyebrow="Como trabalhamos"
+                        title="Um método claro, do entendimento à evolução."
+                        description="Cada projeto passa pelas mesmas etapas. Você sabe o que está sendo feito, por quê, e o que vem depois."
+                        inverse
+                    />
+                    <div className="mt-14">
+                        <ProcessSteps steps={processSteps} inverse />
                     </div>
                 </Container>
             </section>
 
             {/* Sistemas prontos */}
-            <section className="border-y border-slate-200 bg-slate-50 py-20 sm:py-28">
+            <section className="border-b border-slate-200 bg-slate-50 py-20 sm:py-24">
                 <Container>
                     <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
                         <SectionHeading
-                            eyebrow="Sistemas prontos"
-                            title="Produtos ABrasil em operação."
-                            description="Sistemas desenvolvidos e mantidos pela nossa equipe para organizar a rotina de diferentes equipes."
+                            eyebrow="Soluções próprias"
+                            title="Sistemas criados e mantidos pela ABrasil."
+                            description="Cada produto mostra o estágio em que está, para você saber o que já pode usar."
                         />
                         <Link
                             href="/sistemas"
@@ -136,7 +221,7 @@ export default function Welcome({
                             <ArrowRight className="size-4" />
                         </Link>
                     </div>
-                    <div className="mt-12 grid gap-6 lg:grid-cols-3">
+                    <div className="mt-12 grid gap-6 md:grid-cols-2">
                         {products.map((product) => (
                             <article
                                 key={product.slug}
@@ -160,6 +245,11 @@ export default function Welcome({
                                         >
                                             {product.segment}
                                         </p>
+                                        <div className="mt-2">
+                                            <ProductStatusBadge
+                                                status={product.status}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <p className="mt-6 text-[15px] leading-7 text-slate-600">
@@ -178,7 +268,7 @@ export default function Welcome({
                                             </li>
                                         ))}
                                 </ul>
-                                <div className="mt-auto flex flex-col gap-3 pt-8">
+                                <div className="mt-auto flex flex-col gap-3 pt-8 sm:flex-row">
                                     <ButtonLink
                                         href={`/sistemas/${product.slug}`}
                                         variant="primary"
@@ -194,42 +284,6 @@ export default function Welcome({
                                 </div>
                             </article>
                         ))}
-                    </div>
-                </Container>
-            </section>
-
-            {/* Soluções */}
-            <section className="py-20 sm:py-28">
-                <Container>
-                    <SectionHeading
-                        eyebrow="Soluções"
-                        title="Do processo travado ao sistema funcionando."
-                        description="Desenvolvimento sob medida para o que uma ferramenta pronta não resolve — sempre começando pelo problema e pelo resultado esperado."
-                    />
-                    <div className="mt-12 grid gap-12 lg:grid-cols-[1.4fr_1fr]">
-                        <ServiceList
-                            title="Software e processos"
-                            items={softwareServices}
-                        />
-                        <ServiceList
-                            title="Presença digital"
-                            items={presenceServices}
-                        />
-                    </div>
-                </Container>
-            </section>
-
-            {/* Processo */}
-            <section className="bg-brand-navy py-20 text-white sm:py-28">
-                <Container>
-                    <SectionHeading
-                        eyebrow="Como trabalhamos"
-                        title="Um método claro, do entendimento à evolução."
-                        description="Cada projeto passa pelas mesmas etapas. Você sabe o que está sendo feito, por quê, e o que vem depois."
-                        inverse
-                    />
-                    <div className="mt-14">
-                        <ProcessSteps steps={processSteps} inverse />
                     </div>
                 </Container>
             </section>
@@ -441,51 +495,22 @@ export default function Welcome({
                 </section>
             )}
 
-            <CtaBand
-                title="Vamos conversar sobre a operação da sua empresa?"
-                description={`Conte o que precisa ser resolvido. Respondemos com um caminho claro — produto pronto ou projeto sob medida. Atendimento direto pelo WhatsApp ${contact.whatsappDisplay} ou por ${contact.email}.`}
-                primary={{
-                    label: 'Falar sobre meu projeto',
-                    href: contactHref(),
-                }}
-                secondary={{ label: 'Chamar no WhatsApp', href: whatsappUrl }}
+            {/* Perguntas frequentes */}
+            <section className="border-t border-slate-200 py-20 sm:py-24">
+                <Container className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+                    <SectionHeading
+                        eyebrow="Perguntas frequentes"
+                        title="Antes de pedir um orçamento."
+                    />
+                    <FaqList items={homeFaq} />
+                </Container>
+            </section>
+
+            <ContactSection
+                title="Conte o que a sua empresa precisa."
+                description={`Sua mensagem chega direto à equipe que desenvolve as soluções. Se preferir, escreva para ${contact.email}.`}
+                projectTypes={projectTypes}
             />
         </SiteLayout>
-    );
-}
-
-function ServiceList({
-    title,
-    items,
-}: {
-    title: string;
-    items: typeof services;
-}) {
-    return (
-        <div>
-            <h3 className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                {title}
-            </h3>
-            <ul className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
-                {items.map((service) => (
-                    <li key={service.slug}>
-                        <Link
-                            href={`/${service.slug}`}
-                            className="group flex items-start justify-between gap-6 py-5"
-                        >
-                            <span>
-                                <span className="block text-lg font-semibold text-slate-900 group-hover:text-brand-blue-hover">
-                                    {service.label}
-                                </span>
-                                <span className="mt-1 block text-[15px] leading-7 text-slate-600">
-                                    {service.summary}
-                                </span>
-                            </span>
-                            <ArrowRight className="mt-1.5 size-5 shrink-0 text-slate-400 transition group-hover:translate-x-1 group-hover:text-brand-blue" />
-                        </Link>
-                    </li>
-                ))}
-            </ul>
-        </div>
     );
 }

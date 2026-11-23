@@ -16,12 +16,15 @@ class ContactFormReceived extends Mailable implements ShouldQueue
 
     public function __construct(
         public Lead $lead,
+        /** Serviço e mensagem deste envio: num novo contato, diferem dos gravados na solicitação. */
+        public ?string $product = null,
+        public ?string $contactMessage = null,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Novo contato pelo site — '.$this->lead->company_name,
+            subject: 'Novo contato pelo site — '.($this->lead->company_name ?? $this->lead->contact_name),
             replyTo: $this->lead->email ? [$this->lead->email] : [],
         );
     }
@@ -32,7 +35,8 @@ class ContactFormReceived extends Mailable implements ShouldQueue
             markdown: 'emails.contact-form-received',
             with: [
                 'lead' => $this->lead,
-                'serviceLabel' => Lead::PRODUCTS[$this->lead->product] ?? $this->lead->product,
+                'serviceLabel' => Lead::PRODUCTS[$this->product ?? $this->lead->product] ?? $this->lead->product,
+                'contactMessage' => $this->contactMessage ?? $this->lead->notes,
                 'adminUrl' => route('solicitacoes.show', $this->lead),
             ],
         );

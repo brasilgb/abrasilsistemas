@@ -3,17 +3,17 @@ import { ArrowRight, Check } from 'lucide-react';
 import {
     ButtonLink,
     Container,
-    CtaBand,
     FaqList,
     PageHero,
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
+import { ContactSection } from '@/components/site/contact-form';
 import { SeoIncluded } from '@/components/site/seo-included';
 import { SiteLayout } from '@/components/site/site-layout';
 import { ServiceVisual } from '@/components/site/visuals';
 import { heroImages } from '@/data/hero-images';
-import { contactHref, findService, seoOffer } from '@/data/site';
+import { findService, seoOffer } from '@/data/site';
 import type { Service } from '@/data/site';
 
 const CTA_LABEL = 'Solicitar análise SEO';
@@ -23,7 +23,13 @@ const CTA_LABEL = 'Solicitar análise SEO';
  * em resources/js/data/site.ts (serviço + seoOffer); o SEO da página, em PublicPages.
  * Regra: sem preço fixo e sem promessa de posição no Google.
  */
-export default function SeoPage({ slug }: { slug: string }) {
+export default function SeoPage({
+    slug,
+    projectTypes,
+}: {
+    slug: string;
+    projectTypes: Record<string, string>;
+}) {
     const service = findService(slug);
 
     if (!service) {
@@ -33,7 +39,7 @@ export default function SeoPage({ slug }: { slug: string }) {
     const related = service.related
         .map(findService)
         .filter((item): item is Service => item !== undefined);
-    const contact = contactHref(service.contactType);
+    const contact = '#orcamento';
 
     return (
         <SiteLayout>
@@ -245,14 +251,13 @@ export default function SeoPage({ slug }: { slug: string }) {
                 </Container>
             </section>
 
-            <CtaBand
+            <ContactSection
                 title="Quer saber o que impede seu site de aparecer?"
                 description="Envie o endereço do site e o que você espera da busca orgânica. Respondemos com uma análise inicial e a modalidade indicada, sem compromisso."
-                primary={{ label: CTA_LABEL, href: contact }}
-                secondary={{
-                    label: 'Criar um site novo',
-                    href: '/desenvolvimento-de-sites-para-empresas',
-                }}
+                projectTypes={projectTypes}
+                selectedType={service.contactType}
+                placeholder={service.formPlaceholder}
+                submitLabel={CTA_LABEL}
             />
         </SiteLayout>
     );

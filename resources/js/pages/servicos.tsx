@@ -3,18 +3,22 @@ import { ArrowRight } from 'lucide-react';
 import {
     ButtonLink,
     Container,
-    CtaBand,
     FlowDiagram,
     PageHero,
     ProcessSteps,
     SectionHeading,
 } from '@/components/site/blocks';
+import { ContactSection } from '@/components/site/contact-form';
 import { SeoIncluded } from '@/components/site/seo-included';
 import { SiteLayout } from '@/components/site/site-layout';
 import { ServiceVisual } from '@/components/site/visuals';
-import { contactHref, processSteps, products, services } from '@/data/site';
+import { processSteps, productNames, services } from '@/data/site';
 
-export default function Servicos() {
+export default function Servicos({
+    projectTypes,
+}: {
+    projectTypes: Record<string, string>;
+}) {
     return (
         <SiteLayout>
             <PageHero
@@ -23,8 +27,8 @@ export default function Servicos() {
                 lead="Sistemas, aplicativos, automações, integrações, sites, landing pages e SEO — desenvolvidos a partir do problema que a empresa precisa resolver e conectados entre si."
                 visual={<ServiceVisual kind="integration" />}
                 actions={
-                    <ButtonLink href={contactHref()} variant="inverse" arrow>
-                        Falar sobre meu projeto
+                    <ButtonLink href="#orcamento" variant="inverse" arrow>
+                        Solicitar orçamento
                     </ButtonLink>
                 }
             />
@@ -66,11 +70,7 @@ export default function Servicos() {
                                 </span>
                                 <span className="text-[15px] leading-7 text-slate-600">
                                     Produtos próprios para segmentos
-                                    específicos:{' '}
-                                    {products
-                                        .map((product) => product.name)
-                                        .join(' e ')}
-                                    .
+                                    específicos: {productNames()}.
                                 </span>
                                 <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue">
                                     Conhecer{' '}
@@ -129,13 +129,10 @@ export default function Servicos() {
                 </Container>
             </section>
 
-            <CtaBand
+            <ContactSection
                 title="Não sabe por onde começar?"
-                description="Descreva a situação da sua empresa. Indicamos o caminho mais direto — produto pronto, projeto sob medida ou uma combinação dos dois."
-                primary={{
-                    label: 'Falar sobre meu projeto',
-                    href: contactHref(),
-                }}
+                description="Descreva a situação da sua empresa. Indicamos o caminho mais direto: produto pronto, projeto sob medida ou uma combinação dos dois."
+                projectTypes={projectTypes}
             />
         </SiteLayout>
     );

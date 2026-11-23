@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Seo;
 
 use App\Http\Controllers\Controller;
+use App\Rules\Cnpj;
 use App\Services\Seo\RobotsBuilder;
 use App\Services\Seo\SeoChangeLogger;
 use App\Services\Seo\SeoSettings;
@@ -23,6 +24,7 @@ class SettingsController extends Controller
         return Inertia::render('admin/seo/settings', [
             'settings' => collect($settings->all())->only(self::FIELDS)->all(),
             'appUrl' => config('app.url'),
+            'states' => self::STATES,
             'privatePaths' => RobotsBuilder::PRIVATE_PATHS,
             'auditSchedules' => ['off' => 'Desligada', 'daily' => 'Diária (04:30)', 'weekly' => 'Semanal (segunda, 04:30)'],
             'blockedByEnvironment' => (bool) config('seo.block_indexing'),
@@ -45,11 +47,16 @@ class SettingsController extends Controller
             'social_image_url' => ['nullable', 'string', 'max:2048', $relativeOrUrl],
             'social_image_alt' => ['nullable', 'string', 'max:255'],
             'organization_legal_name' => ['nullable', 'string', 'max:180'],
+            'organization_cnpj' => ['nullable', 'string', 'max:20', new Cnpj],
             'organization_email' => ['nullable', 'email', 'max:180'],
             'organization_phone' => ['nullable', 'string', 'max:40', 'regex:/^\+?[0-9 ()-]{8,40}$/'],
             'organization_city' => ['nullable', 'string', 'max:120'],
-            'organization_region' => ['nullable', 'string', 'max:60'],
+            'organization_region' => ['nullable', 'string', Rule::in(self::STATES)],
             'organization_country' => ['nullable', 'string', 'size:2'],
+            'organization_show_location' => ['boolean'],
+            'organization_service_area' => ['nullable', 'array', 'max:20'],
+            'organization_service_area.*' => ['string', 'max:80'],
+            'organization_business_hours' => ['nullable', 'string', 'max:160'],
             'social_profiles' => ['nullable', 'array', 'max:10'],
             'social_profiles.*' => ['url:https', 'max:255'],
             'block_indexing' => ['boolean'],
@@ -65,12 +72,14 @@ class SettingsController extends Controller
             'audit_max_pages' => ['required', 'integer', 'min:10', 'max:'.config('seo.audit.max_pages_limit', 1000)],
         ]);
 
+        $data['organization_cnpj'] = Cnpj::normalize((string) ($data['organization_cnpj'] ?? ''));
+        $data['organization_service_area'] = array_values(array_unique(array_filter(array_map(fn (string $area) => trim(strip_tags($area)), $data['organization_service_area'] ?? []))));
         $data['social_profiles'] = array_values(array_filter($data['social_profiles'] ?? []));
         $data['robots_disallow'] = array_values(array_unique(array_filter($data['robots_disallow'] ?? [])));
         $data['base_url'] = rtrim((string) ($data['base_url'] ?? ''), '/');
         $data['organization_country'] = strtoupper((string) ($data['organization_country'] ?? 'BR')) ?: 'BR';
 
-        foreach (['company_description', 'logo_url', 'social_image_url', 'social_image_alt', 'organization_legal_name', 'organization_email', 'organization_phone', 'organization_city', 'organization_region'] as $field) {
+        foreach (['company_description', 'logo_url', 'social_image_url', 'social_image_alt', 'organization_legal_name', 'organization_email', 'organization_phone', 'organization_city', 'organization_region', 'organization_business_hours'] as $field) {
             $data[$field] = trim(strip_tags((string) ($data[$field] ?? '')));
         }
 
@@ -85,10 +94,13 @@ class SettingsController extends Controller
         return to_route('admin.seo.settings');
     }
 
+    private const STATES = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
     public const FIELDS = [
         'company_name', 'company_description', 'base_url', 'default_title', 'title_template', 'default_description',
-        'logo_url', 'social_image_url', 'social_image_alt', 'organization_legal_name', 'organization_email',
-        'organization_phone', 'organization_city', 'organization_region', 'organization_country', 'social_profiles',
+        'logo_url', 'social_image_url', 'social_image_alt', 'organization_legal_name', 'organization_cnpj', 'organization_email',
+        'organization_phone', 'organization_city', 'organization_region', 'organization_country', 'organization_show_location',
+        'organization_service_area', 'organization_business_hours', 'social_profiles',
         'block_indexing', 'robots_disallow', 'sitemap_include_blog', 'sitemap_include_categories', 'audit_schedule', 'audit_max_pages',
     ];
 }

@@ -18,6 +18,44 @@ const mainLinks = [
     { href: '/contato', label: 'Contato' },
 ] as const;
 
+/** Páginas com o formulário na própria tela: o botão do cabeçalho rola até ele. */
+function useBudgetHref(): string {
+    const { component } = usePage();
+
+    if (component === 'contato') {
+        return '#formulario';
+    }
+
+    return component === 'welcome' ||
+        component === 'servicos' ||
+        component.startsWith('site/')
+        ? '#orcamento'
+        : '/contato#formulario';
+}
+
+/** Botão de orçamento: âncora nativa na própria página, navegação do Inertia nas demais. */
+function BudgetLink({
+    className,
+    onClick,
+    children,
+}: {
+    className: string;
+    onClick?: () => void;
+    children: string;
+}) {
+    const href = useBudgetHref();
+
+    return href.startsWith('#') ? (
+        <a href={href} onClick={onClick} className={className}>
+            {children}
+        </a>
+    ) : (
+        <Link href={href} onClick={onClick} className={className}>
+            {children}
+        </Link>
+    );
+}
+
 /** Cabeçalho único do site institucional (home, soluções, sistemas, sobre, contato, páginas legais). */
 export function SiteHeader() {
     // `auth` pode faltar na página 404 renderizada pelo handler de exceções (sem middleware).
@@ -103,28 +141,33 @@ export function SiteHeader() {
                     >
                         {user ? 'Minha conta' : 'Entrar'}
                     </Link>
-                    <Link
-                        href="/contato#formulario"
-                        className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-200"
-                    >
-                        Falar sobre um projeto
-                    </Link>
+                    <BudgetLink className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-200">
+                        Solicitar orçamento
+                    </BudgetLink>
                 </div>
 
-                <button
-                    type="button"
-                    aria-label={open ? 'Fechar menu' : 'Abrir menu'}
-                    aria-expanded={open}
-                    aria-controls="menu-movel"
-                    className="grid size-10 place-items-center rounded-md border border-white/15 lg:hidden"
-                    onClick={() => setOpen((value) => !value)}
-                >
-                    {open ? (
-                        <X className="size-5" />
-                    ) : (
-                        <Menu className="size-5" />
-                    )}
-                </button>
+                <div className="flex items-center gap-2 lg:hidden">
+                    <BudgetLink
+                        onClick={close}
+                        className="inline-flex h-11 items-center rounded-md bg-white px-4 text-sm font-semibold text-slate-900"
+                    >
+                        Orçamento
+                    </BudgetLink>
+                    <button
+                        type="button"
+                        aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+                        aria-expanded={open}
+                        aria-controls="menu-movel"
+                        className="grid size-11 place-items-center rounded-md border border-white/15"
+                        onClick={() => setOpen((value) => !value)}
+                    >
+                        {open ? (
+                            <X className="size-5" />
+                        ) : (
+                            <Menu className="size-5" />
+                        )}
+                    </button>
+                </div>
             </div>
 
             {open && (
@@ -178,13 +221,12 @@ export function SiteHeader() {
                             {user ? 'Minha conta' : 'Entrar'}
                         </Link>
                     </div>
-                    <Link
-                        href="/contato#formulario"
+                    <BudgetLink
                         onClick={close}
                         className="mt-4 flex h-11 items-center justify-center rounded-md bg-white text-sm font-semibold text-slate-900"
                     >
-                        Falar sobre um projeto
-                    </Link>
+                        Solicitar orçamento
+                    </BudgetLink>
                 </nav>
             )}
         </header>

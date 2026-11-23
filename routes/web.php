@@ -29,36 +29,40 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SiteRequestController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WhatsappInboxController;
+use App\Http\Middleware\CaptureVisitOrigin;
 use App\Support\PublicPages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', [SiteController::class, 'home'])->name('home');
-Route::get('sistemas', [SiteController::class, 'systems'])->name('sistemas');
-// O VetorPet passou a se chamar VetorSales.
-Route::redirect('sistemas/vetorpet', '/sistemas/vetorsales', 301);
-Route::get('sistemas/{product}', [SiteController::class, 'system'])
-    ->whereIn('product', array_keys(PublicPages::PRODUCTS))
-    ->name('sistemas.show');
-Route::redirect('produtos', '/sistemas', 301);
-Route::get('servicos', [SiteController::class, 'services'])->name('servicos');
-foreach (array_keys(PublicPages::SERVICES) as $serviceSlug) {
-    Route::get($serviceSlug, [SiteController::class, 'service'])
-        ->name($serviceSlug === 'desenvolvimento-de-sites-para-empresas' ? 'company-websites' : 'servicos.'.$serviceSlug);
-}
-Route::get('sobre', [SiteController::class, 'about'])->name('sobre');
-Route::get('contato', [ContactController::class, 'create'])->name('contato');
-Route::post('contato', [ContactController::class, 'store'])->middleware('throttle:5,1')->name('contato.store');
-Route::get('politica-de-privacidade', [SiteController::class, 'legal'])->defaults('page', 'privacidade')->name('legal.privacidade');
-Route::get('termos-de-uso', [SiteController::class, 'legal'])->defaults('page', 'termos')->name('legal.termos');
-Route::get('politica-de-cookies', [SiteController::class, 'legal'])->defaults('page', 'cookies')->name('legal.cookies');
+// Páginas públicas: registram a origem da visita (UTM e indicação) para o formulário comercial.
+Route::middleware(CaptureVisitOrigin::class)->group(function () {
+    Route::get('/', [SiteController::class, 'home'])->name('home');
+    Route::get('sistemas', [SiteController::class, 'systems'])->name('sistemas');
+    // O VetorPet passou a se chamar VetorSales.
+    Route::redirect('sistemas/vetorpet', '/sistemas/vetorsales', 301);
+    Route::get('sistemas/{product}', [SiteController::class, 'system'])
+        ->whereIn('product', array_keys(PublicPages::PRODUCTS))
+        ->name('sistemas.show');
+    Route::redirect('produtos', '/sistemas', 301);
+    Route::get('servicos', [SiteController::class, 'services'])->name('servicos');
+    foreach (array_keys(PublicPages::SERVICES) as $serviceSlug) {
+        Route::get($serviceSlug, [SiteController::class, 'service'])
+            ->name($serviceSlug === 'desenvolvimento-de-sites-para-empresas' ? 'company-websites' : 'servicos.'.$serviceSlug);
+    }
+    Route::get('sobre', [SiteController::class, 'about'])->name('sobre');
+    Route::get('contato', [ContactController::class, 'create'])->name('contato');
+    Route::post('contato', [ContactController::class, 'store'])->middleware('throttle:site-contact')->name('contato.store');
+    Route::get('politica-de-privacidade', [SiteController::class, 'legal'])->defaults('page', 'privacidade')->name('legal.privacidade');
+    Route::get('termos-de-uso', [SiteController::class, 'legal'])->defaults('page', 'termos')->name('legal.termos');
+    Route::get('politica-de-cookies', [SiteController::class, 'legal'])->defaults('page', 'cookies')->name('legal.cookies');
+    Route::get('blog', [PublicBlogController::class, 'index'])->name('blog.index');
+    Route::get('blog/{post:slug}', [PublicBlogController::class, 'show'])->name('blog.show');
+});
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('sitemaps/{part}.xml', [SitemapController::class, 'part'])->whereNumber('part')->name('sitemap.part');
 Route::get('robots.txt', RobotsController::class)->name('robots');
 Route::get('{key}.txt', IndexNowKeyController::class)->where('key', '[a-f0-9]{32}')->name('indexnow.key');
-Route::get('blog', [PublicBlogController::class, 'index'])->name('blog.index');
-Route::get('blog/{post:slug}', [PublicBlogController::class, 'show'])->name('blog.show');
 Route::get('area-restrita', function (Request $request) {
     if (! $request->user()) {
         return redirect()->guest(route('login'));
@@ -91,6 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('solicitacoes', [SiteRequestController::class, 'index'])->name('solicitacoes.index');
         Route::get('solicitacoes/{solicitacao}', [SiteRequestController::class, 'show'])->name('solicitacoes.show');
         Route::patch('solicitacoes/{solicitacao}/situacao', [SiteRequestController::class, 'updateStatus'])->name('solicitacoes.status');
+        Route::post('solicitacoes/{solicitacao}/observacoes', [SiteRequestController::class, 'storeNote'])->name('solicitacoes.notes');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);
 
         Route::post('testimonials/images', TestimonialImageController::class)->name('testimonials.images.store');

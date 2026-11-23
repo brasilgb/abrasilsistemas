@@ -22,8 +22,7 @@ export default function PoliticaDeCookies() {
                         Política de Cookies
                     </h1>
                     <p className="mt-3 text-sm text-slate-500">
-                        Última atualização:{' '}
-                        {new Date().toLocaleDateString('pt-BR')}.
+                        Última atualização: 23/11/2026.
                     </p>
 
                     <div className="prose prose-slate mt-10 max-w-none space-y-6 text-sm leading-7 text-slate-700 sm:text-base">

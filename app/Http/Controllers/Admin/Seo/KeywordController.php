@@ -29,6 +29,7 @@ class KeywordController extends Controller
         'page:sistema:vetoros' => 'produtos',
         'page:sistema:vetorsales' => 'produtos',
         'page:sistema:vetorleads' => 'produtos',
+        'page:sistema:vetorsmart' => 'produtos',
         'page:home' => 'institucional',
         'page:sobre' => 'institucional',
         'page:contato' => 'institucional',
@@ -41,7 +42,7 @@ class KeywordController extends Controller
         'desenvolvimento' => ['Sistemas sob medida', 'Sistemas de gestão empresarial', 'Modernização de sistemas legados'],
         'automacao' => ['Automação de processos empresariais', 'Integração de APIs', 'Integração entre sistemas'],
         'web_mobile' => ['Sites institucionais', 'Landing pages', 'Aplicativos empresariais'],
-        'produtos' => ['VetorOS', 'VetorSales', 'VetorLeads'],
+        'produtos' => ['VetorOS', 'VetorSales', 'VetorLeads', 'VetorSmart'],
         'seo' => ['SEO técnico', 'Performance de sites', 'SEO para sites empresariais'],
     ];
 

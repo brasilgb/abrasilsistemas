@@ -6,6 +6,8 @@ use App\Http\Requests\PublicContactRequest;
 use App\Mail\ContactFormReceived;
 use App\Models\Lead;
 use App\Services\Seo\StructuredData;
+use App\Services\SiteRequestIntake;
+use App\Services\VisitOrigin;
 use App\Services\WhatsappInbox;
 use App\Support\Seo;
 use Illuminate\Http\RedirectResponse;
@@ -29,40 +31,27 @@ class ContactController extends Controller
         ]);
     }
 
-    public function store(PublicContactRequest $request, WhatsappInbox $inbox): RedirectResponse
+    public function store(PublicContactRequest $request, SiteRequestIntake $intake, VisitOrigin $origin, WhatsappInbox $inbox): RedirectResponse
     {
-        $data = $request->safe()->except('website_hp');
-        $duplicate = Lead::findSiteRequestDuplicate($data);
+        try {
+            ['lead' => $lead, 'resubmission' => $resubmission] = $intake->store(
+                $request->safe()->except(['website_hp', 'marketing_consent']),
+                $origin->current($request),
+                $request->boolean('marketing_consent'),
+            );
+        } catch (\Throwable $e) {
+            report($e);
 
-        if ($duplicate === null) {
-            $lead = Lead::query()->create([
-                ...$data,
-                'status' => 'new',
-                'request_status' => 'new',
-                'source' => Lead::SOURCE_SITE,
-            ]);
-        } else {
-            // A mesma pessoa voltou a escrever: a solicitação reabre como nova, com a mensagem anexada.
-            $lead = $duplicate;
-            $lead->forceFill([
-                'request_status' => 'new',
-                'source_page' => $lead->source_page ?? $data['source_page'] ?? null,
-                'last_contacted_at' => now(),
-                'notes' => trim(implode(PHP_EOL.PHP_EOL, array_filter([
-                    $lead->notes,
-                    '[Novo contato pelo site em '.now()->format('d/m/Y H:i').']'.PHP_EOL.$data['notes'],
-                ]))),
-            ])->save();
-
-            $lead->activities()->create([
-                'type' => 'note',
-                'contacted_at' => now(),
-                'description' => 'Novo contato recebido pelo formulário do site: '.$data['notes'],
+            return back()->withInput($request->except('website_hp'))->withErrors([
+                'form' => 'Não foi possível registrar sua mensagem agora. Tente novamente em instantes ou escreva para '.config('contact.email').'.',
             ]);
         }
 
-        $inbox->linkSiteRequest($lead);
-        $this->notifyTeam($lead);
+        // Daqui em diante a solicitação já está gravada: falhas não podem virar erro para o visitante.
+        if (! $resubmission) {
+            rescue(fn () => $inbox->linkSiteRequest($lead));
+            $this->notifyTeam($lead, $request->string('product')->toString(), $request->string('notes')->toString());
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -77,10 +66,10 @@ class ContactController extends Controller
      * already saved regardless, so a mail failure (bad SMTP
      * credentials, provider outage) must not break the visitor's submission.
      */
-    private function notifyTeam(Lead $lead): void
+    private function notifyTeam(Lead $lead, string $product, string $message): void
     {
         try {
-            Mail::to(config('contact.email'))->queue(new ContactFormReceived($lead));
+            Mail::to(config('contact.email'))->queue(new ContactFormReceived($lead, $product, $message));
         } catch (\Throwable $e) {
             Log::error('Falha ao enviar e-mail de notificação de contato.', [
                 'lead_id' => $lead->id,

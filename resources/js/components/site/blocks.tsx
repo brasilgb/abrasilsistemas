@@ -317,7 +317,11 @@ export function FaqList({
                                 className={`size-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                             />
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="pb-5 text-[15px] leading-7 text-slate-600">
+                        {/* forceMount: a resposta fechada continua no HTML (buscadores e busca na página). */}
+                        <CollapsibleContent
+                            forceMount
+                            className="pb-5 text-[15px] leading-7 text-slate-600 data-[state=closed]:hidden"
+                        >
                             {item.answer}
                         </CollapsibleContent>
                     </Collapsible>

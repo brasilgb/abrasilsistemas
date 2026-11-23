@@ -14,6 +14,10 @@ return [
     // Homologação: true bloqueia a indexação (robots.txt Disallow: / e noindex em todas as páginas).
     'block_indexing' => (bool) env('SEO_BLOCK_INDEXING', false),
 
+    // HTML inicial das páginas públicas, gerado no build (scripts/prerender.mjs). false volta ao HTML vazio.
+    'prerender' => (bool) env('SEO_PRERENDER', true),
+    'prerender_path' => public_path('build/prerender'),
+
     'sitemap_limit' => 45000,
 
     'audit' => [

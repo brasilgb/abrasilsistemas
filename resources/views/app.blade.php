@@ -41,6 +41,12 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700&display=swap" rel="stylesheet">
 
+        {{-- A imagem principal só seria descoberta depois do JavaScript: o preload antecipa o LCP. --}}
+        @php $heroKey = \App\Support\PublicPages::heroForPath(request()->path()); @endphp
+        @if ($heroKey)
+            <link rel="preload" as="image" type="image/avif" fetchpriority="high" imagesizes="100vw" imagesrcset="@foreach ([640, 1280, 1920] as $heroWidth)/images/site/heroes/{{ $heroKey }}-{{ $heroWidth }}.avif {{ $heroWidth }}w{{ $loop->last ? '' : ', ' }}@endforeach">
+        @endif
+
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         @php $seo = $page['props']['seo'] ?? []; @endphp
@@ -105,7 +111,13 @@
         @endif
     </head>
     <body class="font-sans antialiased">
-        <x-inertia::app />
+        @php $prerendered = rescue(fn () => app(\App\Services\Prerender::class)->html($page)); @endphp
+        @if ($prerendered !== null)
+            {{-- Mesma estrutura do x-inertia::app, com o conteúdo da página já no HTML. --}}
+            <script data-page="app" type="application/json">{!! json_encode($page, JSON_HEX_TAG) !!}</script><div id="app">{!! $prerendered !!}</div>
+        @else
+            <x-inertia::app />
+        @endif
         @if (request()->routeIs('home', 'sistemas*', 'servicos*', 'company-websites', 'sobre', 'contato', 'blog.*', 'legal.*')
             && preg_match('/^[A-Za-z0-9]{48}$/', (string) config('services.vetorchat.widget_key'))
             && str_starts_with((string) config('services.vetorchat.script_url'), 'https://'))

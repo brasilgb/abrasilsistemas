@@ -19,6 +19,7 @@ export type HeroImageKey =
     | 'vetoros'
     | 'vetorsales'
     | 'vetorleads'
+    | 'vetorsmart'
     | 'sobre'
     | 'contato'
     | 'seo';
@@ -87,6 +88,11 @@ export const heroImages: Record<HeroImageKey, HeroImage> = {
         key: 'vetorleads',
         alt: 'Profissional sorridente trabalhando em um notebook em um escritório iluminado, com plantas ao fundo',
         position: '70% center',
+    },
+    vetorsmart: {
+        key: 'vetorsmart',
+        alt: 'Símbolo do VetorSmart, uma letra V azul com pontos conectados, sobre fundo azul-escuro',
+        position: '85% center',
     },
     sobre: {
         key: 'sobre',

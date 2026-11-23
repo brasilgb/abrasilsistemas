@@ -14,6 +14,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -57,6 +58,18 @@ return Application::configure(basePath: dirname(__DIR__))
             return Inertia::render('errors/404')
                 ->toResponse($request)
                 ->setStatusCode(404);
+        });
+
+        // Sessão expirada com o formulário do site aberto: o visitante recebe o aviso no próprio formulário,
+        // sem perder o que escreveu, e o próximo envio já sai com o token novo.
+        $exceptions->render(function (HttpException $e, Request $request): ?SymfonyResponse {
+            if ($e->getStatusCode() !== 419 || ! $request->is('contato')) {
+                return null;
+            }
+
+            return back()->withInput($request->except(['website_hp', '_token']))->withErrors([
+                'form' => 'A página ficou aberta por muito tempo. Confira os dados e envie novamente.',
+            ]);
         });
 
         // Página removida de propósito (redirecionamento 410 no painel de SEO).
