@@ -10,7 +10,7 @@ Data: 23/11/2026. O `correio.md` é diferente do anterior (o último executado f
 |---|---|
 | Código | `effa997` (COMERCIAL-01 e 02), fast-forward sobre o `84ad8c8` que estava no ar |
 | Ajuste junto | `Dockerfile`: upload de 5 MB no PHP, já em produção desde a manhã e agora commitado |
-| Branch | `site/vetorsales-vetorleads`. O `main` **não** foi alterado (ver pendência 1) |
+| Branch | `site/vetorsales-vetorleads` e `main`, por fast-forward (o `main` foi avançado depois, a pedido) |
 | Containers recriados | `abrasilsistema`, `-worker` e `-scheduler`. Nenhum outro produto foi recriado |
 | Transição | cerca de 5 s entre recriar, migrar e recarregar o nginx |
 
@@ -46,19 +46,19 @@ Aplicadas, 0 pendentes: `2026_11_23_120000_add_commercial_origin_to_leads_table`
 | Conteúdo sem JavaScript | home 1.111 palavras, VetorOS 588, contato 241; nenhum marcador sem preencher |
 | robots.txt e sitemap | abertos e coerentes |
 | `seo:check --live` | tudo aprovado, "Pronto para indexação" |
-| `site:preflight` | aprovado, com 5 avisos (seção 6) |
+| `site:preflight` | aprovado, com 5 avisos (3 depois do ajuste da seção 6) |
 | Página inexistente | 404 |
 | `/solicitacoes` sem login | redireciona para `/login` |
 | Imagem enviada (`/storage`) | 200 |
 | Widget VetorChat | script presente nas 35 páginas públicas verificadas e respondendo 200 |
 | VetorOS, VetorLeads, VetorSales, VetorSmart, Desgarrados, n8n, WAHA | mesmos códigos de antes |
 
-**Envio de homologação (um só):** solicitação nº 123, "HOMOLOGACAO COMERCIAL-03", com o próprio e-mail da empresa. Confirmação na tela, gravação com UTM e página de entrada, e o worker concluiu o `ContactFormReceived` em 2 s, aceito pelo SMTP. Ela está em **Novo contato** e pode ser arquivada pelo painel.
+**Envio de homologação (um só):** solicitação nº 123, "HOMOLOGACAO COMERCIAL-03", com o próprio e-mail da empresa. Confirmação na tela, gravação com UTM e página de entrada, e o worker concluiu o `ContactFormReceived` em 2 s, aceito pelo SMTP. Depois foi **arquivada** pelo servidor, com registro no histórico (sem usuário, porque não houve login).
 
 ## 6. SEO e dados institucionais
 
 - As configurações gravadas no painel **prevalecem** sobre o código. Nenhuma página tem metadados próprios no banco, e a home já exibe o título novo.
-- Diferem do padrão atual: `default_title` ("Software, sistemas e integração para empresas") e `default_description`, que **ainda cita o VetorPet**. Só valem como reserva para páginas sem título próprio. Não foram alterados; revisar em Painel → SEO → Configurações.
+- `default_title` e `default_description` gravados no banco estavam desatualizados (a descrição citava o VetorPet). Foram igualados ao padrão atual, com os valores anteriores no histórico de alterações de SEO. Os demais campos não mudaram.
 - Pré-render (conferido no código): contato e dados institucionais são preenchidos a cada requisição. Textos de serviços e produtos mudam só em novo build. Depoimentos, portfólio e últimos artigos da home dependem de JavaScript.
 - Nada foi presumido. Razão social, CNPJ, município/UF e horário estão vazios e não aparecem; a área de atendimento usa o padrão "Brasil".
 - **Para preencher:** Painel → SEO → Configurações: razão social, CNPJ (validado), município e UF (só publicados se a opção for marcada), área de atendimento, e-mail, telefone e horário.
@@ -66,13 +66,13 @@ Aplicadas, 0 pendentes: `2026_11_23_120000_add_commercial_origin_to_leads_table`
 
 ## 7. Pendências
 
-1. **`main`:** decidir se avança para esta versão (`git push origin site/vetorsales-vetorleads:main`, fast-forward).
-2. **Repositório da infra:** `nginx/conf.d/apps.conf` está aplicado, mas sem commit. Depende da montagem em `docker-compose.yml`, que tem outras alterações pendentes de outros produtos; o ponteiro do submódulo também não foi atualizado.
-3. **Caixa de entrada:** confirmar a chegada do e-mail em `contato@abrasilsistemas.com.br` (o servidor aceitou; a caixa não foi consultada).
-4. **Painel de Solicitações:** abrir a nº 123, testar filtros e observação, e arquivar. Exige login.
-5. **Celular e widget no navegador:** não verificados. O navegador headless na VPS foi bloqueado pelo controle de permissões. Só foram conferidos viewport, HTML e carregamento do script.
-6. Preencher dados institucionais e revisar título e descrição padrão de SEO.
-7. Decidir sobre HSTS e sobre as 2 tarefas antigas com falha.
+Resolvidos depois da publicação: `main` avançado, nginx e montagem de `/storage` commitados na infra (só as linhas deste site), título e descrição padrão de SEO, e arquivamento da nº 123.
+
+1. **Caixa de entrada:** confirmar a chegada do e-mail em `contato@abrasilsistemas.com.br` (o servidor aceitou; a caixa não foi consultada).
+2. **Painel de Solicitações:** abrir no navegador e testar filtros e observação. Exige login.
+3. **Celular e widget no navegador:** não verificados. O navegador headless na VPS foi bloqueado pelo controle de permissões. Só foram conferidos viewport, HTML e carregamento do script.
+4. **Dados institucionais:** dependem de informação da empresa.
+5. Decidir sobre HSTS e sobre as 2 tarefas antigas com falha.
 
 ## Não executado
 
