@@ -1,105 +1,79 @@
-# Execução de `correio.md` — ABRASIL-COMERCIAL-02 (conversão, SEO e preparação para divulgação)
+# Execução de `correio.md`: ABRASIL-COMERCIAL-03 (publicação e ativação comercial)
 
-Data: 23/11/2026. O `correio.md` é diferente do anterior (o último executado foi ABRASIL-COMERCIAL-01) e foi executado.
-**Só no projeto local:** sem commit, push, deploy, containers, dependências novas ou alteração de outros sistemas. O VetorLeads e a infra foram apenas lidos.
+Data: 23/11/2026. O `correio.md` é diferente do anterior (o último executado foi ABRASIL-COMERCIAL-02) e foi executado.
 
-**Situação:** código integrado ao `origin/main` (`84ad8c8`) e pronto para uma publicação controlada, sem commit. A divulgação ainda depende das pendências 1 a 4.
+**Situação: publicada em produção e funcionando**, com formulário e notificação testados. Ficam pendentes verificações que exigem login, caixa de e-mail ou navegador (seção 7).
 
-> **Correção:** a primeira versão deste relatório dava o código como pronto sem tê-lo comparado com o `main` do GitHub, que tinha 10 commits a mais.
+## 1. Versão publicada
 
-## Integração com o `main`
-
-A branch local avançou até o `origin/main` (sem commit novo) e o trabalho foi reaplicado por cima. Oito conflitos resolvidos:
-
-| Arquivo | Resolução |
+| Item | Valor |
 |---|---|
-| `welcome.tsx`, `contato.tsx` | Estrutura da COMERCIAL-01/02 com as cores do `main` |
-| `blog/index.tsx` | Ícone e cores do `main`; SEO vindo do painel |
-| `blog/show.tsx` | Chamada para serviço e orçamento, com as cores do `main` (sai o link de WhatsApp) |
-| `home-carousel.tsx` | Removido: a home usa o hero fixo, então os ajustes do `main` nesse carrossel deixam de valer |
-| `BlogSeoDraftsCommand.php` | 15 pautas: as 5 de serviços do `main`, as 5 comerciais e as 5 de SEO. Sem título, endereço ou palavra-chave repetidos |
-| `correio.md`, `executed.md` | Versão atual; as anteriores ficam no histórico do Git |
+| Código | `effa997` (COMERCIAL-01 e 02), fast-forward sobre o `84ad8c8` que estava no ar |
+| Ajuste junto | `Dockerfile`: upload de 5 MB no PHP, já em produção desde a manhã e agora commitado |
+| Branch | `site/vetorsales-vetorleads`. O `main` **não** foi alterado (ver pendência 1) |
+| Containers recriados | `abrasilsistema`, `-worker` e `-scheduler`. Nenhum outro produto foi recriado |
+| Transição | cerca de 5 s entre recriar, migrar e recarregar o nginx |
 
-A paleta do `main` foi aplicada também nos arquivos novos (formulário, slider, hero e artigo no HTML inicial). Mantidos: foto do login, VetorChat à direita e rascunhos do blog.
+O commit deste relatório contém `Dockerfile`, `correio.md` e `executed.md`.
 
-## 1. Etapa anterior
+## 2. Backup e reversão
 
-COMERCIAL-01 conferida e preservada. Problemas comprovados e corrigidos:
+- Pasta: `/opt/infra-abrasil/backups/abrasilsistemas_20261123-comercial03` (checksums em `SHA256SUMS`).
+- `banco-final.sql.gz`: tirado segundos antes do deploy. `banco.sql.gz`: de minutos antes, **restaurado com sucesso** num MySQL 8.4 descartável. Também há cópias dos uploads, dos assets e das configurações.
+- As duas migrations foram aplicadas, revertidas e reaplicadas nessa cópia dos dados reais.
+- Imagens anteriores: tag `rollback-20261123-comercial03` nos três serviços.
+- **Reverter:** `migrate:rollback --step=2` com o código novo no ar; restaurar as tags `rollback-20261123-comercial03` como `latest`; `docker compose up -d --no-build --no-deps` nos três serviços; `apps.conf` da pasta de backup e `nginx -s reload`.
 
-| Problema | Correção |
+## 3. Migrations
+
+Aplicadas, 0 pendentes: `2026_11_23_120000_add_commercial_origin_to_leads_table` e `2026_11_23_180000_adopt_commercial_request_statuses`. A única solicitação existente (nº 122) passou de Respondida para Em atendimento. Nenhum dado foi apagado.
+
+## 4. Ambiente e nginx
+
+- `APP_ENV=production` e `APP_DEBUG=false` já estão fixados só para este serviço no compose. A variável compartilhada não foi alterada.
+- SMTP (Hostinger, 465), fila `database` e worker funcionando.
+- nginx, **somente** no bloco HTTPS de `abrasilsistemas.com.br`: gzip em HTML, CSS, JS, JSON e XML; cache de 1 ano (`immutable`) em `/build/assets/`; HTML mantém `no-cache, private`; `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`; `X-Powered-By` removido.
+- Home: 73.949 bytes sem compressão, 16.158 com gzip.
+- HTTP e `www` redirecionam (301) para o domínio canônico em HTTPS.
+- HSTS não foi ligado: é difícil de desfazer e depende de decisão.
+
+## 5. Verificações no domínio público
+
+| Item | Resultado |
 |---|---|
-| Quem informasse o e-mail ou telefone de outra pessoa reabria a solicitação dela, trocava o serviço e completava os contatos | Nova regra de deduplicação (§2) |
-| Uma campanha posterior se misturava com a indicação que trouxe a pessoa | Vale a primeira origem identificada, por inteiro |
-| Respostas fechadas das perguntas frequentes não existiam no HTML | Continuam no HTML, ocultas |
-| Campos com letra menor que 16 px (o iPhone dá zoom ao tocar) | 16 px na lista de serviços e na mensagem |
+| 32 URLs do sitemap e 3 páginas legais | todas 200, com um H1, canonical correto e viewport |
+| Dados estruturados | JSON-LD válido nas 32 URLs do sitemap. As páginas legais são `noindex` e não têm JSON-LD |
+| Conteúdo sem JavaScript | home 1.111 palavras, VetorOS 588, contato 241; nenhum marcador sem preencher |
+| robots.txt e sitemap | abertos e coerentes |
+| `seo:check --live` | tudo aprovado, "Pronto para indexação" |
+| `site:preflight` | aprovado, com 5 avisos (seção 6) |
+| Página inexistente | 404 |
+| `/solicitacoes` sem login | redireciona para `/login` |
+| Imagem enviada (`/storage`) | 200 |
+| Widget VetorChat | script presente nas 35 páginas públicas verificadas e respondendo 200 |
+| VetorOS, VetorLeads, VetorSales, VetorSmart, Desgarrados, n8n, WAHA | mesmos códigos de antes |
 
-## 2. Captação e painel comercial
+**Envio de homologação (um só):** solicitação nº 123, "HOMOLOGACAO COMERCIAL-03", com o próprio e-mail da empresa. Confirmação na tela, gravação com UTM e página de entrada, e o worker concluiu o `ContactFormReceived` em 2 s, aceito pelo SMTP. Ela está em **Novo contato** e pode ser arquivada pelo painel.
 
-- **Deduplicação:** o envio só entra numa solicitação em aberto que já tenha todos os contatos informados, e vira linha do histórico, sem mudar nome, contatos, serviço, origem ou situação. A única exceção é o consentimento para novidades, registrado se a pessoa marcar a opção. Com dado diferente, ou depois de ganha, perdida ou arquivada, abre outra; o painel mostra as relacionadas. A resposta ao visitante é igual nos dois casos.
-- **Situações:** Novo contato, Em atendimento, Proposta enviada, Negociação, Ganho, Perdido (com motivo) e Arquivada. Migration: Respondida → Em atendimento; Concluída → Arquivada (nenhuma venda presumida), reversível.
-- **Filtros:** origem (grupo ou campanha), serviço, data (horário de Brasília) e situação; contadores acompanham.
-- **Observações e histórico** com autor e data. Solicitações com novo contato sobem na lista.
-- **Acesso:** visitante vai para o login, leitor recebe 403 e prospect antigo, 404 (testado em todas as rotas).
-- **Mantidos:** e-mail ou telefone obrigatório e confirmação na tela após gravar. Sessão expirada agora vira aviso no formulário. O e-mail à equipe traz a mensagem daquele envio.
-- Foi usado o painel existente; não há segundo CRM.
+## 6. SEO e dados institucionais
 
-## 3. Conversão
+- As configurações gravadas no painel **prevalecem** sobre o código. Nenhuma página tem metadados próprios no banco, e a home já exibe o título novo.
+- Diferem do padrão atual: `default_title` ("Software, sistemas e integração para empresas") e `default_description`, que **ainda cita o VetorPet**. Só valem como reserva para páginas sem título próprio. Não foram alterados; revisar em Painel → SEO → Configurações.
+- Pré-render (conferido no código): contato e dados institucionais são preenchidos a cada requisição. Textos de serviços e produtos mudam só em novo build. Depoimentos, portfólio e últimos artigos da home dependem de JavaScript.
+- Nada foi presumido. Razão social, CNPJ, município/UF e horário estão vazios e não aparecem; a área de atendimento usa o padrão "Brasil".
+- **Para preencher:** Painel → SEO → Configurações: razão social, CNPJ (validado), município e UF (só publicados se a opção for marcada), área de atendimento, e-mail, telefone e horário.
+- Outros avisos do preflight: `SESSION_SECURE_COOKIE` não está definido (os cookies já saem com `secure`) e 2 tarefas com falha de 15 e 16/10, por senha SMTP recusada na época. Não foram reenviadas nem apagadas.
 
-- Celular: botão "Orçamento" sempre visível no cabeçalho, que rola até o formulário da página; o formulário aparece antes das etapas de contratação.
-- `/servicos` e `/sistemas` ganharam formulário e processo de contratação. Produtos ganharam links para sob medida e integrações.
-- Quatro textos com promessa absoluta ou vaga foram ajustados. As páginas de serviço já tinham problema, benefícios, solução, processo e chamada.
+## 7. Pendências
 
-## 4. SEO e HTML inicial
+1. **`main`:** decidir se avança para esta versão (`git push origin site/vetorsales-vetorleads:main`, fast-forward).
+2. **Repositório da infra:** `nginx/conf.d/apps.conf` está aplicado, mas sem commit. Depende da montagem em `docker-compose.yml`, que tem outras alterações pendentes de outros produtos; o ponteiro do submódulo também não foi atualizado.
+3. **Caixa de entrada:** confirmar a chegada do e-mail em `contato@abrasilsistemas.com.br` (o servidor aceitou; a caixa não foi consultada).
+4. **Painel de Solicitações:** abrir a nº 123, testar filtros e observação, e arquivar. Exige login.
+5. **Celular e widget no navegador:** não verificados. O navegador headless na VPS foi bloqueado pelo controle de permissões. Só foram conferidos viewport, HTML e carregamento do script.
+6. Preencher dados institucionais e revisar título e descrição padrão de SEO.
+7. Decidir sobre HSTS e sobre as 2 tarefas antigas com falha.
 
-Necessidade medida: **0 palavras, 0 títulos e 0 links** no corpo de todas as páginas sem JavaScript.
+## Não executado
 
-| Página | Antes | Agora (palavras) |
-|---|---|---|
-| `/` | 0 | 1.109 |
-| `/desenvolvimento-de-sistemas` | 0 | 894 |
-| `/seo-tecnico-e-otimizacao-de-sites` | 0 | 1.283 |
-| `/sistemas/vetoros` | 0 | 586 |
-| `/contato` | 0 | 239 |
-
-- Solução: 19 páginas e a moldura do blog são pré-renderizadas **no build**, com Vite e React já existentes. Nenhum Node em execução, mesmo HTML para pessoas e robôs. `SEO_PRERENDER=false` desliga. Artigos e listagem do blog saem do banco, sanitizados.
-- Sitemap (17 URLs no banco local), canonical, robots e JSON-LD conferidos com `seo:check`: corretos. Só falham os itens de domínio/HTTPS, esperados em `localhost`.
-- Comparação das alternativas em `docs/publicacao.md`.
-
-## 5. SEO regional e institucional
-
-Painel → SEO → Configurações: nome comercial, razão social, CNPJ (validado, inclusive alfanumérico), município e UF, região atendida, e-mail, telefone e horário. Aparecem no rodapé, contato, termos e JSON-LD; vazio não aparece. **Município só é publicado se a opção for marcada** e não há campo de rua. Nada foi preenchido nem inventado. O e-mail do painel agora é o exibido no site.
-
-## 6. VetorLeads
-
-Contrato em `docs/integracao-vetorleads.md`: dados, token por tenant, idempotência, falhas e isolamento. Nada implementado; o formulário segue independente.
-
-## 7. Publicação
-
-- `docs/publicacao.md`: backup, migrations, publicação, conferência e reversão.
-- Novo `php artisan site:preflight` (só leitura): migrations, assets, ambiente, e-mail, fila, formulário e SEO gravado no banco.
-- Local: nenhuma migration pendente e assets compilados. O preflight local aponta ambiente de desenvolvimento, SMTP sem credenciais e 1 tarefa parada na fila, porque não há worker local.
-
-## Verificações
-
-- Pest: **326 testes passaram** (34 a mais), repetidos depois da integração com o `main`. A contagem de pautas no teste passou de 10 para 15.
-- Depois da integração: 11 páginas em 390 e 1366 px sem rolagem horizontal e sem erros de JavaScript, com o azul da marca nos botões, e envio do formulário com confirmação.
-- TypeScript, ESLint dos arquivos alterados, Pint e build: passaram. PHPStan: sem erros nos serviços novos; 20 avisos em `Lead.php` e `SiteRequestController.php`, da mesma família de tipos de modelo (relações sem tipo declarado), parte deles em linhas novas do controller.
-- Migration nova no MySQL local: aplicada, revertida e reaplicada; a conversão de dados foi testada com registros em SQLite.
-- Navegador (Chromium, banco descartável): 11 páginas em 390 e 1366 px sem rolagem horizontal, um H1, sem erros de JavaScript e CLS de até 0,001; página sem JavaScript; envio com confirmação; filtro, mudança de situação e observação no painel. Depois do ajuste final do formulário, 6 páginas foram conferidas de novo.
-- **Não verificado:** servidor de produção, entrega real de e-mail, build da imagem Docker, artigos reais do blog, Core Web Vitals em campo. O aviso de sessão expirada foi testado só por teste automatizado: no navegador o envio foi aceito mesmo sem os cookies, pela conferência de origem do Laravel.
-
-## Pendências
-
-1. **Autorizar a publicação** e seguir `docs/publicacao.md`. A migration precisa rodar logo após recriar o container, senão o formulário não grava.
-2. **`APP_ENV` na infra:** o compose usa `local` se a variável não existir. Conferir `production` na VPS (variável comum a todos os sistemas).
-3. **Enviar um contato real em produção** para confirmar SMTP e worker.
-4. **Preencher dados institucionais** e revisar títulos gravados no banco em produção, que prevalecem sobre os novos.
-5. **Compressão:** o nginx não aplica gzip nem cache longo aos assets deste site (o VetorOS tem). Com o HTML maior (78 KB na home, sem gzip), vale copiar a configuração; é arquivo da infra, fora do escopo.
-6. Primeira origem vale por sessão (120 min). Guardá-la por mais tempo exigiria cookie de marketing com consentimento.
-7. Na home, depoimentos, portfólio e últimos artigos ainda dependem de JavaScript.
-8. Integração com o VetorLeads: endpoint a ser criado lá.
-
-## Arquivos principais
-
-- Novos: `app/Services/{Prerender,CompanyProfile}.php`, `app/Rules/Cnpj.php`, `SitePreflightCommand.php`, migration `2026_11_23_180000`, `scripts/prerender.mjs`, `resources/js/prerender/`, `resources/views/prerender/`, `docs/{publicacao,integracao-vetorleads}.md`, `PrerenderTest`, `CompanyProfileTest`.
-- Alterados: `SiteRequestIntake`, `VisitOrigin`, `Lead`, `SiteRequestController`, `ContactController`, `ContactFormReceived`, `SeoSettings`, `StructuredData`, `SettingsController`, `bootstrap/app.php`, `app.blade.php`, `package.json` (script de build), telas de Solicitações, configurações de SEO, cabeçalho, rodapé, formulário e `public/build/`.
+A suíte de testes não foi repetida, conforme o pedido. Reenvio duplicado e falha de SMTP não foram provocados em produção.

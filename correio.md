@@ -1,123 +1,97 @@
-# ABRASIL-COMERCIAL-02 — Conversão, SEO e preparação para divulgação
+# ABRASIL-COMERCIAL-03 — Publicação e ativação comercial
 
 **Projeto:** ABrasilSistemas  
-**Diretório:** localizar o projeto existente na infraestrutura Laravel.  
-**Objetivo:** concluir os ajustes comerciais e técnicos necessários para iniciar a captação de clientes.
+**Domínio:** abrasilsistemas.com.br  
+**Ambiente:** VPS Hostinger KVM 4
 
-## 1. Consolidar a etapa anterior
+## Objetivo
 
-Verificar a implementação da ABRASIL-COMERCIAL-01.
+Publicar as melhorias das etapas COMERCIAL-01 e COMERCIAL-02, validar o funcionamento real e preparar o site para divulgação e captação de clientes.
 
-Preservar os recursos entregues e não refazer telas ou componentes já funcionais.
+## 1. Preparação
 
-Corrigir apenas problemas comprovados.
+- Conferir Git e alterações locais.
+- Consolidar exclusivamente os arquivos relacionados à ABrasilSistemas.
+- Inspecionar `docs/publicacao.md`.
+- Verificar migrations pendentes e compatibilidade com o banco de produção.
+- Verificar backup do banco e possibilidade de reversão.
+- Conferir a configuração real de `APP_ENV`, sem alterar a variável compartilhada de outros produtos.
+- Verificar SMTP, filas e workers.
 
-## 2. Revisão da captação comercial
+Não apagar dados existentes.
 
-Auditar o fluxo de Solicitações:
+## 2. Publicação
 
-- Impedir acesso não autorizado às solicitações existentes.
-- Garantir que a deduplicação não exponha nem sobrescreva dados de terceiros.
-- Preservar a primeira origem comercial de forma confiável.
-- Manter e-mail OU telefone obrigatório.
-- Confirmar que o cliente recebe feedback após enviar a solicitação.
-- Melhorar o painel comercial com filtros de origem, serviço, data e situação.
-- Permitir acompanhamento de novos contatos, atendimento, proposta enviada, negociação, ganho e perdido.
-- Registrar observações e histórico das alterações comerciais.
+**Autorizada a publicação controlada da ABrasilSistemas**, desde que o backup e as verificações críticas sejam concluídos satisfatoriamente.
 
-Não criar um segundo CRM caso o painel existente já atenda às necessidades.
+- Realizar commit e push exclusivamente das alterações pertinentes.
+- Atualizar a aplicação na VPS pelo procedimento existente.
+- Não reconstruir nem reiniciar outros produtos desnecessariamente.
+- Executar as migrations da ABrasilSistemas no momento correto.
+- Compilar e publicar os assets, incluindo o HTML pré-renderizado.
+- Preservar dados e configurações existentes.
 
-## 3. Melhorias de conversão
+Se houver falha crítica, interromper a publicação e documentar o motivo.
 
-Revisar as chamadas comerciais das páginas.
+## 3. Configuração nginx
 
-Cada página deve apresentar claramente:
+Conferir a configuração atual do domínio e habilitar, quando apropriado:
 
-- Problema que o serviço resolve.
-- Benefícios concretos.
-- Solução oferecida.
-- Processo de contratação.
-- Chamada para solicitar orçamento.
+- Compressão gzip para HTML, CSS e JavaScript.
+- Cache longo para assets versionados.
+- Cache conservador para HTML.
+- Headers apropriados.
+- HTTPS e redirecionamentos.
 
-Evitar promessas genéricas ou resultados não comprovados.
+Não alterar configurações globais que afetem os outros sistemas.
 
-Garantir uma experiência especialmente boa em dispositivos móveis.
+## 4. Homologação real
 
-## 4. SEO e indexação
+Verificar no domínio público:
 
-Auditar a renderização efetiva do conteúdo no HTML inicial.
-
-Identificar quais textos são acessíveis sem execução de JavaScript.
-
-Pesquisar uma solução de prerenderização compatível com Laravel e a infraestrutura atual, sem exigir um processo Node permanente, se tecnicamente viável.
-
-Não instalar SSR ou serviços adicionais sem demonstrar necessidade.
-
-Revisar:
-
-- Sitemap e indexação.
+- Página inicial.
+- Páginas de serviços.
+- Produtos Vetor.
+- Contato.
+- Blog.
+- Formulários comerciais.
+- Painel de Solicitações.
+- Sitemap.
+- Robots.txt.
 - Canonical.
-- Metadados.
 - Dados estruturados.
-- Conteúdo principal.
-- Links internos.
-- SEO regional.
-- Desempenho das páginas públicas.
+- Conteúdo visível sem JavaScript.
+- Versão para celular.
+- Widget VetorChat.
 
-Não inventar endereço, avaliações, CNPJ ou informações institucionais.
+Realizar um envio comercial de teste identificado como homologação, verificando gravação, notificações e entrega pelo SMTP.
 
-## 5. SEO regional e institucional
+Não gerar solicitações repetitivas desnecessárias.
 
-Preparar os campos administrativos necessários para:
+## 5. SEO e informações institucionais
 
-- Nome comercial.
-- Razão social, quando aplicável.
-- CNPJ.
-- Município e UF.
-- Região atendida.
-- E-mail de contato.
-- Telefone comercial.
-- Horário de atendimento, quando informado.
+Revisar configurações de SEO armazenadas em produção.
 
-Distinguir localização física de área de atendimento.
+Verificar se prevalecem sobre os metadados atualizados.
 
-Não apresentar endereço residencial ou privado como endereço comercial público.
+Conferir o comportamento do pré-render quando informações editáveis são alteradas.
 
-## 6. Integração futura com VetorLeads
+Não preencher CNPJ, razão social, endereço ou horários com informações presumidas.
 
-Documentar o contrato necessário para um endpoint autenticado de recebimento de leads.
+Preparar o preenchimento manual dos dados institucionais.
 
-Definir estrutura de dados, autenticação, idempotência, tratamento de falhas e isolamento entre tenants.
+## 6. Encerramento
 
-Não modificar o VetorLeads nesta execução.
+Registrar em `executed.md`:
 
-O funcionamento do formulário da ABrasilSistemas deve permanecer independente dessa integração.
+- Commits e versão publicada.
+- Resultado do backup.
+- Migrations aplicadas.
+- Ajustes realizados.
+- Verificações de produção.
+- Pendências reais.
+- Situação final da publicação.
 
-## 7. Preparação da publicação
+Evitar repetir toda a suíte de testes já aprovada. Priorizar homologação funcional na VPS.
 
-Conferir:
-
-- Migrations pendentes.
-- Assets compilados.
-- Configurações de produção.
-- SEO armazenado no banco.
-- Funcionamento dos formulários.
-- Configuração de e-mail.
-- Backup e possibilidade de reversão.
-
-Não executar deploy nesta etapa.
-
-## 8. Regras
-
-- Trabalhar apenas no projeto ABrasilSistemas.
-- Não criar containers locais.
-- Não alterar outros sistemas.
-- Não adicionar dependências desnecessárias.
-- Executar somente testes pertinentes às alterações.
-- Não insistir em testes de navegador que falhem por limitações do ambiente.
-- Não repetir toda a suíte de testes sem necessidade.
-- Priorizar implementação funcional em vez de auditorias repetitivas.
-- Não efetuar commit, push ou deploy sem autorização.
-- Registrar resultados e pendências em `executed.md`.
-
-**Critério de conclusão:** site preparado tecnicamente para uma publicação controlada e início da divulgação comercial.
+**Critério de aceite:** ABrasilSistemas publicada, acessível, com formulários funcionando, notificações verificadas e páginas preparadas para indexação.

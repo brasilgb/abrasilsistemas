@@ -22,6 +22,8 @@ RUN npm run build
 FROM php:8.4-fpm
 RUN apt-get update && apt-get install -y --no-install-recommends git curl libpng-dev libonig-dev libxml2-dev libzip-dev zip unzip && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache && rm -rf /var/lib/apt/lists/*
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Acompanha a validação de imagens do admin (max:5120 KB); o padrão do PHP é 2M.
+RUN printf 'upload_max_filesize=5M\npost_max_size=8M\n' > /usr/local/etc/php/conf.d/uploads.ini
 WORKDIR /var/www/html
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
